@@ -52,6 +52,20 @@ Hospitals also struggle with efficiently coordinating doctors, appointments, pat
 - 📊 Monitor OPD operations
 - 📈 View operational analytics
 
+
+### 🔄 Patient Workflow
+
+The HospitalFlow patient journey follows a real-time OPD coordination workflow:
+
+1. 🔍 **Search Hospital** – Find hospitals, departments, and available doctors.
+2. 👨‍⚕️ **Select Doctor** – View doctor availability and OPD details.
+3. 📅 **Book Appointment** – Schedule an OPD appointment.
+4. 🎟️ **Receive Digital Token** – Get a queue token after booking.
+5. 📊 **Track Live Queue** – Monitor the current queue and token progression.
+6. 🤖 **View Waiting-Time Estimate** – Receive an AI-based estimate of the expected waiting time.
+
+**Patient → Hospital Search → Doctor Selection → Appointment → Digital Token → Live Queue → AI Waiting-Time Estimate**
+
 ---
 
 ## 🤖 AI-Powered Waiting Time Prediction
