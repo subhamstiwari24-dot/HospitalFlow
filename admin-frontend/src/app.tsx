@@ -16,10 +16,31 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import "./style.css";
 
 type DoctorStatus = "Available" | "Delayed" | "Break";
+
+type Appointment = {
+  id: number;
+  patientName: string;
+  patientPhone?: string;
+  appointmentDate?: string;
+  appointmentTime?: string;
+  tokenNumber: string;
+  status: string;
+  priority?: string;
+  doctor?: {
+    id: number;
+    name: string;
+    specialization: string;
+  };
+  hospital?: {
+    id: number;
+    name: string;
+    city: string;
+  };
+};
 
 const doctors = [
   {
@@ -52,43 +73,93 @@ const doctors = [
   },
 ];
 
-const appointments = [
-  {
-    patient: "Aarav Mehta",
-    doctor: "Dr. Priya Sharma",
-    department: "General Medicine",
-    token: "A25",
-    time: "10:30 AM",
-    status: "Waiting",
-  },
-  {
-    patient: "Sneha Kulkarni",
-    doctor: "Dr. Rahul Mehta",
-    department: "Cardiology",
-    token: "C19",
-    time: "10:45 AM",
-    status: "Confirmed",
-  },
-  {
-    patient: "Rohan Shah",
-    doctor: "Dr. Neha Patel",
-    department: "Dermatology",
-    token: "D13",
-    time: "11:00 AM",
-    status: "Waiting",
-  },
-  {
-    patient: "Ananya Singh",
-    doctor: "Dr. Arjun Rao",
-    department: "Orthopedics",
-    token: "O09",
-    time: "11:15 AM",
-    status: "Confirmed",
-  },
-];
+const API_URL = "http://localhost:8080/api";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
+
+  const loadAppointments = useCallback(async () => {
+    try {
+      setLoadingAppointments(true);
+
+      const response = await fetch(`${API_URL}/appointments`);
+
+      if (!response.ok) {
+        throw new Error("Failed to load appointments");
+      }
+
+      const data = await response.json();
+
+      setAppointments(data);
+      setConnectionStatus("Backend Connected");
+    } catch (error) {
+      console.error("Appointment loading error:", error);
+      setConnectionStatus("Backend Offline");
+    } finally {
+      setLoadingAppointments(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
+
+  const updateAppointmentStatus = async (
+    id: number,
+    status: string
+  ) => {
+    try {
+      setUpdatingId(id);
+
+      const response = await fetch(
+        `${API_URL}/appointments/${id}/status?status=${encodeURIComponent(
+          status
+        )}`,
+        {
+          method: "PATCH",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update appointment status");
+      }
+
+      const updatedAppointment = await response.json();
+
+      setAppointments((currentAppointments) =>
+        currentAppointments.map((appointment) =>
+          appointment.id === id
+            ? updatedAppointment
+            : appointment
+        )
+      );
+    } catch (error) {
+      console.error("Status update error:", error);
+      alert("Unable to update appointment status.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const waitingCount = appointments.filter(
+    (appointment) =>
+      appointment.status?.toUpperCase() === "WAITING"
+  ).length;
+
+  const inProgressCount = appointments.filter(
+    (appointment) =>
+      appointment.status?.toUpperCase() === "IN_PROGRESS"
+  ).length;
+
+  const completedCount = appointments.filter(
+    (appointment) =>
+      appointment.status?.toUpperCase() === "COMPLETED"
+  ).length;
 
   return (
     <div className="admin-app">
@@ -99,7 +170,11 @@ function App() {
         />
       )}
 
-      <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
+      <aside
+        className={`sidebar ${
+          sidebarOpen ? "sidebar-open" : ""
+        }`}
+      >
         <div className="brand">
           <div className="brand-icon">
             <Activity size={22} />
@@ -120,10 +195,12 @@ function App() {
 
         <div className="hospital-selector">
           <div className="hospital-avatar">MH</div>
+
           <div>
             <strong>Metro Health Hospital</strong>
             <span>Main Branch</span>
           </div>
+
           <ChevronRight size={16} />
         </div>
 
@@ -138,7 +215,9 @@ function App() {
           <a className="nav-item">
             <Activity size={19} />
             OPD Queue
-            <span className="nav-badge">12</span>
+            <span className="nav-badge">
+              {waitingCount}
+            </span>
           </a>
 
           <a className="nav-item">
@@ -177,6 +256,7 @@ function App() {
         <div className="sidebar-bottom">
           <div className="admin-profile">
             <div className="profile-avatar">AS</div>
+
             <div>
               <strong>Admin Staff</strong>
               <span>Hospital Administrator</span>
@@ -202,14 +282,18 @@ function App() {
           <div className="page-heading">
             <div>
               <h1>Overview</h1>
-              <p>Monitor your hospital's OPD operations</p>
+              <p>
+                Monitor your hospital's OPD operations
+              </p>
             </div>
           </div>
 
           <div className="topbar-actions">
             <div className="search-box">
               <Search size={18} />
-              <input placeholder="Search patients, doctors..." />
+              <input
+                placeholder="Search patients, doctors..."
+              />
             </div>
 
             <button className="icon-btn notification">
@@ -218,7 +302,10 @@ function App() {
             </button>
 
             <div className="admin-mini-profile">
-              <div className="profile-avatar small">AS</div>
+              <div className="profile-avatar small">
+                AS
+              </div>
+
               <div>
                 <strong>Admin Staff</strong>
                 <span>Administrator</span>
@@ -231,12 +318,29 @@ function App() {
           <div className="welcome-row">
             <div>
               <h2>Good morning, Admin 👋</h2>
-              <p>Here's what's happening in your hospital today.</p>
+
+              <p>
+                Here's what's happening in your hospital today.
+              </p>
+
+              <p
+                style={{
+                  marginTop: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color:
+                    connectionStatus === "Backend Connected"
+                      ? "#16a34a"
+                      : "#dc2626",
+                }}
+              >
+                ● {connectionStatus}
+              </p>
             </div>
 
             <div className="date-pill">
               <CalendarDays size={17} />
-              Monday, 23 September 2026
+              24 September 2026
             </div>
           </div>
 
@@ -244,38 +348,45 @@ function App() {
             <div className="stat-card">
               <div className="stat-top">
                 <span>Total Appointments</span>
+
                 <div className="stat-icon blue">
                   <CalendarDays size={20} />
                 </div>
               </div>
 
-              <div className="stat-number">148</div>
+              <div className="stat-number">
+                {appointments.length}
+              </div>
 
               <div className="stat-footer positive">
-                <span>↑ 12.5%</span>
-                <small>vs yesterday</small>
+                <span>Live</span>
+                <small>from database</small>
               </div>
             </div>
 
             <div className="stat-card">
               <div className="stat-top">
                 <span>Patients Waiting</span>
+
                 <div className="stat-icon orange">
                   <Clock3 size={20} />
                 </div>
               </div>
 
-              <div className="stat-number">37</div>
+              <div className="stat-number">
+                {waitingCount}
+              </div>
 
               <div className="stat-footer warning">
-                <span>8 high priority</span>
-                <small>currently waiting</small>
+                <span>{inProgressCount} in progress</span>
+                <small>currently</small>
               </div>
             </div>
 
             <div className="stat-card">
               <div className="stat-top">
                 <span>Active Doctors</span>
+
                 <div className="stat-icon green">
                   <Stethoscope size={20} />
                 </div>
@@ -292,16 +403,19 @@ function App() {
             <div className="stat-card">
               <div className="stat-top">
                 <span>Completed Today</span>
+
                 <div className="stat-icon purple">
                   <Activity size={20} />
                 </div>
               </div>
 
-              <div className="stat-number">86</div>
+              <div className="stat-number">
+                {completedCount}
+              </div>
 
               <div className="stat-footer positive">
-                <span>↑ 8.2%</span>
-                <small>vs yesterday</small>
+                <span>Live</span>
+                <small>from database</small>
               </div>
             </div>
           </section>
@@ -311,7 +425,10 @@ function App() {
               <div className="panel-header">
                 <div>
                   <h3>Live OPD Status</h3>
-                  <p>Real-time department activity</p>
+
+                  <p>
+                    Real-time department activity
+                  </p>
                 </div>
 
                 <span className="live-pill">
@@ -322,16 +439,28 @@ function App() {
 
               <div className="queue-highlight">
                 <div>
-                  <span className="queue-label">CURRENT TOKEN</span>
-                  <strong>A24</strong>
+                  <span className="queue-label">
+                    CURRENT TOKEN
+                  </span>
+
+                  <strong>
+                    {appointments.find(
+                      (a) =>
+                        a.status === "IN_PROGRESS"
+                    )?.tokenNumber || "—"}
+                  </strong>
+
                   <p>General Medicine</p>
                 </div>
 
                 <div className="queue-wait">
                   <Clock3 size={18} />
+
                   <div>
-                    <strong>40–55 min</strong>
-                    <span>Estimated wait</span>
+                    <strong>Live Queue</strong>
+                    <span>
+                      {waitingCount} waiting
+                    </span>
                   </div>
                 </div>
               </div>
@@ -342,26 +471,28 @@ function App() {
                   <span>Position</span>
                 </div>
 
-                {["A21", "A22", "A23", "A24", "A25"].map(
-                  (token, index) => (
+                {appointments
+                  .filter(
+                    (appointment) =>
+                      appointment.status === "WAITING"
+                  )
+                  .map((appointment, index) => (
                     <div
-                      className={`queue-row ${
-                        token === "A24" ? "current" : ""
-                      }`}
-                      key={token}
+                      className="queue-row"
+                      key={appointment.id}
                     >
-                      <div className="token-number">{token}</div>
+                      <div className="token-number">
+                        {appointment.tokenNumber}
+                      </div>
 
                       <div className="queue-person">
                         <strong>
-                          {token === "A24"
-                            ? "Current Patient"
-                            : `Patient ${index + 1}`}
+                          {appointment.patientName}
                         </strong>
+
                         <span>
-                          {token === "A24"
-                            ? "Being called"
-                            : "Waiting"}
+                          {appointment.priority ||
+                            "NORMAL"}
                         </span>
                       </div>
 
@@ -369,7 +500,18 @@ function App() {
                         {index + 1}
                       </div>
                     </div>
-                  )
+                  ))}
+
+                {waitingCount === 0 && (
+                  <div
+                    style={{
+                      padding: "20px",
+                      textAlign: "center",
+                      opacity: 0.6,
+                    }}
+                  >
+                    No patients currently waiting.
+                  </div>
                 )}
               </div>
             </div>
@@ -378,7 +520,10 @@ function App() {
               <div className="panel-header">
                 <div>
                   <h3>Attention Required</h3>
-                  <p>Items that need your attention</p>
+
+                  <p>
+                    Items that need your attention
+                  </p>
                 </div>
 
                 <AlertTriangle size={21} />
@@ -388,12 +533,20 @@ function App() {
                 <div className="alert-icon">
                   <AlertTriangle size={19} />
                 </div>
+
                 <div>
-                  <strong>Priority patient detected</strong>
+                  <strong>
+                    Priority patient detection
+                  </strong>
+
                   <p>
-                    Emergency case added to Cardiology queue.
+                    Emergency and priority cases are
+                    placed ahead in the queue.
                   </p>
-                  <button>View queue →</button>
+
+                  <button>
+                    View queue →
+                  </button>
                 </div>
               </div>
 
@@ -401,12 +554,18 @@ function App() {
                 <div className="alert-icon">
                   <Clock3 size={19} />
                 </div>
+
                 <div>
                   <strong>Doctor delay</strong>
+
                   <p>
-                    Dr. Rahul Mehta is running 15 minutes late.
+                    Doctor status can be updated from
+                    the management module.
                   </p>
-                  <button>Update status →</button>
+
+                  <button>
+                    Update status →
+                  </button>
                 </div>
               </div>
 
@@ -414,12 +573,18 @@ function App() {
                 <div className="alert-icon">
                   <Users size={19} />
                 </div>
+
                 <div>
-                  <strong>High patient load</strong>
+                  <strong>Live patient load</strong>
+
                   <p>
-                    General Medicine has 18 patients waiting.
+                    Current waiting patients:
+                    {waitingCount}
                   </p>
-                  <button>View department →</button>
+
+                  <button>
+                    View department →
+                  </button>
                 </div>
               </div>
             </div>
@@ -429,15 +594,23 @@ function App() {
             <div className="panel-header">
               <div>
                 <h3>Doctor Status</h3>
-                <p>Current OPD availability</p>
+
+                <p>
+                  Current OPD availability
+                </p>
               </div>
 
-              <button className="view-all">View all doctors →</button>
+              <button className="view-all">
+                View all doctors →
+              </button>
             </div>
 
             <div className="doctor-grid">
               {doctors.map((doctor) => (
-                <div className="doctor-card" key={doctor.name}>
+                <div
+                  className="doctor-card"
+                  key={doctor.name}
+                >
                   <div className="doctor-card-top">
                     <div className="doctor-avatar">
                       {doctor.name
@@ -453,17 +626,22 @@ function App() {
                   </div>
 
                   <h4>{doctor.name}</h4>
+
                   <span className="doctor-department">
                     {doctor.department}
                   </span>
 
                   <div className="doctor-info">
-                    <span className={`status ${doctor.status.toLowerCase()}`}>
+                    <span
+                      className={`status ${doctor.status.toLowerCase()}`}
+                    >
                       <i />
                       {doctor.status}
                     </span>
 
-                    <span>{doctor.patients} patients</span>
+                    <span>
+                      {doctor.patients} patients
+                    </span>
                   </div>
 
                   <div className="doctor-token">
@@ -478,62 +656,194 @@ function App() {
           <section className="panel appointments-panel">
             <div className="panel-header">
               <div>
-                <h3>Today's Appointments</h3>
-                <p>Latest scheduled OPD appointments</p>
+                <h3>Appointments</h3>
+
+                <p>
+                  Live appointments from HospitalFlow
+                  backend
+                </p>
               </div>
 
-              <button className="view-all">
-                View all appointments →
+              <button
+                className="view-all"
+                onClick={loadAppointments}
+              >
+                Refresh →
               </button>
             </div>
 
             <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Patient</th>
-                    <th>Doctor</th>
-                    <th>Department</th>
-                    <th>Token</th>
-                    <th>Time</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {appointments.map((appointment) => (
-                    <tr key={appointment.token}>
-                      <td>
-                        <div className="patient-cell">
-                          <div className="patient-avatar">
-                            {appointment.patient
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </div>
-                          <strong>{appointment.patient}</strong>
-                        </div>
-                      </td>
-
-                      <td>{appointment.doctor}</td>
-                      <td>{appointment.department}</td>
-                      <td>
-                        <span className="table-token">
-                          {appointment.token}
-                        </span>
-                      </td>
-                      <td>{appointment.time}</td>
-                      <td>
-                        <span
-                          className={`appointment-status ${appointment.status.toLowerCase()}`}
-                        >
-                          {appointment.status}
-                        </span>
-                      </td>
+              {loadingAppointments ? (
+                <div
+                  style={{
+                    padding: "30px",
+                    textAlign: "center",
+                  }}
+                >
+                  Loading appointments...
+                </div>
+              ) : appointments.length === 0 ? (
+                <div
+                  style={{
+                    padding: "30px",
+                    textAlign: "center",
+                  }}
+                >
+                  No appointments found.
+                </div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Patient</th>
+                      <th>Doctor</th>
+                      <th>Department</th>
+                      <th>Token</th>
+                      <th>Time</th>
+                      <th>Status</th>
+                      <th>Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+
+                  <tbody>
+                    {appointments.map((appointment) => {
+                      const status =
+                        appointment.status?.toUpperCase();
+
+                      return (
+                        <tr key={appointment.id}>
+                          <td>
+                            <div className="patient-cell">
+                              <div className="patient-avatar">
+                                {appointment.patientName
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </div>
+
+                              <strong>
+                                {appointment.patientName}
+                              </strong>
+                            </div>
+                          </td>
+
+                          <td>
+                            {appointment.doctor?.name ||
+                              "—"}
+                          </td>
+
+                          <td>
+                            {appointment.doctor
+                              ?.specialization || "—"}
+                          </td>
+
+                          <td>
+                            <span className="table-token">
+                              {appointment.tokenNumber}
+                            </span>
+                          </td>
+
+                          <td>
+                            {appointment.appointmentTime ||
+                              "—"}
+                          </td>
+
+                          <td>
+                            <span
+                              className={`appointment-status ${status
+                                .toLowerCase()
+                                .replace("_", "-")}`}
+                            >
+                              {status.replace("_", " ")}
+                            </span>
+                          </td>
+
+                          <td>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: "6px",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              {status === "WAITING" && (
+                                <button
+                                  onClick={() =>
+                                    updateAppointmentStatus(
+                                      appointment.id,
+                                      "IN_PROGRESS"
+                                    )
+                                  }
+                                  disabled={
+                                    updatingId ===
+                                    appointment.id
+                                  }
+                                  style={{
+                                    padding: "7px 10px",
+                                    border: "none",
+                                    borderRadius: "7px",
+                                    cursor:
+                                      "pointer",
+                                    fontSize: "12px",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {updatingId ===
+                                  appointment.id
+                                    ? "Updating..."
+                                    : "Start"}
+                                </button>
+                              )}
+
+                              {status ===
+                                "IN_PROGRESS" && (
+                                <button
+                                  onClick={() =>
+                                    updateAppointmentStatus(
+                                      appointment.id,
+                                      "COMPLETED"
+                                    )
+                                  }
+                                  disabled={
+                                    updatingId ===
+                                    appointment.id
+                                  }
+                                  style={{
+                                    padding: "7px 10px",
+                                    border: "none",
+                                    borderRadius: "7px",
+                                    cursor:
+                                      "pointer",
+                                    fontSize: "12px",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {updatingId ===
+                                  appointment.id
+                                    ? "Updating..."
+                                    : "Complete"}
+                                </button>
+                              )}
+
+                              {status === "COMPLETED" && (
+                                <span
+                                  style={{
+                                    fontSize: "12px",
+                                    fontWeight: 700,
+                                    opacity: 0.6,
+                                  }}
+                                >
+                                  Done
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           </section>
         </div>
