@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-inter: 'Inter', sans-serif;
+  --color-brand-dark: #13243a;
+  --color-brand-blue: #155ead;
+  --color-brand-blue-light: #2475d0;
+  --color-brand-green: #18865b;
+  --color-brand-red: #c53a45;
+  --color-text-primary: #142033;
+  --color-text-secondary: #526176;
+  --color-text-muted: #7b899c;
+  --color-text-nav: #d0dce8;
+  --color-bg-page: #f4f7fb;
+  --color-bg-sidebar: #13243a;
+  --color-border: #d8e1ec;
+  --color-blue-50: #eaf3fd;
+  --color-green-50: #e8f7f1;
+  --color-amber-50: #fff4de;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f4f7fb;
+}
+
+@keyframes shimmer {
+  0% { background-position: -800px 0; }
+  100% { background-position: 800px 0; }
+}
+
+@utility skeleton {
+  background: linear-gradient(90deg, #eef2f6 25%, #e3ecf5 50%, #eef2f6 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}

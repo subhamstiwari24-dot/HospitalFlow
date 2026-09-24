@@ -6,9 +6,11 @@ import com.hospitalflow.backend.entity.Appointment;
 import com.hospitalflow.backend.repository.AppointmentRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -16,6 +18,10 @@ public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final SimpMessagingTemplate messagingTemplate;
+
+    // Python AI Service
+    private final RestClient aiClient =
+            RestClient.create("http://127.0.0.1:8000");
 
     public AppointmentService(
             AppointmentRepository appointmentRepository,
@@ -47,18 +53,14 @@ public class AppointmentService {
 
     public Appointment saveAppointment(Appointment appointment) {
 
-        /*
-         * Default priority
-         */
+        // Default priority
         if (appointment.getPriority() == null ||
                 appointment.getPriority().isBlank()) {
 
             appointment.setPriority("NORMAL");
         }
 
-        /*
-         * Generate token automatically
-         */
+        // Generate token automatically
         if (appointment.getTokenNumber() == null ||
                 appointment.getTokenNumber().isBlank()) {
 
@@ -77,9 +79,7 @@ public class AppointmentService {
             );
         }
 
-        /*
-         * Default status
-         */
+        // Default status
         if (appointment.getStatus() == null ||
                 appointment.getStatus().isBlank()) {
 
@@ -89,9 +89,7 @@ public class AppointmentService {
         Appointment savedAppointment =
                 appointmentRepository.save(appointment);
 
-        /*
-         * Send real-time update
-         */
+        // Real-time update
         messagingTemplate.convertAndSend(
                 "/topic/queue",
                 savedAppointment
@@ -116,16 +114,7 @@ public class AppointmentService {
                                 "WAITING"
                         );
 
-        /*
-         * Business priority:
-         *
-         * EMERGENCY = 3
-         * PRIORITY  = 2
-         * NORMAL    = 1
-         *
-         * Higher priority comes first.
-         * If priority is same, older appointment ID comes first.
-         */
+        // Dynamic priority sorting
         queue.sort(
                 Comparator
                         .comparing(
@@ -146,8 +135,7 @@ public class AppointmentService {
     // PRIORITY VALUE
     // =========================================================
 
-    private int getPriorityValue(
-            String priority) {
+    private int getPriorityValue(String priority) {
 
         if ("EMERGENCY".equalsIgnoreCase(priority)) {
             return 3;
@@ -161,7 +149,7 @@ public class AppointmentService {
     }
 
     // =========================================================
-    // GET QUEUE POSITION
+    // QUEUE POSITION
     // =========================================================
 
     public QueuePositionResponse getQueuePosition(
@@ -176,10 +164,7 @@ public class AppointmentService {
                                 )
                         );
 
-        /*
-         * If appointment is already completed,
-         * it no longer has a queue position.
-         */
+        // Completed appointment
         if ("COMPLETED".equalsIgnoreCase(
                 appointment.getStatus())) {
 
@@ -191,10 +176,7 @@ public class AppointmentService {
             );
         }
 
-        /*
-         * If currently being served,
-         * position is considered 0.
-         */
+        // Currently being served
         if ("IN_PROGRESS".equalsIgnoreCase(
                 appointment.getStatus())) {
 
@@ -206,9 +188,7 @@ public class AppointmentService {
             );
         }
 
-        /*
-         * Cancelled appointment
-         */
+        // Cancelled appointment
         if ("CANCELLED".equalsIgnoreCase(
                 appointment.getStatus())) {
 
@@ -254,7 +234,7 @@ public class AppointmentService {
     }
 
     // =========================================================
-    // GET WAITING TIME
+    // AI WAITING-TIME PREDICTION
     // =========================================================
 
     public WaitingTimeResponse getWaitingTime(
@@ -269,11 +249,10 @@ public class AppointmentService {
                                 )
                         );
 
-        /*
-         * COMPLETED
-         *
-         * No waiting time after consultation.
-         */
+        // -----------------------------------------------------
+        // COMPLETED
+        // -----------------------------------------------------
+
         if ("COMPLETED".equalsIgnoreCase(
                 appointment.getStatus())) {
 
@@ -286,11 +265,10 @@ public class AppointmentService {
             );
         }
 
-        /*
-         * IN_PROGRESS
-         *
-         * Patient is currently being served.
-         */
+        // -----------------------------------------------------
+        // IN PROGRESS
+        // -----------------------------------------------------
+
         if ("IN_PROGRESS".equalsIgnoreCase(
                 appointment.getStatus())) {
 
@@ -303,9 +281,10 @@ public class AppointmentService {
             );
         }
 
-        /*
-         * CANCELLED
-         */
+        // -----------------------------------------------------
+        // CANCELLED
+        // -----------------------------------------------------
+
         if ("CANCELLED".equalsIgnoreCase(
                 appointment.getStatus())) {
 
@@ -318,11 +297,10 @@ public class AppointmentService {
             );
         }
 
-        /*
-         * WAITING
-         *
-         * Calculate position from the live queue.
-         */
+        // -----------------------------------------------------
+        // CURRENT WAITING QUEUE
+        // -----------------------------------------------------
+
         Long doctorId =
                 appointment.getDoctor().getId();
 
@@ -333,13 +311,11 @@ public class AppointmentService {
                 );
 
         int patientsAhead = 0;
+        int emergencyPatients = 0;
 
-        /*
-         * Count only patients before
-         * this appointment.
-         */
         for (Appointment queuedAppointment : queue) {
 
+            // Stop when our appointment is reached
             if (queuedAppointment
                     .getId()
                     .equals(appointmentId)) {
@@ -348,34 +324,124 @@ public class AppointmentService {
             }
 
             patientsAhead++;
+
+            // Count emergency patients ahead
+            if ("EMERGENCY".equalsIgnoreCase(
+                    queuedAppointment.getPriority())) {
+
+                emergencyPatients++;
+            }
         }
 
-        /*
-         * Current prototype:
-         *
-         * Average consultation = 10 minutes.
-         *
-         * Later this calculation will be
-         * replaced by the HospitalFlow AI service.
-         */
+        // -----------------------------------------------------
+        // DOCTOR DELAY
+        // -----------------------------------------------------
+
+        int doctorDelayMinutes = 0;
+
+        if (appointment.getDoctor() != null &&
+                appointment.getDoctor().getStatus() != null) {
+
+            String doctorStatus =
+                    appointment.getDoctor()
+                            .getStatus();
+
+            if ("DELAYED".equalsIgnoreCase(
+                    doctorStatus)) {
+
+                doctorDelayMinutes = 10;
+            }
+        }
+
+        // -----------------------------------------------------
+        // AVERAGE CONSULTATION TIME
+        // -----------------------------------------------------
+
         int averageConsultationMinutes = 10;
+
+        // -----------------------------------------------------
+        // CALL PYTHON AI SERVICE
+        // -----------------------------------------------------
+
+        try {
+
+            Map<String, Object> requestBody =
+                    Map.of(
+                            "patients_ahead",
+                            patientsAhead,
+
+                            "average_consultation_minutes",
+                            averageConsultationMinutes,
+
+                            "emergency_patients",
+                            emergencyPatients,
+
+                            "doctor_delay_minutes",
+                            doctorDelayMinutes
+                    );
+
+            Map<String, Object> aiResponse =
+                    aiClient.post()
+                            .uri("/predict")
+                            .body(requestBody)
+                            .retrieve()
+                            .body(Map.class);
+
+            if (aiResponse != null) {
+
+                int estimatedMin =
+                        ((Number) aiResponse.get(
+                                "estimated_min_minutes"
+                        )).intValue();
+
+                int estimatedMax =
+                        ((Number) aiResponse.get(
+                                "estimated_max_minutes"
+                        )).intValue();
+
+                String message =
+                        String.valueOf(
+                                aiResponse.get("message")
+                        );
+
+                return new WaitingTimeResponse(
+                        appointment.getTokenNumber(),
+                        patientsAhead,
+                        estimatedMin,
+                        estimatedMax,
+                        message
+                );
+            }
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "AI Service unavailable. "
+                            + "Using fallback calculation."
+            );
+
+            System.out.println(
+                    "AI Error: " + e.getMessage()
+            );
+        }
+
+        // -----------------------------------------------------
+        // FALLBACK CALCULATION
+        // -----------------------------------------------------
 
         int estimatedMinMinutes =
                 patientsAhead *
-                averageConsultationMinutes;
+                        averageConsultationMinutes;
 
         int estimatedMaxMinutes =
                 estimatedMinMinutes + 10;
-
-        String message =
-                "Estimated waiting time based on current OPD queue.";
 
         return new WaitingTimeResponse(
                 appointment.getTokenNumber(),
                 patientsAhead,
                 estimatedMinMinutes,
                 estimatedMaxMinutes,
-                message
+                "Estimated waiting time based on current OPD queue."
         );
     }
 
@@ -401,12 +467,7 @@ public class AppointmentService {
         Appointment savedAppointment =
                 appointmentRepository.save(appointment);
 
-        /*
-         * Broadcast status change.
-         *
-         * Patient frontend receives this through
-         * WebSocket and refreshes the live queue.
-         */
+        // Broadcast live update
         messagingTemplate.convertAndSend(
                 "/topic/queue",
                 savedAppointment
@@ -423,10 +484,7 @@ public class AppointmentService {
 
         appointmentRepository.deleteById(id);
 
-        /*
-         * Notify connected clients
-         * that queue has changed.
-         */
+        // Notify connected clients
         messagingTemplate.convertAndSend(
                 "/topic/queue",
                 "Appointment " + id + " deleted"

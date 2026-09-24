@@ -74,14 +74,14 @@ function App() {
   /*
    * Backend
    */
-  const API_URL = "http://localhost:8080/api";
+  const API_URL = "http://127.0.0.1:8080/api";
 
   /*
    * Demo patient appointment.
    *
    * Appointment ID 1 = Rahul Patil / A01
    */
-  const PATIENT_APPOINTMENT_ID = 1;
+  const PATIENT_APPOINTMENT_ID = 5;
 
   /* ================= STATE ================= */
 
@@ -225,7 +225,7 @@ function App() {
     const client =
       new Client({
         brokerURL:
-          "ws://localhost:8080/ws",
+          "ws://127.0.0.1:8080/ws",
 
         reconnectDelay: 5000,
 
