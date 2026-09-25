@@ -1,28 +1,143 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import StatusBadge from '../../components/StatusBadge';
 import Button from '../../components/Button';
-import { useAdmin } from '../../context/AdminContext';
 
 const inputClass =
   'bg-white border border-[#d8e1ec] rounded-[10px] px-[14px] py-[11px] text-[14px] text-[#142033] placeholder:text-[#afc0d3] outline-none focus:border-[#155ead] transition-colors w-full';
 
+type DepartmentStatus = 'Active' | 'Inactive';
+
+interface BackendDoctor {
+  id: number;
+  name: string;
+  specialization: string;
+  status: 'Available' | 'Busy' | 'On Break' | 'Offline';
+  consultationTime?: string | null;
+}
+
+interface BackendAppointment {
+  appointmentDate: string;
+  doctor?: { id?: number | null } | null;
+}
+
+interface DepartmentDoctor extends BackendDoctor {
+  patients: number;
+  room: string;
+  shift: string;
+}
+
+interface DerivedDepartment {
+  id: string;
+  name: string;
+  head: string;
+  doctors: number;
+  patients: number;
+  rooms: string;
+  status: DepartmentStatus;
+}
+
+function slugify(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function getTodayKey(): string {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+}
+
 export default function DepartmentDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { departments, doctors, updateDepartment } = useAdmin();
-
-  const dept = departments.find((d) => d.id === id);
+  const [departments, setDepartments] = useState<DerivedDepartment[]>([]);
+  const [departmentDoctors, setDepartmentDoctors] = useState<DepartmentDoctor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState({ name: '', head: '', rooms: 0, status: 'Active' as 'Active' | 'Inactive' });
 
-  if (!dept) {
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchDepartmentDetails() {
+      try {
+        setLoading(true);
+        setError(null);
+        const [doctorResponse, appointmentResponse] = await Promise.all([
+          fetch('/api/doctors', { signal: controller.signal }),
+          fetch('/api/appointments', { signal: controller.signal }),
+        ]);
+        if (!doctorResponse.ok) throw new Error(`Unable to load doctors (${doctorResponse.status})`);
+        if (!appointmentResponse.ok) throw new Error(`Unable to load appointments (${appointmentResponse.status})`);
+
+        const doctorData: unknown = await doctorResponse.json();
+        const appointmentData: unknown = await appointmentResponse.json();
+        if (!Array.isArray(doctorData) || !Array.isArray(appointmentData)) {
+          throw new Error('The department details response was invalid.');
+        }
+
+        const doctors = doctorData as BackendDoctor[];
+        const appointments = appointmentData as BackendAppointment[];
+        const todayKey = getTodayKey();
+        const counts = new Map<number, number>();
+        appointments.forEach((appointment) => {
+          const doctorId = appointment.doctor?.id;
+          if (doctorId && appointment.appointmentDate === todayKey) {
+            counts.set(doctorId, (counts.get(doctorId) ?? 0) + 1);
+          }
+        });
+
+        const departmentMap = new Map<string, BackendDoctor[]>();
+        doctors.forEach((doctor) => {
+          const name = doctor.specialization.trim();
+          if (!name) return;
+          departmentMap.set(name, [...(departmentMap.get(name) ?? []), doctor]);
+        });
+
+        setDepartments(Array.from(departmentMap.entries()).map(([name, departmentDoctors]) => ({
+          id: slugify(name),
+          name,
+          head: departmentDoctors[0].name,
+          doctors: departmentDoctors.length,
+          patients: departmentDoctors.reduce((total, doctor) => total + (counts.get(doctor.id) ?? 0), 0),
+          rooms: 'Not tracked',
+          status: departmentDoctors.some((doctor) => doctor.status !== 'Offline') ? 'Active' : 'Inactive',
+        })));
+
+        const selectedDoctors = id
+          ? doctors.filter((doctor) => slugify(doctor.specialization) === id)
+          : [];
+        setDepartmentDoctors(selectedDoctors.map((doctor) => ({
+          ...doctor,
+          patients: counts.get(doctor.id) ?? 0,
+          room: 'Room not assigned',
+          shift: doctor.consultationTime ? `${doctor.consultationTime} consultation` : 'Consultation time not assigned',
+        })));
+      } catch (fetchError) {
+        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return;
+        setError(fetchError instanceof Error ? fetchError.message : 'Unable to load department details.');
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void fetchDepartmentDetails();
+    return () => controller.abort();
+  }, [id]);
+
+  const dept = departments.find((department) => department.id === id);
+
+  if (loading) {
+    return <AdminLayout title="Department Details"><div className="py-[80px] text-center text-[#7b899c] text-[14px]">Loading department details...</div></AdminLayout>;
+  }
+
+  if (error || !dept) {
     return (
       <AdminLayout title="Department Details">
         <div className="flex flex-col items-center justify-center py-[80px] gap-[12px]">
-          <p className="font-bold text-[#142033] text-[18px]">Department not found</p>
+          <p className="font-bold text-[#142033] text-[18px]">{error ?? 'Department not found'}</p>
           <Button variant="secondary" onClick={() => navigate('/admin/departments')}>
             Back to Departments
           </Button>
@@ -31,17 +146,12 @@ export default function DepartmentDetailsPage() {
     );
   }
 
-  const departmentDoctors = doctors.filter(
-    (d) => d.department.toLowerCase() === dept.name.toLowerCase()
-  );
-
   const startEdit = () => {
-    setForm({ name: dept.name, head: dept.head, rooms: dept.rooms, status: dept.status });
+    setForm({ name: dept.name, head: dept.head, rooms: 0, status: dept.status });
     setEditing(true);
   };
 
   const handleSave = () => {
-    updateDepartment(dept.id, form);
     setEditing(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -56,7 +166,7 @@ export default function DepartmentDetailsPage() {
       {/* Success toast */}
       {saved && (
         <div className="fixed top-[20px] right-[20px] z-50 bg-[#18865b] text-white px-[18px] py-[12px] rounded-[10px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.2)] font-semibold text-[13px]">
-          Department updated successfully.
+          Department data is derived from backend doctors and cannot be edited here.
         </div>
       )}
 

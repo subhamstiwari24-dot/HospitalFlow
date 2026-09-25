@@ -3,13 +3,42 @@ import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import StatusBadge from '../../components/StatusBadge';
 import Button from '../../components/Button';
-import { useAdmin } from '../../context/AdminContext';
-import type { Doctor, DoctorStatus } from '../../types';
+import type { DoctorStatus } from '../../types';
 import { usePageLoad } from '../../hooks/usePageLoad';
 import { SkDoctorManagement } from '../../components/Skeleton';
 import EmptyState, { EmptyIcons } from '../../components/EmptyState';
 
 const statusFilters: Array<DoctorStatus | 'All'> = ['All', 'Available', 'Busy', 'On Break', 'Offline'];
+
+interface BackendHospital {
+  name: string;
+}
+
+interface BackendDoctor {
+  id: number;
+  name: string;
+  specialization: string;
+  qualification?: string | null;
+  experience?: string | null;
+  status: DoctorStatus;
+  consultationTime?: string | null;
+  hospital?: BackendHospital | null;
+}
+
+interface BackendAppointment {
+  doctor?: { id?: number | null } | null;
+  appointmentDate: string;
+  status: string;
+}
+
+interface DashboardDoctor extends BackendDoctor {
+  patients: number;
+  department: string;
+  room: string;
+  shift: string;
+  phone?: string;
+  email?: string;
+}
 
 function DoctorInitials({ name }: { name: string }) {
   const initials = name.replace('Dr. ', '').split(' ').map((w) => w[0]).join('').slice(0, 2);
@@ -21,7 +50,7 @@ function DoctorInitials({ name }: { name: string }) {
 }
 
 function ActionMenu({ doctor, onEdit, onView, onDeactivate, onRemove }: {
-  doctor: Doctor;
+  doctor: DashboardDoctor;
   onEdit: () => void;
   onView: () => void;
   onDeactivate: () => void;
@@ -70,11 +99,63 @@ function ActionMenu({ doctor, onEdit, onView, onDeactivate, onRemove }: {
 
 export default function DoctorManagementPage() {
   const navigate = useNavigate();
-  const { doctors, selectedDoctorId, selectDoctor, deactivateDoctor, removeDoctor } = useAdmin();
+  const [doctors, setDoctors] = useState<DashboardDoctor[]>([]);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
   const [filter, setFilter] = useState<DoctorStatus | 'All'>('All');
   const [search, setSearch] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const loading = usePageLoad(850);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const pageLoading = usePageLoad(850);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchDoctors() {
+      try {
+        setLoading(true);
+        setError(null);
+        const [doctorResponse, appointmentResponse] = await Promise.all([
+          fetch('/api/doctors', { signal: controller.signal }),
+          fetch('/api/appointments', { signal: controller.signal }),
+        ]);
+        if (!doctorResponse.ok) throw new Error(`Unable to load doctors (${doctorResponse.status})`);
+        if (!appointmentResponse.ok) throw new Error(`Unable to load appointment counts (${appointmentResponse.status})`);
+
+        const doctorData: unknown = await doctorResponse.json();
+        const appointmentData: unknown = await appointmentResponse.json();
+        if (!Array.isArray(doctorData) || !Array.isArray(appointmentData)) {
+          throw new Error('The doctors response was invalid.');
+        }
+
+        const today = new Date();
+        const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const patientCounts = new Map<number, number>();
+        (appointmentData as BackendAppointment[]).forEach((appointment) => {
+          const doctorId = appointment.doctor?.id;
+          if (doctorId && appointment.appointmentDate === todayKey && ['WAITING', 'IN_PROGRESS'].includes(appointment.status.toUpperCase())) {
+            patientCounts.set(doctorId, (patientCounts.get(doctorId) ?? 0) + 1);
+          }
+        });
+
+        setDoctors((doctorData as BackendDoctor[]).map((doctor) => ({
+          ...doctor,
+          patients: patientCounts.get(doctor.id) ?? 0,
+          department: doctor.specialization,
+          room: 'Room not assigned',
+          shift: doctor.consultationTime ? `${doctor.consultationTime} consultation` : 'Consultation time not assigned',
+        })));
+      } catch (fetchError) {
+        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return;
+        setError(fetchError instanceof Error ? fetchError.message : 'Unable to load doctors.');
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void fetchDoctors();
+    return () => controller.abort();
+  }, []);
 
   const selected = selectedDoctorId ? doctors.find((d) => d.id === selectedDoctorId) ?? null : null;
 
@@ -87,22 +168,47 @@ export default function DoctorManagementPage() {
     return matchesStatus && matchesSearch;
   });
 
-  if (loading) return <AdminLayout title="Doctor Management"><SkDoctorManagement /></AdminLayout>;
+  if ((pageLoading || loading) && !error) return <AdminLayout title="Doctor Management"><SkDoctorManagement /></AdminLayout>;
 
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
-  const handleDeactivate = (doc: Doctor) => {
-    deactivateDoctor(doc.id);
-    showSuccess(`${doc.name} has been ${doc.status === 'Offline' ? 'activated' : 'deactivated'}.`);
-    if (selectedDoctorId === doc.id) selectDoctor(null);
+  const handleDeactivate = async (doc: DashboardDoctor) => {
+    try {
+      const response = await fetch(`/api/doctors/${doc.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: doc.name,
+          specialization: doc.specialization,
+          qualification: doc.qualification,
+          experience: doc.experience,
+          status: doc.status === 'Offline' ? 'Available' : 'Offline',
+          consultationTime: doc.consultationTime,
+          hospital: doc.hospital,
+        }),
+      });
+      if (!response.ok) throw new Error(`Unable to update ${doc.name} (${response.status})`);
+      setDoctors((current) => current.map((doctor) => doctor.id === doc.id ? { ...doctor, status: doc.status === 'Offline' ? 'Available' : 'Offline' } : doctor));
+      showSuccess(`${doc.name} has been ${doc.status === 'Offline' ? 'activated' : 'deactivated'}.`);
+      if (selectedDoctorId === doc.id) setSelectedDoctorId(null);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : 'Unable to update doctor.');
+    }
   };
 
-  const handleRemove = (doc: Doctor) => {
-    removeDoctor(doc.id);
-    showSuccess(`${doc.name} has been removed.`);
+  const handleRemove = async (doc: DashboardDoctor) => {
+    try {
+      const response = await fetch(`/api/doctors/${doc.id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error(`Unable to remove ${doc.name} (${response.status})`);
+      setDoctors((current) => current.filter((doctor) => doctor.id !== doc.id));
+      setSelectedDoctorId((current) => current === doc.id ? null : current);
+      showSuccess(`${doc.name} has been removed.`);
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : 'Unable to remove doctor.');
+    }
   };
 
   return (
@@ -125,6 +231,12 @@ export default function DoctorManagementPage() {
           + Add Doctor
         </Button>
       </div>
+
+      {error && (
+        <div className="mb-[20px] bg-[#fef3f2] border border-[#f4c7cb] text-[#c53a45] px-[16px] py-[12px] rounded-[10px] text-[13px] font-semibold">
+          {error}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-[12px] mb-[20px] flex-wrap">
@@ -163,7 +275,9 @@ export default function DoctorManagementPage() {
               ))}
             </div>
 
-            {filtered.length === 0 && (
+            {loading && <div className="px-[20px] py-[24px] text-[#7b899c] text-[13px]">Loading doctors...</div>}
+
+            {!loading && filtered.length === 0 && (
               doctors.length === 0 ? (
                 <EmptyState
                   icon={EmptyIcons.userPlus(28)}
@@ -255,10 +369,11 @@ export default function DoctorManagementPage() {
                 {[
                   { label: 'Department', value: selected.department },
                   { label: 'Room', value: selected.room },
-                  { label: 'Shift', value: selected.shift },
+                  { label: 'Qualification', value: selected.qualification ?? '—' },
+                  { label: 'Experience', value: selected.experience ?? '—' },
+                  { label: 'Consultation time', value: selected.consultationTime ?? '—' },
+                  { label: 'Hospital', value: selected.hospital?.name ?? '—' },
                   { label: 'Patients today', value: String(selected.patients) },
-                  { label: 'Phone', value: selected.phone ?? '—' },
-                  { label: 'Email', value: selected.email ?? '—' },
                 ].map((row) => (
                   <div key={row.label}>
                     <p className="font-semibold text-[#7b899c] text-[10px] uppercase">{row.label}</p>

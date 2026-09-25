@@ -20,6 +20,10 @@ import EditDoctorPage from './pages/admin/EditDoctorPage';
 import DepartmentManagementPage from './pages/admin/DepartmentManagementPage';
 import DepartmentDetailsPage from './pages/admin/DepartmentDetailsPage';
 import AddDepartmentPage from './pages/admin/AddDepartmentPage';
+import AdminAppointmentsPage from './pages/admin/AdminAppointmentsPage';
+import AdminPatientManagementPage from './pages/admin/AdminPatientManagementPage';
+import AdminPatientDetailPage from './pages/admin/AdminPatientDetailPage';
+import AdminAppointmentDetailPage from './pages/admin/AdminAppointmentDetailPage';
 
 // Patient pages
 import PatientEntryPage from './pages/patient/PatientEntryPage';
@@ -64,9 +68,11 @@ function AdminRoutes() {
         <Route path="departments/:id" element={<DepartmentDetailsPage />} />
 
         {/* Shared / stub routes */}
-        <Route path="appointments" element={<AppointmentsPage />} />
+        <Route path="appointments/:appointmentId" element={<AdminAppointmentDetailPage />} />
+        <Route path="appointments" element={<AdminAppointmentsPage />} />
         <Route path="queue" element={<QueuePage />} />
-        <Route path="patients" element={<PatientDetailsPage />} />
+        <Route path="patients/:appointmentId" element={<AdminPatientDetailPage />} />
+        <Route path="patients" element={<AdminPatientManagementPage />} />
         <Route path="settings" element={<AdminDashboardPage />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Routes>
