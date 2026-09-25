@@ -7,7 +7,7 @@ import { usePatient } from '../../context/PatientContext';
 
 export default function AppointmentDetailsPage() {
   const navigate = useNavigate();
-  const { booking, cancelBooking, queueTokens } = usePatient();
+  const { booking, cancelBooking, queueTokens, patientName } = usePatient();
 
   useEffect(() => {
     if (!booking) navigate('/patient/hospital');
@@ -31,7 +31,7 @@ export default function AppointmentDetailsPage() {
 
   const rows = [
     { section: 'Patient', items: [
-      { label: 'Patient Name', value: booking.doctorName.replace('Dr. ', 'Patient: ') ?? 'Patient' },
+      { label: 'Patient Name', value: patientName || 'Patient' },
       { label: 'Booking ID', value: booking.bookingId },
       { label: 'Booked At', value: booking.bookedAt },
     ]},

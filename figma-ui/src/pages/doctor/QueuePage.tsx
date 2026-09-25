@@ -8,7 +8,7 @@ import { SkDoctorQueue } from '../../components/Skeleton';
 import StatusBadge from '../../components/StatusBadge';
 import Button from '../../components/Button';
 import PatientInitials from '../../components/PatientInitials';
-import EmptyState, { EmptyIcons } from '../../components/EmptyState';
+import EmptyState, { EmptyIcons, ErrorState } from '../../components/EmptyState';
 
 const API_URL = '/api';
 const DOCTOR_ID = 1;
@@ -606,10 +606,13 @@ export default function QueuePage() {
         </button>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="mb-[18px] bg-red-50 border border-red-200 text-red-700 rounded-[10px] px-[16px] py-[12px] text-[13px]">
-          {error}
+      {error && !loadingQueue && (
+        <div className="mb-[18px]">
+          <ErrorState
+            compact
+            description={error}
+            onRetry={loadQueue}
+          />
         </div>
       )}
 

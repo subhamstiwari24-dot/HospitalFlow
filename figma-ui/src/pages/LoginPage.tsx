@@ -7,9 +7,22 @@ export default function LoginPage() {
   const [role, setRole] = useState<'Doctor' | 'Admin'>('Doctor');
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<{ employeeId?: string; password?: string }>({});
+
+  const validate = (field: 'employeeId' | 'password', value: string) => {
+    return value.trim() ? '' : field === 'employeeId' ? 'Email or Doctor ID is required' : 'Password is required';
+  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors = {
+      employeeId: validate('employeeId', employeeId),
+      password: validate('password', password),
+    };
+    if (nextErrors.employeeId || nextErrors.password) {
+      setErrors(nextErrors);
+      return;
+    }
     if (role === 'Doctor') {
       navigate('/doctor/dashboard');
     } else {
@@ -37,7 +50,8 @@ export default function LoginPage() {
               <button
                 key={r}
                 onClick={() => setRole(r)}
-                className={`flex-1 py-[9px] rounded-[8px] text-[13px] font-bold transition-colors cursor-pointer ${
+                aria-pressed={role === r}
+                className={`flex-1 py-[9px] rounded-[8px] text-[13px] font-bold transition-colors cursor-pointer active:translate-y-px focus-visible:outline-2 focus-visible:outline-[#2475d0] focus-visible:outline-offset-2 ${
                   role === r
                     ? 'bg-white text-[#142033] shadow-[0px_1px_4px_0px_rgba(19,36,58,0.1)]'
                     : 'text-[#7b899c] hover:text-[#526176]'
@@ -50,24 +64,42 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="flex flex-col gap-[16px]">
             <div className="flex flex-col gap-[6px]">
-              <label className="font-semibold text-[#142033] text-[13px]">Employee ID</label>
+              <label htmlFor="login-employee-id" className="font-semibold text-[#142033] text-[13px]">Email or Doctor ID</label>
               <input
+                id="login-employee-id"
                 type="text"
                 value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setEmployeeId(value);
+                  setErrors((current) => ({ ...current, employeeId: validate('employeeId', value) }));
+                }}
+                onBlur={() => setErrors((current) => ({ ...current, employeeId: validate('employeeId', employeeId) }))}
+                aria-invalid={Boolean(errors.employeeId)}
+                aria-describedby={errors.employeeId ? 'login-employee-id-error' : undefined}
                 placeholder={role === 'Doctor' ? 'e.g. DR-2045' : 'e.g. AD-1001'}
                 className="bg-white border border-[#d8e1ec] rounded-[10px] px-[14px] py-[11px] text-[14px] text-[#142033] placeholder:text-[#afc0d3] outline-none focus:border-[#155ead] transition-colors"
               />
+              {errors.employeeId && <p id="login-employee-id-error" className="text-[#c53a45] text-[12px]">{errors.employeeId}</p>}
             </div>
             <div className="flex flex-col gap-[6px]">
-              <label className="font-semibold text-[#142033] text-[13px]">Password</label>
+              <label htmlFor="login-password" className="font-semibold text-[#142033] text-[13px]">Password</label>
               <input
+                id="login-password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPassword(value);
+                  setErrors((current) => ({ ...current, password: validate('password', value) }));
+                }}
+                onBlur={() => setErrors((current) => ({ ...current, password: validate('password', password) }))}
+                aria-invalid={Boolean(errors.password)}
+                aria-describedby={errors.password ? 'login-password-error' : undefined}
                 placeholder="Enter your password"
                 className="bg-white border border-[#d8e1ec] rounded-[10px] px-[14px] py-[11px] text-[14px] text-[#142033] placeholder:text-[#afc0d3] outline-none focus:border-[#155ead] transition-colors"
               />
+              {errors.password && <p id="login-password-error" className="text-[#c53a45] text-[12px]">{errors.password}</p>}
             </div>
 
             <div className="flex items-center justify-between">

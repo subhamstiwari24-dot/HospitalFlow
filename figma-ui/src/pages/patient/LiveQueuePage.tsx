@@ -6,6 +6,7 @@ import StatusBadge from '../../components/StatusBadge';
 import { usePatient } from '../../context/PatientContext';
 import { usePageLoad } from '../../hooks/usePageLoad';
 import { SkLiveQueue } from '../../components/Skeleton';
+import { ErrorState } from '../../components/EmptyState';
 
 const API_URL = '/api';
 
@@ -327,12 +328,13 @@ export default function LiveQueuePage() {
         </div>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="bg-[#fff4de] border border-[#f3d7a0] rounded-[12px] px-[14px] py-[10px] mb-[16px]">
-          <p className="text-[12px] text-[#8a5a00]">
-            {error}
-          </p>
+      {error && !queueLoading && (
+        <div className="mb-[16px]">
+          <ErrorState
+            compact
+            description={error}
+            onRetry={loadLiveQueue}
+          />
         </div>
       )}
 

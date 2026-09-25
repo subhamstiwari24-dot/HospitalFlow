@@ -4,6 +4,7 @@ import PatientLayout from '../../components/PatientLayout';
 import Button from '../../components/Button';
 import StatusBadge from '../../components/StatusBadge';
 import { usePatient } from '../../context/PatientContext';
+import { ErrorState } from '../../components/EmptyState';
 
 const API_URL = '/api';
 
@@ -274,12 +275,13 @@ export default function TokenDetailsPage() {
         </p>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="bg-[#fff4de] border border-[#f3d7a0] rounded-[12px] px-[14px] py-[10px] mb-[16px]">
-          <p className="text-[12px] text-[#8a5a00]">
-            {error}
-          </p>
+      {error && !loading && (
+        <div className="mb-[16px]">
+          <ErrorState
+            compact
+            description={error}
+            onRetry={loadTokenData}
+          />
         </div>
       )}
 

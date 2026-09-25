@@ -5,6 +5,7 @@ import Button from '../../components/Button';
 import StatusBadge from '../../components/StatusBadge';
 import { usePatient } from '../../context/PatientContext';
 import { usePageLoad } from '../../hooks/usePageLoad';
+import { ErrorState } from '../../components/EmptyState';
 
 const API_URL = '/api';
 
@@ -397,10 +398,14 @@ export default function BookingConfirmationPage() {
           </div>
         )}
 
-        {queueError && (
-          <p className="text-[11px] text-[#b45309] text-center mt-[10px]">
-            {queueError}
-          </p>
+        {queueError && !queueLoading && (
+          <div className="mt-[14px]">
+            <ErrorState
+              compact
+              description={queueError}
+              onRetry={loadLiveQueueData}
+            />
+          </div>
         )}
       </div>
 

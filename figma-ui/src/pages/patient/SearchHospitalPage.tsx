@@ -6,7 +6,7 @@ import { usePatient } from '../../context/PatientContext';
 import type { Hospital } from '../../types';
 import { usePageLoad } from '../../hooks/usePageLoad';
 import { SkHospitalSearch } from '../../components/Skeleton';
-import EmptyState, { EmptyIcons } from '../../components/EmptyState';
+import EmptyState, { EmptyIcons, ErrorState } from '../../components/EmptyState';
 
 type BackendHospital = {
   id: number;
@@ -50,6 +50,7 @@ export default function SearchHospitalPage() {
 
   const [loadingHospitals, setLoadingHospitals] = useState(true);
   const [error, setError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
 
   const pageLoading = usePageLoad(400);
 
@@ -111,7 +112,7 @@ export default function SearchHospitalPage() {
     };
 
     loadHospitals();
-  }, []);
+  }, [retryKey]);
 
   /*
    * Filter hospitals
@@ -205,7 +206,8 @@ export default function SearchHospitalPage() {
               <button
                 key={type}
                 onClick={() => setTypeFilter(type)}
-                className={`px-[14px] py-[8px] rounded-[8px] text-[12px] font-semibold transition-colors cursor-pointer border ${
+                aria-pressed={typeFilter === type}
+                className={`px-[14px] py-[8px] rounded-[8px] text-[12px] font-semibold transition-colors cursor-pointer border active:translate-y-px focus-visible:outline-2 focus-visible:outline-[#2475d0] focus-visible:outline-offset-2 ${
                   typeFilter === type
                     ? 'bg-[#155ead] text-white border-[#155ead]'
                     : 'bg-white border-[#d8e1ec] text-[#526176] hover:bg-[#f4f7fb]'
@@ -218,13 +220,11 @@ export default function SearchHospitalPage() {
         </div>
       </div>
 
-      {/* BACKEND ERROR */}
-      {error && (
-        <div className="mb-[20px] bg-[#fff3f3] border border-[#f1c5c5] rounded-[12px] px-[16px] py-[14px]">
-          <p className="text-[#c53a45] text-[13px] font-semibold">
-            {error}
-          </p>
-        </div>
+      {error && !loadingHospitals && (
+        <ErrorState
+          description={error}
+          onRetry={() => setRetryKey((key) => key + 1)}
+        />
       )}
 
       {/* LOADING */}
@@ -237,13 +237,21 @@ export default function SearchHospitalPage() {
       )}
 
       {/* HOSPITAL LIST */}
-      {!loadingHospitals && (
+      {!loadingHospitals && !error && (
         <div className="flex flex-col gap-[12px] mb-[24px]">
           {filtered.map((hospital) => (
             <div
               key={hospital.id}
               onClick={() => handleSelect(hospital)}
-              className={`bg-white border rounded-[14px] p-[20px] cursor-pointer transition-all ${
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  handleSelect(hospital);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              className={`bg-white border rounded-[14px] p-[20px] cursor-pointer transition-[border-color,box-shadow,transform] focus-visible:outline-2 focus-visible:outline-[#2475d0] focus-visible:outline-offset-2 active:translate-y-px ${
                 selectedHospital?.id === hospital.id
                   ? 'border-[#155ead] shadow-[0px_0px_0px_3px_rgba(21,94,173,0.12)]'
                   : 'border-[#d8e1ec] hover:border-[#afc0d3] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]'

@@ -9,6 +9,14 @@ interface EmptyStateProps {
   compact?: boolean;
 }
 
+interface ErrorStateProps {
+  title?: string;
+  description: string;
+  onRetry?: () => void;
+  retryLabel?: string;
+  compact?: boolean;
+}
+
 export default function EmptyState({ icon, title, description, action, compact = false }: EmptyStateProps) {
   return (
     <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-[20px] px-[16px]' : 'py-[48px] px-[24px]'}`}>
@@ -22,6 +30,36 @@ export default function EmptyState({ icon, title, description, action, compact =
         </p>
       )}
       {action && <div className={compact ? 'mt-[12px]' : 'mt-[18px]'}>{action}</div>}
+    </div>
+  );
+}
+
+export function ErrorState({
+  title = 'Something went wrong',
+  description,
+  onRetry,
+  retryLabel = 'Try again',
+  compact = false,
+}: ErrorStateProps) {
+  return (
+    <div className="bg-[#fff8f8] border border-[#f1c5c5] rounded-[14px]">
+      <EmptyState
+        compact={compact}
+        icon={EmptyIcons.alert(compact ? 24 : 28)}
+        title={title}
+        description={description}
+        action={
+          onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="border border-[#c53a45] bg-white text-[#c53a45] font-bold text-[13px] px-[16px] py-[10px] rounded-[10px] hover:bg-[#fff3f3] transition-colors cursor-pointer"
+            >
+              {retryLabel}
+            </button>
+          ) : undefined
+        }
+      />
     </div>
   );
 }
@@ -48,6 +86,14 @@ const icon = (d: string | string[], size = 24, extra?: ReactNode) => (
 );
 
 export const EmptyIcons = {
+  alert: (size = 28) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.3 3.4L2.2 17.5A2 2 0 003.9 20h16.2a2 2 0 001.7-2.5L13.7 3.4a2 2 0 00-3.4 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  ),
+
   // Two people — waiting queue
   queue: (size = 28) => icon(
     [

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePatient } from '../../context/PatientContext';
 import Button from '../../components/Button';
+import { hasMinimumLength, isTenDigitPhone } from '../../utils/validation';
 
 export default function PatientEntryPage() {
   const navigate = useNavigate();
@@ -10,12 +11,29 @@ export default function PatientEntryPage() {
   const [phone, setPhone] = useState('');
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
 
+  const validateField = (field: 'name' | 'phone', value: string) => {
+    if (field === 'name') {
+      return !value.trim()
+        ? 'Full name is required'
+        : !hasMinimumLength(value, 2)
+          ? 'Full name must be at least 2 characters'
+          : '';
+    }
+
+    return !value.trim()
+      ? 'Mobile number is required'
+      : !isTenDigitPhone(value)
+        ? 'Mobile number must be exactly 10 digits'
+        : '';
+  };
+
   const handleContinue = (e: React.FormEvent) => {
     e.preventDefault();
-    const errs: typeof errors = {};
-    if (!name.trim()) errs.name = 'Please enter your name';
-    if (!phone.trim() || phone.replace(/\D/g, '').length < 10) errs.phone = 'Enter a valid 10-digit mobile number';
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+    const errs = {
+      name: validateField('name', name),
+      phone: validateField('phone', phone),
+    };
+    if (errs.name || errs.phone) { setErrors(errs); return; }
     setPatientIdentity(name.trim(), phone.trim());
     navigate('/patient/hospital');
   };
@@ -57,25 +75,41 @@ export default function PatientEntryPage() {
             <p className="font-bold text-[#142033] text-[16px] mb-[20px]">Enter your details</p>
             <form onSubmit={handleContinue} className="flex flex-col gap-[16px]">
               <div className="flex flex-col gap-[6px]">
-                <label className="font-semibold text-[#142033] text-[13px]">Full Name <span className="text-[#c53a45]">*</span></label>
+                <label htmlFor="patient-name" className="font-semibold text-[#142033] text-[13px]">Full Name <span className="text-[#c53a45]">*</span></label>
                 <input
+                  id="patient-name"
                   value={name}
-                  onChange={(e) => { setName(e.target.value); setErrors((err) => ({ ...err, name: '' })); }}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setName(value);
+                    setErrors((err) => ({ ...err, name: validateField('name', value) }));
+                  }}
+                  onBlur={() => setErrors((err) => ({ ...err, name: validateField('name', name) }))}
+                  aria-invalid={Boolean(errors.name)}
+                  aria-describedby={errors.name ? 'patient-name-error' : undefined}
                   placeholder="e.g. Aarav Patel"
                   className={inputBase}
                 />
-                {errors.name && <p className="text-[#c53a45] text-[12px]">{errors.name}</p>}
+                {errors.name && <p id="patient-name-error" className="text-[#c53a45] text-[12px]">{errors.name}</p>}
               </div>
               <div className="flex flex-col gap-[6px]">
-                <label className="font-semibold text-[#142033] text-[13px]">Mobile Number <span className="text-[#c53a45]">*</span></label>
+                <label htmlFor="patient-phone" className="font-semibold text-[#142033] text-[13px]">Mobile Number <span className="text-[#c53a45]">*</span></label>
                 <input
+                  id="patient-phone"
                   type="tel"
                   value={phone}
-                  onChange={(e) => { setPhone(e.target.value); setErrors((err) => ({ ...err, phone: '' })); }}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setPhone(value);
+                    setErrors((err) => ({ ...err, phone: validateField('phone', value) }));
+                  }}
+                  onBlur={() => setErrors((err) => ({ ...err, phone: validateField('phone', phone) }))}
+                  aria-invalid={Boolean(errors.phone)}
+                  aria-describedby={errors.phone ? 'patient-phone-error' : undefined}
                   placeholder="+91 98765 XXXXX"
                   className={inputBase}
                 />
-                {errors.phone && <p className="text-[#c53a45] text-[12px]">{errors.phone}</p>}
+                {errors.phone && <p id="patient-phone-error" className="text-[#c53a45] text-[12px]">{errors.phone}</p>}
               </div>
               <Button variant="primary" type="submit" className="w-full justify-center py-[12px] mt-[4px]">
                 Search Hospitals →

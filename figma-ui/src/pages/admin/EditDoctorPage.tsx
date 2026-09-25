@@ -5,6 +5,7 @@ import Button from '../../components/Button';
 import StatusBadge from '../../components/StatusBadge';
 import { useAdmin } from '../../context/AdminContext';
 import type { DoctorStatus } from '../../types';
+import { isTenDigitPhone, isValidEmail } from '../../utils/validation';
 
 const statusOptions: DoctorStatus[] = ['Available', 'Busy', 'On Break', 'Offline'];
 
@@ -71,15 +72,30 @@ export default function EditDoctorPage() {
   }
 
   const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm((f) => ({ ...f, [field]: e.target.value }));
-    setErrors((err) => ({ ...err, [field]: '' }));
+    const value = e.target.value;
+    setForm((f) => ({ ...f, [field]: value }));
+    setErrors((err) => ({ ...err, [field]: err[field] ? validateField(field, value) : '' }));
+  };
+
+  const validateField = (field: keyof typeof form, value: string): string => {
+    if (['name', 'specialization', 'department'].includes(field) && !value.trim()) {
+      return `${field === 'name' ? 'Full name' : field.charAt(0).toUpperCase() + field.slice(1)} is required`;
+    }
+    if (field === 'phone' && value.trim() && !isTenDigitPhone(value)) {
+      return 'Phone number must be exactly 10 digits';
+    }
+    if (field === 'email' && value.trim() && !isValidEmail(value)) {
+      return 'Enter a valid email address';
+    }
+    return '';
   };
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
-    if (!form.name.trim()) e.name = 'Full name is required';
-    if (!form.specialization.trim()) e.specialization = 'Specialization is required';
-    if (!form.department.trim()) e.department = 'Department is required';
+    (Object.keys(form) as (keyof typeof form)[]).forEach((field) => {
+      const message = validateField(field, form[field]);
+      if (message) e[field] = message;
+    });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -158,10 +174,31 @@ export default function EditDoctorPage() {
                 {errors.specialization && <p className="text-[#c53a45] text-[12px]">{errors.specialization}</p>}
               </Field>
               <Field label="Phone">
-                <input value={form.phone} onChange={set('phone')} placeholder="+91 …" className={inputClass} />
+                <input
+                  id="edit-doctor-phone"
+                  value={form.phone}
+                  onChange={set('phone')}
+                  onBlur={() => setErrors((err) => ({ ...err, phone: validateField('phone', form.phone) }))}
+                  aria-invalid={Boolean(errors.phone)}
+                  aria-describedby={errors.phone ? 'edit-doctor-phone-error' : undefined}
+                  placeholder="+91 …"
+                  className={inputClass}
+                />
+                {errors.phone && <p id="edit-doctor-phone-error" className="text-[#c53a45] text-[12px]">{errors.phone}</p>}
               </Field>
               <Field label="Email">
-                <input type="email" value={form.email} onChange={set('email')} placeholder="doctor@hospitalflow.in" className={inputClass} />
+                <input
+                  id="edit-doctor-email"
+                  type="email"
+                  value={form.email}
+                  onChange={set('email')}
+                  onBlur={() => setErrors((err) => ({ ...err, email: validateField('email', form.email) }))}
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'edit-doctor-email-error' : undefined}
+                  placeholder="doctor@hospitalflow.in"
+                  className={inputClass}
+                />
+                {errors.email && <p id="edit-doctor-email-error" className="text-[#c53a45] text-[12px]">{errors.email}</p>}
               </Field>
             </div>
 

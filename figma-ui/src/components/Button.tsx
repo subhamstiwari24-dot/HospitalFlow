@@ -21,7 +21,8 @@ export default function Button({ variant = 'secondary', children, className, loa
   return (
     <button
       disabled={disabled || loading}
-      className={`inline-flex items-center gap-[8px] border border-solid px-[16px] py-[10px] rounded-[10px] text-[13px] font-bold leading-none transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${className ?? ''}`}
+      aria-busy={loading || undefined}
+      className={`inline-flex items-center gap-[8px] border border-solid px-[16px] py-[10px] rounded-[10px] text-[13px] font-bold leading-none transition-[background-color,border-color,color,box-shadow,transform] cursor-pointer whitespace-nowrap active:translate-y-px focus-visible:outline-2 focus-visible:outline-[#2475d0] focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${className ?? ''}`}
       {...props}
     >
       {loading && (

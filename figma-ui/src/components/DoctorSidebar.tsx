@@ -52,7 +52,8 @@ export default function DoctorSidebar({ onClose }: DoctorSidebarProps) {
             <button
               key={item.path}
               onClick={() => { navigate(item.path); onClose?.(); }}
-              className={`flex gap-[10px] items-center px-[12px] py-[11px] rounded-[8px] w-full text-left transition-colors cursor-pointer ${
+              aria-current={active ? 'page' : undefined}
+              className={`flex gap-[10px] items-center px-[12px] py-[11px] rounded-[8px] w-full text-left transition-[background-color,transform] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#6aa9e8] focus-visible:outline-offset-2 active:translate-y-px ${
                 active ? 'bg-[#155ead]' : 'bg-transparent hover:bg-[#1b3049]'
               }`}
             >

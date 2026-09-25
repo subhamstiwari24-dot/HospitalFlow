@@ -5,6 +5,8 @@ import Button from '../../components/Button';
 import StatusBadge from '../../components/StatusBadge';
 import { usePatient } from '../../context/PatientContext';
 import { opdSlots } from '../../data/mockData';
+import { ErrorState } from '../../components/EmptyState';
+import { hasMinimumLength, isTenDigitPhone } from '../../utils/validation';
 
 const DATES = [
   'Thu, 24 Sep 2026',
@@ -26,6 +28,7 @@ export default function BookOPDPage() {
     selectedSlot,
     setSelectedSlot,
     patientName,
+    patientPhone,
     confirmBooking,
   } = usePatient();
 
@@ -39,6 +42,16 @@ export default function BookOPDPage() {
 
   const handleBook = async () => {
     if (!selectedSlot || submitting) return;
+
+    if (!hasMinimumLength(patientName, 2)) {
+      setError('Full name must be at least 2 characters.');
+      return;
+    }
+
+    if (!isTenDigitPhone(patientPhone)) {
+      setError('Mobile number must be exactly 10 digits.');
+      return;
+    }
 
     setSubmitting(true);
     setError('');
@@ -336,16 +349,14 @@ export default function BookOPDPage() {
 
       {/* ERROR */}
       {error && (
-        <div className="mt-[18px] bg-[#fff1f2] border border-[#fecdd3] rounded-[10px] px-[14px] py-[12px]">
-
-          <p className="font-semibold text-[#c53a45] text-[13px]">
-            Booking failed
-          </p>
-
-          <p className="text-[#c53a45] text-[12px] mt-[3px]">
-            {error}
-          </p>
-
+        <div className="mt-[18px]">
+          <ErrorState
+            compact
+            title="Booking could not be completed"
+            description={error}
+            onRetry={handleBook}
+            retryLabel="Retry booking"
+          />
         </div>
       )}
 

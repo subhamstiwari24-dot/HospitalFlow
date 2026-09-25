@@ -35,17 +35,26 @@ export default function AddDepartmentPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const set = (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm((f) => ({ ...f, [field]: e.target.value }));
-    setErrors((err) => ({ ...err, [field]: '' }));
+    const value = e.target.value;
+    setForm((f) => ({ ...f, [field]: value }));
+    setErrors((err) => ({ ...err, [field]: err[field] ? validateField(field, value) : '' }));
+  };
+
+  const validateField = (field: keyof FormState, value: string): string => {
+    if (field === 'name' && !value.trim()) return 'Department name is required';
+    if (field === 'head' && !value.trim()) return 'Department head is required';
+    if (field === 'rooms' && (!value.trim() || isNaN(Number(value)) || Number(value) < 0)) {
+      return 'Enter a valid number of rooms';
+    }
+    return '';
   };
 
   const validate = (): boolean => {
     const e: Partial<FormState> = {};
-    if (!form.name.trim()) e.name = 'Department name is required';
-    if (!form.head.trim()) e.head = 'Department head is required';
-    if (!form.rooms.trim() || isNaN(Number(form.rooms)) || Number(form.rooms) < 0) {
-      e.rooms = 'Enter a valid number of rooms';
-    }
+    (['name', 'head', 'rooms'] as const).forEach((field) => {
+      const message = validateField(field, form[field]);
+      if (message) e[field] = message;
+    });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -106,35 +115,47 @@ export default function AddDepartmentPage() {
 
             <Field label="Department Name" required>
               <input
+                id="add-department-name"
                 value={form.name}
                 onChange={set('name')}
+                onBlur={() => setErrors((err) => ({ ...err, name: validateField('name', form.name) }))}
+                aria-invalid={Boolean(errors.name)}
+                aria-describedby={errors.name ? 'add-department-name-error' : undefined}
                 placeholder="e.g. Neurology"
                 className={inputClass}
               />
-              {errors.name && <p className="text-[#c53a45] text-[12px]">{errors.name}</p>}
+              {errors.name && <p id="add-department-name-error" className="text-[#c53a45] text-[12px]">{errors.name}</p>}
             </Field>
 
             <Field label="Department Head" required>
               <input
+                id="add-department-head"
                 value={form.head}
                 onChange={set('head')}
+                onBlur={() => setErrors((err) => ({ ...err, head: validateField('head', form.head) }))}
+                aria-invalid={Boolean(errors.head)}
+                aria-describedby={errors.head ? 'add-department-head-error' : undefined}
                 placeholder="e.g. Dr. Priya Iyer"
                 className={inputClass}
               />
-              {errors.head && <p className="text-[#c53a45] text-[12px]">{errors.head}</p>}
+              {errors.head && <p id="add-department-head-error" className="text-[#c53a45] text-[12px]">{errors.head}</p>}
             </Field>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-[18px]">
               <Field label="Number of Rooms" required>
                 <input
+                  id="add-department-rooms"
                   type="number"
                   min={0}
                   value={form.rooms}
                   onChange={set('rooms')}
+                  onBlur={() => setErrors((err) => ({ ...err, rooms: validateField('rooms', form.rooms) }))}
+                  aria-invalid={Boolean(errors.rooms)}
+                  aria-describedby={errors.rooms ? 'add-department-rooms-error' : undefined}
                   placeholder="e.g. 8"
                   className={inputClass}
                 />
-                {errors.rooms && <p className="text-[#c53a45] text-[12px]">{errors.rooms}</p>}
+                {errors.rooms && <p id="add-department-rooms-error" className="text-[#c53a45] text-[12px]">{errors.rooms}</p>}
               </Field>
 
               <Field label="Status">
