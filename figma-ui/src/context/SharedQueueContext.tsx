@@ -1,115 +1,422 @@
-/**
- * Single source of truth for the patient queue.
- * Both the Doctor flow (QueueContext) and Patient flow (PatientContext)
- * read from and write to this context, so a token booked by a patient
- * immediately appears in the doctor's queue and vice-versa.
- */
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useCallback,
+  useState,
+  type ReactNode,
+} from 'react';
+
 import type { QueuePatient, ConsultationStatus } from '../types';
-import { queuePatients as seedQueuePatients, liveQueueTokens } from '../data/mockData';
 
-// Build the initial unified queue by merging the two seed arrays.
-// liveQueueTokens is the ordered list (A-019 … A-028).
-// queuePatients provides rich patient data for tokens A-023 … A-028.
-const patientByToken = new Map(seedQueuePatients.map((p) => [p.token, p]));
+const API_URL = '/api';
 
-function makeMinimalPatient(token: string, status: ConsultationStatus, name?: string): QueuePatient {
+interface SharedQueueContextValue {
+  queue: QueuePatient[];
+
+  addPatientToken: (
+    token: string,
+    patientName?: string
+  ) => void;
+
+  advance: () => Promise<void>;
+
+  skip: () => Promise<void>;
+
+  startConsultation: (id: string) => Promise<void>;
+
+  currentServing: string;
+
+  refreshQueue: () => Promise<void>;
+}
+
+const SharedQueueContext =
+  createContext<SharedQueueContextValue | null>(null);
+
+/* -------------------------------------------------------
+   Convert backend appointment → frontend QueuePatient
+------------------------------------------------------- */
+
+function appointmentToQueuePatient(
+  appointment: any
+): QueuePatient {
+  const statusMap: Record<string, ConsultationStatus> = {
+    WAITING: 'Waiting',
+    IN_PROGRESS: 'In consultation',
+    COMPLETED: 'Completed',
+    SKIPPED: 'Skipped',
+  };
+
+  const backendStatus =
+    String(appointment.status ?? 'WAITING').toUpperCase();
+
+  const status =
+    statusMap[backendStatus] ?? 'Waiting';
+
+  const patientName =
+    appointment.patientName ||
+    `Patient ${appointment.tokenNumber || appointment.id}`;
+
+  const initials = patientName
+    .split(' ')
+    .map((word: string) => word[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return {
-    id: token,
-    token,
-    initials: name ? name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() : 'PT',
-    name: name ?? `Patient ${token}`,
+    id: String(appointment.id),
+
+    token: String(
+      appointment.tokenNumber ??
+        `A${appointment.id}`
+    ),
+
+    initials,
+
+    name: patientName,
+
     age: 0,
+
     gender: '—',
-    consultationType: 'OPD Walk-in',
-    appointmentTime: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    priority: 'Normal',
+
+    consultationType: 'OPD Consultation',
+
+    appointmentTime:
+      appointment.appointmentTime ?? '—',
+
+    priority:
+      String(appointment.priority ?? 'NORMAL') ===
+      'EMERGENCY'
+        ? 'Urgent'
+        : String(appointment.priority ?? 'NORMAL') ===
+          'PRIORITY'
+        ? 'Priority'
+        : 'Normal',
+
     consultationStatus: status,
+
     waitTime: 0,
   };
 }
 
-const initialQueue: QueuePatient[] = liveQueueTokens.map((t) => {
-  const rich = patientByToken.get(t.token);
-  if (rich) return { ...rich, consultationStatus: t.status };
-  return makeMinimalPatient(t.token, t.status);
-});
+/* -------------------------------------------------------
+   Provider
+------------------------------------------------------- */
 
-// ─── Context types ────────────────────────────────────────────────────────────
+export function SharedQueueProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [queue, setQueue] = useState<QueuePatient[]>([]);
 
-interface SharedQueueContextValue {
-  queue: QueuePatient[];
-  /** Add a new patient token to the end of the queue (from Patient booking flow). */
-  addPatientToken: (token: string, patientName?: string) => void;
-  /** Mark current 'In consultation' as Completed, promote next Waiting. */
-  advance: () => void;
-  /** Mark current 'In consultation' as Skipped, promote next Waiting. */
-  skip: () => void;
-  /** Start consultation for a specific patient (by id). */
-  startConsultation: (id: string) => void;
-  /** Token currently being served (In consultation). */
-  currentServing: string;
-}
+  /* -----------------------------------------------------
+     Load queue from Spring Boot
+  ----------------------------------------------------- */
 
-const SharedQueueContext = createContext<SharedQueueContextValue | null>(null);
+  const refreshQueue = useCallback(async () => {
+    try {
+      /*
+       * Backend currently needs doctorId + appointmentDate.
+       *
+       * Your current test doctor:
+       * Dr. Priya Sharma = ID 1
+       *
+       * We use today's date automatically.
+       */
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
+      const today = new Date()
+        .toISOString()
+        .split('T')[0];
 
-export function SharedQueueProvider({ children }: { children: ReactNode }) {
-  const [queue, setQueue] = useState<QueuePatient[]>(initialQueue);
+      const response = await fetch(
+        `${API_URL}/appointments/queue?doctorId=1&appointmentDate=${today}`
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Queue request failed: ${response.status}`
+        );
+      }
+
+      const appointments = await response.json();
+
+      const backendQueue: QueuePatient[] =
+        Array.isArray(appointments)
+          ? appointments.map(
+              appointmentToQueuePatient
+            )
+          : [];
+
+      setQueue(backendQueue);
+    } catch (error) {
+      console.error(
+        'HospitalFlow queue loading failed:',
+        error
+      );
+    }
+  }, []);
+
+  /* -----------------------------------------------------
+     Initial queue load
+  ----------------------------------------------------- */
+
+  useEffect(() => {
+    refreshQueue();
+  }, [refreshQueue]);
+
+  /* -----------------------------------------------------
+     Refresh every 5 seconds
+     
+     This gives the patient screen a live queue even
+     when another user changes the queue.
+  ----------------------------------------------------- */
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      refreshQueue();
+    }, 5000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [refreshQueue]);
+
+  /* -----------------------------------------------------
+     Current serving patient
+  ----------------------------------------------------- */
 
   const currentServing =
-    queue.find((p) => p.consultationStatus === 'In consultation')?.token ?? '—';
+    queue.find(
+      (patient) =>
+        patient.consultationStatus ===
+        'In consultation'
+    )?.token ?? '—';
 
-  const addPatientToken = (token: string, patientName?: string) => {
-    setQueue((prev) => {
-      // Guard: don't add duplicates
-      if (prev.some((p) => p.token === token)) return prev;
-      return [...prev, makeMinimalPatient(token, 'Waiting', patientName)];
-    });
-  };
+  /* -----------------------------------------------------
+     Add patient token
+     
+     Backend booking already creates the appointment.
+     Therefore we only refresh the backend queue here.
+  ----------------------------------------------------- */
 
-  const advance = () => {
-    setQueue((prev) => {
-      const activeIdx = prev.findIndex((p) => p.consultationStatus === 'In consultation');
-      const nextIdx = prev.findIndex(
-        (p, i) => i > activeIdx && p.consultationStatus === 'Waiting'
+  const addPatientToken = useCallback(
+    async () => {
+      await refreshQueue();
+    },
+    [refreshQueue]
+  );
+
+  /* -----------------------------------------------------
+     Advance current patient
+     
+     1. Find IN_PROGRESS appointment
+     2. Mark it COMPLETED
+     3. Refresh queue
+  ----------------------------------------------------- */
+
+  const advance = useCallback(async () => {
+    try {
+      const current = queue.find(
+        (patient) =>
+          patient.consultationStatus ===
+          'In consultation'
       );
-      return prev.map((p, i) => {
-        if (i === activeIdx) return { ...p, consultationStatus: 'Completed' };
-        if (i === nextIdx) return { ...p, consultationStatus: 'In consultation' };
-        return p;
-      });
-    });
-  };
 
-  const skip = () => {
-    setQueue((prev) => {
-      const activeIdx = prev.findIndex((p) => p.consultationStatus === 'In consultation');
-      const nextIdx = prev.findIndex(
-        (p, i) => i > activeIdx && p.consultationStatus === 'Waiting'
-      );
-      return prev.map((p, i) => {
-        if (i === activeIdx) return { ...p, consultationStatus: 'Skipped' };
-        if (i === nextIdx) return { ...p, consultationStatus: 'In consultation' };
-        return p;
-      });
-    });
-  };
+      if (!current) {
+        /*
+         * No current patient.
+         *
+         * Automatically start the first waiting patient.
+         */
 
-  const startConsultation = (id: string) => {
-    setQueue((prev) => {
-      const hasActive = prev.some((p) => p.consultationStatus === 'In consultation');
-      if (hasActive) return prev;
-      return prev.map((p) =>
-        p.id === id ? { ...p, consultationStatus: 'In consultation' } : p
+        const next = queue.find(
+          (patient) =>
+            patient.consultationStatus ===
+            'Waiting'
+        );
+
+        if (!next) {
+          return;
+        }
+
+        await fetch(
+          `${API_URL}/appointments/${next.id}/status?status=IN_PROGRESS`,
+          {
+            method: 'PATCH',
+          }
+        );
+
+        await refreshQueue();
+
+        return;
+      }
+
+      /* Complete current consultation */
+
+      await fetch(
+        `${API_URL}/appointments/${current.id}/status?status=COMPLETED`,
+        {
+          method: 'PATCH',
+        }
       );
-    });
-  };
+
+      /*
+       * Backend currently controls queue ordering.
+       * After completing current patient, start the
+       * next waiting patient.
+       */
+
+      await refreshQueue();
+
+      const updatedQueue =
+        await fetch(
+          `${API_URL}/appointments/queue?doctorId=1&appointmentDate=${
+            new Date()
+              .toISOString()
+              .split('T')[0]
+          }`
+        );
+
+      if (updatedQueue.ok) {
+        const appointments =
+          await updatedQueue.json();
+
+        const nextAppointment =
+          appointments.find(
+            (appointment: any) =>
+              String(
+                appointment.status
+              ).toUpperCase() === 'WAITING'
+          );
+
+        if (nextAppointment) {
+          await fetch(
+            `${API_URL}/appointments/${nextAppointment.id}/status?status=IN_PROGRESS`,
+            {
+              method: 'PATCH',
+            }
+          );
+        }
+      }
+
+      await refreshQueue();
+    } catch (error) {
+      console.error(
+        'Unable to advance queue:',
+        error
+      );
+    }
+  }, [queue, refreshQueue]);
+
+  /* -----------------------------------------------------
+     Skip current patient
+  ----------------------------------------------------- */
+
+  const skip = useCallback(async () => {
+    try {
+      const current = queue.find(
+        (patient) =>
+          patient.consultationStatus ===
+          'In consultation'
+      );
+
+      if (!current) {
+        return;
+      }
+
+      await fetch(
+        `${API_URL}/appointments/${current.id}/status?status=SKIPPED`,
+        {
+          method: 'PATCH',
+        }
+      );
+
+      await refreshQueue();
+
+      const updatedQueue =
+        await fetch(
+          `${API_URL}/appointments/queue?doctorId=1&appointmentDate=${
+            new Date()
+              .toISOString()
+              .split('T')[0]
+          }`
+        );
+
+      if (updatedQueue.ok) {
+        const appointments =
+          await updatedQueue.json();
+
+        const nextAppointment =
+          appointments.find(
+            (appointment: any) =>
+              String(
+                appointment.status
+              ).toUpperCase() === 'WAITING'
+          );
+
+        if (nextAppointment) {
+          await fetch(
+            `${API_URL}/appointments/${nextAppointment.id}/status?status=IN_PROGRESS`,
+            {
+              method: 'PATCH',
+            }
+          );
+        }
+      }
+
+      await refreshQueue();
+    } catch (error) {
+      console.error(
+        'Unable to skip patient:',
+        error
+      );
+    }
+  }, [queue, refreshQueue]);
+
+  /* -----------------------------------------------------
+     Start specific consultation
+  ----------------------------------------------------- */
+
+  const startConsultation = useCallback(
+    async (id: string) => {
+      try {
+        await fetch(
+          `${API_URL}/appointments/${id}/status?status=IN_PROGRESS`,
+          {
+            method: 'PATCH',
+          }
+        );
+
+        await refreshQueue();
+      } catch (error) {
+        console.error(
+          'Unable to start consultation:',
+          error
+        );
+      }
+    },
+    [refreshQueue]
+  );
 
   return (
     <SharedQueueContext.Provider
-      value={{ queue, addPatientToken, advance, skip, startConsultation, currentServing }}
+      value={{
+        queue,
+
+        addPatientToken,
+
+        advance,
+
+        skip,
+
+        startConsultation,
+
+        currentServing,
+
+        refreshQueue,
+      }}
     >
       {children}
     </SharedQueueContext.Provider>
@@ -117,7 +424,15 @@ export function SharedQueueProvider({ children }: { children: ReactNode }) {
 }
 
 export function useSharedQueue(): SharedQueueContextValue {
-  const ctx = useContext(SharedQueueContext);
-  if (!ctx) throw new Error('useSharedQueue must be used inside SharedQueueProvider');
+  const ctx = useContext(
+    SharedQueueContext
+  );
+
+  if (!ctx) {
+    throw new Error(
+      'useSharedQueue must be used inside SharedQueueProvider'
+    );
+  }
+
   return ctx;
 }

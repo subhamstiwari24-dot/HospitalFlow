@@ -98,6 +98,7 @@ export interface OPDSlot {
 
 export interface PatientBooking {
   bookingId: string;
+  appointmentId: number;
   token: string;
   tokenNumber: number;
   hospitalId: string;

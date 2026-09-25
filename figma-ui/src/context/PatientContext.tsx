@@ -16,6 +16,17 @@ import { useSharedQueue } from './SharedQueueContext';
 
 const API_URL = '/api';
 
+const STORAGE_KEYS = {
+  booking: 'hospitalflow_patient_booking',
+  patientName: 'hospitalflow_patient_name',
+  patientPhone: 'hospitalflow_patient_phone',
+  selectedHospital: 'hospitalflow_selected_hospital',
+  selectedDepartment: 'hospitalflow_selected_department',
+  selectedDoctor: 'hospitalflow_selected_doctor',
+  selectedDate: 'hospitalflow_selected_date',
+  selectedSlot: 'hospitalflow_selected_slot',
+};
+
 interface SelectedDoctor {
   id: string;
   name: string;
@@ -48,7 +59,6 @@ interface PatientContextValue {
 
   selectedDepartment: string | null;
   setSelectedDepartment: (d: string | null) => void;
-
   selectedDoctor: SelectedDoctor | null;
   setSelectedDoctor: (d: SelectedDoctor | null) => void;
 
@@ -63,7 +73,7 @@ interface PatientContextValue {
   confirmBooking: () => Promise<PatientBooking>;
   cancelBooking: () => void;
 
-  // Live queue view
+  // Live queue
   queueTokens: TokenView[];
   currentServing: string;
   advanceQueue: () => void;
@@ -71,21 +81,81 @@ interface PatientContextValue {
 
 const PatientContext = createContext<PatientContextValue | null>(null);
 
+/* ============================================================
+   LOCAL STORAGE HELPERS
+   ============================================================ */
+
+function readStorage<T>(
+  key: string,
+  fallback: T
+): T {
+  try {
+    const value = localStorage.getItem(key);
+
+    if (!value) {
+      return fallback;
+    }
+
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage(
+  key: string,
+  value: unknown
+) {
+  try {
+    localStorage.setItem(
+      key,
+      JSON.stringify(value)
+    );
+  } catch {
+    console.warn(
+      `Unable to save HospitalFlow data: ${key}`
+    );
+  }
+}
+
+function removeStorage(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/* ============================================================
+   DATE HELPER
+   ============================================================ */
+
 /**
  * Converts UI date:
+ *
  * "Thu, 24 Sep 2026"
  *
- * to backend date:
+ * to:
+ *
  * "2026-09-24"
  */
-function convertDateToBackendFormat(dateString: string): string {
+function convertDateToBackendFormat(
+  dateString: string
+): string {
   const parsed = new Date(dateString);
 
   if (!Number.isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
+    const year = parsed.getFullYear();
+    const month = String(
+      parsed.getMonth() + 1
+    ).padStart(2, '0');
+    const day = String(
+      parsed.getDate()
+    ).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
   }
 
-  // Fallback for "Thu, 24 Sep 2026"
   const parts = dateString.split(' ');
 
   if (parts.length >= 4) {
@@ -118,14 +188,44 @@ function convertDateToBackendFormat(dateString: string): string {
   return dateString;
 }
 
-/**
- * Extract numeric part from token.
- *
- * Example:
- * "A03"  -> 3
- * "A-1041" -> 1041
- */
-function extractTokenNumber(token: string): number {
+function getTodayDisplayDate(): string {
+  const now = new Date();
+  const weekdays = [
+    'Sun',
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+  ];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  return `${weekdays[now.getDay()]}, ${String(
+    now.getDate()
+  ).padStart(2, '0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+/* ============================================================
+   TOKEN HELPER
+   ============================================================ */
+
+function extractTokenNumber(
+  token: string
+): number {
   const match = token.match(/\d+/);
 
   if (!match) {
@@ -135,6 +235,10 @@ function extractTokenNumber(token: string): number {
   return Number(match[0]);
 }
 
+/* ============================================================
+   PATIENT PROVIDER
+   ============================================================ */
+
 export function PatientProvider({
   children,
 }: {
@@ -142,255 +246,548 @@ export function PatientProvider({
 }) {
   const shared = useSharedQueue();
 
-  const [patientName, setPatientName] = useState('');
-  const [patientPhone, setPatientPhone] = useState('');
+  /*
+   * IMPORTANT:
+   *
+   * These values are initialized directly from localStorage.
+   *
+   * This means when user refreshes:
+   *
+   * /patient/queue
+   *
+   * booking is restored immediately instead of becoming null.
+   */
+
+  const [patientName, setPatientName] =
+    useState<string>(() =>
+      readStorage(
+        STORAGE_KEYS.patientName,
+        ''
+      )
+    );
+
+  const [patientPhone, setPatientPhone] =
+    useState<string>(() =>
+      readStorage(
+        STORAGE_KEYS.patientPhone,
+        ''
+      )
+    );
 
   const [selectedHospital, setSelectedHospital] =
-    useState<Hospital | null>(null);
+    useState<Hospital | null>(() =>
+      readStorage<Hospital | null>(
+        STORAGE_KEYS.selectedHospital,
+        null
+      )
+    );
 
   const [selectedDepartment, setSelectedDepartment] =
-    useState<string | null>(null);
+    useState<string | null>(() =>
+      readStorage<string | null>(
+        STORAGE_KEYS.selectedDepartment,
+        null
+      )
+    );
 
   const [selectedDoctor, setSelectedDoctor] =
-    useState<SelectedDoctor | null>(null);
+    useState<SelectedDoctor | null>(() =>
+      readStorage<SelectedDoctor | null>(
+        STORAGE_KEYS.selectedDoctor,
+        null
+      )
+    );
 
   const [selectedDate, setSelectedDate] =
-    useState<string>('Thu, 24 Sep 2026');
+    useState<string>(() =>
+      readStorage(
+        STORAGE_KEYS.selectedDate,
+        getTodayDisplayDate()
+      )
+    );
 
   const [selectedSlot, setSelectedSlot] =
-    useState<string | null>(null);
+    useState<string | null>(() =>
+      readStorage<string | null>(
+        STORAGE_KEYS.selectedSlot,
+        null
+      )
+    );
 
+  /*
+   * THIS IS THE MAIN FIX.
+   *
+   * Booking is restored from localStorage
+   * immediately when the page loads.
+   */
   const [booking, setBooking] =
-    useState<PatientBooking | null>(null);
+    useState<PatientBooking | null>(() =>
+      readStorage<PatientBooking | null>(
+        STORAGE_KEYS.booking,
+        null
+      )
+    );
+
+  /* ============================================================
+     PATIENT IDENTITY
+     ============================================================ */
 
   const setPatientIdentity = useCallback(
     (name: string, phone: string) => {
+      const identityChanged =
+        patientName !== name ||
+        patientPhone !== phone;
+
       setPatientName(name);
       setPatientPhone(phone);
+
+      if (identityChanged) {
+        setBooking(null);
+        removeStorage(STORAGE_KEYS.booking);
+
+        const today = getTodayDisplayDate();
+
+        setSelectedDate(today);
+        writeStorage(
+          STORAGE_KEYS.selectedDate,
+          today
+        );
+
+        setSelectedSlot(null);
+        removeStorage(STORAGE_KEYS.selectedSlot);
+      }
+
+      writeStorage(
+        STORAGE_KEYS.patientName,
+        name
+      );
+
+      writeStorage(
+        STORAGE_KEYS.patientPhone,
+        phone
+      );
+    },
+    [patientName, patientPhone]
+  );
+
+  /* ============================================================
+     PERSIST SELECTIONS
+     ============================================================ */
+
+  const updateSelectedHospital = useCallback(
+    (hospital: Hospital | null) => {
+      setSelectedHospital(hospital);
+
+      if (hospital) {
+        writeStorage(
+          STORAGE_KEYS.selectedHospital,
+          hospital
+        );
+      } else {
+        removeStorage(
+          STORAGE_KEYS.selectedHospital
+        );
+      }
     },
     []
   );
 
-  // Existing shared queue remains available for the UI.
-  // Real backend queue integration will replace this next.
-  const queueTokens: TokenView[] = shared.queue.map((p) => ({
-    token: p.token,
-    status: p.consultationStatus,
-  }));
+  const updateSelectedDepartment = useCallback(
+    (department: string | null) => {
+      setSelectedDepartment(department);
 
-  const currentServing = shared.currentServing;
+      if (department) {
+        writeStorage(
+          STORAGE_KEYS.selectedDepartment,
+          department
+        );
+      } else {
+        removeStorage(
+          STORAGE_KEYS.selectedDepartment
+        );
+      }
+    },
+    []
+  );
 
-  /**
-   * REAL BACKEND BOOKING
+  const updateSelectedDoctor = useCallback(
+    (doctor: SelectedDoctor | null) => {
+      setSelectedDoctor(doctor);
+
+      if (doctor) {
+        writeStorage(
+          STORAGE_KEYS.selectedDoctor,
+          doctor
+        );
+      } else {
+        removeStorage(
+          STORAGE_KEYS.selectedDoctor
+        );
+      }
+    },
+    []
+  );
+
+  const updateSelectedDate = useCallback(
+    (date: string) => {
+      setSelectedDate(date);
+
+      writeStorage(
+        STORAGE_KEYS.selectedDate,
+        date
+      );
+    },
+    []
+  );
+
+  const updateSelectedSlot = useCallback(
+    (slot: string | null) => {
+      setSelectedSlot(slot);
+
+      if (slot) {
+        writeStorage(
+          STORAGE_KEYS.selectedSlot,
+          slot
+        );
+      } else {
+        removeStorage(
+          STORAGE_KEYS.selectedSlot
+        );
+      }
+    },
+    []
+  );
+
+  /* ============================================================
+     LIVE QUEUE
+     ============================================================ */
+
+  /*
+   * SharedQueueContext is now the backend source of truth.
    *
-   * Creates appointment in:
-   * Spring Boot -> PostgreSQL
+   * Example:
+   *
+   * Backend:
+   * A01 -> COMPLETED
+   * A02 -> COMPLETED
+   * A03 -> IN_PROGRESS
+   * A04 -> WAITING
+   * A05 -> WAITING
+   *
+   * Patient UI receives the same statuses.
    */
-  const confirmBooking = useCallback(async (): Promise<PatientBooking> => {
-    if (!selectedHospital) {
-      throw new Error('Hospital is not selected.');
-    }
 
-    if (!selectedDepartment) {
-      throw new Error('Department is not selected.');
-    }
+  const queueTokens: TokenView[] =
+    shared.queue.map((patient) => ({
+      token: patient.token,
+      status: patient.consultationStatus,
+    }));
 
-    if (!selectedDoctor) {
-      throw new Error('Doctor is not selected.');
-    }
+  const currentServing =
+    shared.currentServing;
 
-    if (!selectedSlot) {
-      throw new Error('Time slot is not selected.');
-    }
+  /* ============================================================
+     REAL BACKEND BOOKING
+     ============================================================ */
 
-    if (!patientName.trim()) {
-      throw new Error('Patient name is required.');
-    }
+  const confirmBooking = useCallback(
+    async (): Promise<PatientBooking> => {
+      if (!selectedHospital) {
+        throw new Error(
+          'Hospital is not selected.'
+        );
+      }
 
-    if (!patientPhone.trim()) {
-      throw new Error('Patient phone number is required.');
-    }
+      if (!selectedDepartment) {
+        throw new Error(
+          'Department is not selected.'
+        );
+      }
 
-    const backendDate = convertDateToBackendFormat(selectedDate);
+      if (!selectedDoctor) {
+        throw new Error(
+          'Doctor is not selected.'
+        );
+      }
 
-    /**
-     * Spring Boot Appointment entity expects:
-     * patientName
-     * patientPhone
-     * appointmentDate
-     * appointmentTime
-     * doctor
-     * hospital
-     *
-     * doctor/hospital are connected using their database IDs.
-     */
-    const appointmentPayload = {
-      patientName: patientName.trim(),
+      if (!selectedSlot) {
+        throw new Error(
+          'Time slot is not selected.'
+        );
+      }
 
-      patientPhone: patientPhone.trim(),
+      if (!patientName.trim()) {
+        throw new Error(
+          'Patient name is required.'
+        );
+      }
 
-      appointmentDate: backendDate,
+      if (!patientPhone.trim()) {
+        throw new Error(
+          'Patient phone number is required.'
+        );
+      }
 
-      appointmentTime: selectedSlot,
+      const backendDate =
+        convertDateToBackendFormat(
+          selectedDate
+        );
 
-      doctor: {
-        id: Number(selectedDoctor.id),
-      },
+      const appointmentPayload = {
+        patientName:
+          patientName.trim(),
 
-      hospital: {
-        id: Number(selectedHospital.id),
-      },
+        patientPhone:
+          patientPhone.trim(),
 
-      status: 'WAITING',
+        appointmentDate:
+          backendDate,
 
-      priority: 'NORMAL',
-    };
+        appointmentTime:
+          selectedSlot,
 
-    console.log(
-      'HospitalFlow booking request:',
-      appointmentPayload
-    );
-
-    const response = await fetch(
-      `${API_URL}/appointments`,
-      {
-        method: 'POST',
-
-        headers: {
-          'Content-Type': 'application/json',
+        doctor: {
+          id: Number(
+            selectedDoctor.id
+          ),
         },
 
-        body: JSON.stringify(appointmentPayload),
-      }
-    );
+        hospital: {
+          id: Number(
+            selectedHospital.id
+          ),
+        },
 
-    if (!response.ok) {
-      const errorText = await response.text();
+        status: 'WAITING',
 
-      throw new Error(
-        errorText ||
-          `Booking failed with status ${response.status}`
+        priority: 'NORMAL',
+      };
+
+      console.log(
+        'HospitalFlow booking request:',
+        appointmentPayload
       );
-    }
 
-    const createdAppointment = await response.json();
+      const response =
+        await fetch(
+          `${API_URL}/appointments`,
+          {
+            method: 'POST',
 
-    console.log(
-      'HospitalFlow booking created:',
-      createdAppointment
-    );
+            headers: {
+              'Content-Type':
+                'application/json',
+            },
 
-    /**
-     * Backend token.
-     *
-     * We intentionally use the token returned by Spring Boot
-     * instead of generating a fake frontend token.
-     */
-    const backendToken =
-      createdAppointment.tokenNumber ||
-      createdAppointment.token ||
-      `A${createdAppointment.id}`;
-
-    const token = String(backendToken);
-
-    const tokenNumber =
-      typeof createdAppointment.tokenNumber === 'number'
-        ? createdAppointment.tokenNumber
-        : extractTokenNumber(token);
-
-    /**
-     * Backend appointment response becomes
-     * PatientBooking for the Figma confirmation screen.
-     */
-    const newBooking: PatientBooking = {
-      bookingId: `BK-${createdAppointment.id}`,
-
-      token,
-
-      tokenNumber,
-
-      hospitalId: String(
-        createdAppointment.hospital?.id ??
-          selectedHospital.id
-      ),
-
-      hospitalName:
-        createdAppointment.hospital?.name ??
-        selectedHospital.name,
-
-      departmentId: selectedDepartment,
-
-      departmentName: selectedDepartment,
-
-      doctorId: String(
-        createdAppointment.doctor?.id ??
-          selectedDoctor.id
-      ),
-
-      doctorName:
-        createdAppointment.doctor?.name ??
-        selectedDoctor.name,
-
-      doctorSpecialization:
-        createdAppointment.doctor?.specialization ??
-        selectedDoctor.specialization,
-
-      doctorRoom:
-        createdAppointment.doctor?.room ??
-        selectedDoctor.room ??
-        'Room not assigned',
-
-      date: selectedDate,
-
-      slot:
-        createdAppointment.appointmentTime ??
-        selectedSlot,
-
-      bookedAt: new Date().toLocaleTimeString(
-        'en-IN',
-        {
-          hour: '2-digit',
-          minute: '2-digit',
-        }
-      ),
-
-      status: 'Confirmed',
-
-      patientsAhead: 0,
-
-      currentServing: currentServing || '—',
-
-      avgWaitMinutes: 0,
-    };
-
-    setBooking(newBooking);
-
-    return newBooking;
-  }, [
-    selectedHospital,
-    selectedDepartment,
-    selectedDoctor,
-    selectedDate,
-    selectedSlot,
-    patientName,
-    patientPhone,
-    currentServing,
-  ]);
-
-  const cancelBooking = useCallback(() => {
-    setBooking((currentBooking) =>
-      currentBooking
-        ? {
-            ...currentBooking,
-            status: 'Cancelled',
+            body: JSON.stringify(
+              appointmentPayload
+            ),
           }
-        : null
-    );
-  }, []);
+        );
 
-  const advanceQueue = useCallback(() => {
-    shared.advance();
-  }, [shared]);
+      if (!response.ok) {
+        const errorText =
+          await response.text();
+
+        throw new Error(
+          errorText ||
+            `Booking failed with status ${response.status}`
+        );
+      }
+
+      const createdAppointment =
+        await response.json();
+
+      const appointmentId = Number(
+        createdAppointment.id
+      );
+
+      if (!Number.isInteger(appointmentId)) {
+        throw new Error(
+          'Booking response did not include a valid appointment ID.'
+        );
+      }
+
+      console.log(
+        'HospitalFlow booking created:',
+        createdAppointment
+      );
+
+      /* ========================================================
+         BACKEND TOKEN
+         ======================================================== */
+
+      const backendToken =
+        createdAppointment.tokenNumber ||
+        createdAppointment.token ||
+        `A${createdAppointment.id}`;
+
+      const token =
+        String(backendToken);
+
+      const tokenNumber =
+        typeof createdAppointment.tokenNumber ===
+        'number'
+          ? createdAppointment.tokenNumber
+          : extractTokenNumber(token);
+
+      /* ========================================================
+         CREATE PATIENT BOOKING OBJECT
+         ======================================================== */
+
+      const newBooking:
+        PatientBooking = {
+        bookingId:
+          `BK-${appointmentId}`,
+
+        appointmentId,
+
+        token,
+
+        tokenNumber,
+
+        hospitalId:
+          String(
+            createdAppointment
+              .hospital?.id ??
+              selectedHospital.id
+          ),
+
+        hospitalName:
+          createdAppointment
+            .hospital?.name ??
+          selectedHospital.name,
+
+        departmentId:
+          selectedDepartment,
+
+        departmentName:
+          selectedDepartment,
+
+        doctorId:
+          String(
+            createdAppointment
+              .doctor?.id ??
+              selectedDoctor.id
+          ),
+
+        doctorName:
+          createdAppointment
+            .doctor?.name ??
+          selectedDoctor.name,
+
+        doctorSpecialization:
+          createdAppointment
+            .doctor?.specialization ??
+          selectedDoctor.specialization,
+
+        doctorRoom:
+          createdAppointment
+            .doctor?.room ??
+          selectedDoctor.room ??
+          'Room not assigned',
+
+        date:
+          selectedDate,
+
+        slot:
+          createdAppointment
+            .appointmentTime ??
+          selectedSlot,
+
+        bookedAt:
+          new Date().toLocaleTimeString(
+            'en-IN',
+            {
+              hour: '2-digit',
+              minute: '2-digit',
+            }
+          ),
+
+        status: 'Confirmed',
+
+        patientsAhead: 0,
+
+        currentServing:
+          currentServing || '—',
+
+        avgWaitMinutes: 0,
+      };
+
+      /* ========================================================
+         SAVE BOOKING TO REACT + LOCAL STORAGE
+         ======================================================== */
+
+      setBooking(newBooking);
+
+      writeStorage(
+        STORAGE_KEYS.booking,
+        newBooking
+      );
+
+      /*
+       * SharedQueueContext already listens to
+       * backend/WebSocket.
+       *
+       * Force a refresh so newly created
+       * appointment appears immediately.
+       */
+      await shared.refreshQueue();
+
+      return newBooking;
+    },
+    [
+      selectedHospital,
+      selectedDepartment,
+      selectedDoctor,
+      selectedDate,
+      selectedSlot,
+      patientName,
+      patientPhone,
+      currentServing,
+      shared,
+    ]
+  );
+
+  /* ============================================================
+     CANCEL BOOKING
+     ============================================================ */
+
+  const cancelBooking =
+    useCallback(() => {
+      setBooking(
+        (currentBooking) => {
+          if (!currentBooking) {
+            return null;
+          }
+
+          const cancelledBooking = {
+            ...currentBooking,
+            status: 'Cancelled' as const,
+          };
+
+          writeStorage(
+            STORAGE_KEYS.booking,
+            cancelledBooking
+          );
+
+          return cancelledBooking;
+        }
+      );
+    }, []);
+
+  /* ============================================================
+     DOCTOR / PATIENT QUEUE ACTION
+     ============================================================ */
+
+  const advanceQueue =
+    useCallback(() => {
+      shared.advance();
+    }, [shared]);
+
+  /* ============================================================
+     PROVIDER
+     ============================================================ */
 
   return (
     <PatientContext.Provider
@@ -401,19 +798,24 @@ export function PatientProvider({
         setPatientIdentity,
 
         selectedHospital,
-        setSelectedHospital,
+        setSelectedHospital:
+          updateSelectedHospital,
 
         selectedDepartment,
-        setSelectedDepartment,
+        setSelectedDepartment:
+          updateSelectedDepartment,
 
         selectedDoctor,
-        setSelectedDoctor,
+        setSelectedDoctor:
+          updateSelectedDoctor,
 
         selectedDate,
-        setSelectedDate,
+        setSelectedDate:
+          updateSelectedDate,
 
         selectedSlot,
-        setSelectedSlot,
+        setSelectedSlot:
+          updateSelectedSlot,
 
         booking,
         confirmBooking,
@@ -429,8 +831,14 @@ export function PatientProvider({
   );
 }
 
-export function usePatient(): PatientContextValue {
-  const ctx = useContext(PatientContext);
+/* ==============================================================
+   HOOK
+   ============================================================== */
+
+export function usePatient():
+  PatientContextValue {
+  const ctx =
+    useContext(PatientContext);
 
   if (!ctx) {
     throw new Error(

@@ -48,7 +48,7 @@ public class AppointmentService {
     }
 
     // =========================================================
-    // CREATE APPOINTMENT
+    // CREATE / SAVE APPOINTMENT
     // =========================================================
 
     public Appointment saveAppointment(Appointment appointment) {
@@ -60,22 +60,42 @@ public class AppointmentService {
             appointment.setPriority("NORMAL");
         }
 
-        // Generate token automatically
+        // =====================================================
+        // GENERATE TOKEN AUTOMATICALLY
+        // =====================================================
+        //
+        // Old logic was:
+        //
+        // count + 1
+        //
+        // That can create duplicate tokens if old records,
+        // deleted records, or manually modified records exist.
+        //
+        // New logic:
+        // Find the highest existing token for the same
+        // doctor + appointment date and generate the next one.
+        // =====================================================
+
         if (appointment.getTokenNumber() == null ||
                 appointment.getTokenNumber().isBlank()) {
 
             Long doctorId =
                     appointment.getDoctor().getId();
 
-            long count =
-                    appointmentRepository
-                            .countByDoctor_IdAndAppointmentDate(
-                                    doctorId,
-                                    appointment.getAppointmentDate()
-                            );
+            String appointmentDate =
+                    appointment.getAppointmentDate();
+
+            int nextTokenNumber =
+                    generateNextTokenNumber(
+                            doctorId,
+                            appointmentDate
+                    );
 
             appointment.setTokenNumber(
-                    String.format("A%02d", count + 1)
+                    String.format(
+                            "A%02d",
+                            nextTokenNumber
+                    )
             );
         }
 
@@ -99,7 +119,94 @@ public class AppointmentService {
     }
 
     // =========================================================
-    // GET WAITING QUEUE
+    // GENERATE NEXT TOKEN NUMBER
+    // =========================================================
+
+    private int generateNextTokenNumber(
+            Long doctorId,
+            String appointmentDate) {
+
+        List<Appointment> existingAppointments =
+                appointmentRepository.findAll();
+
+        int highestTokenNumber = 0;
+
+        for (Appointment existingAppointment :
+                existingAppointments) {
+
+            // Doctor check
+            if (existingAppointment.getDoctor() == null ||
+                    existingAppointment.getDoctor().getId() == null) {
+
+                continue;
+            }
+
+            if (!existingAppointment
+                    .getDoctor()
+                    .getId()
+                    .equals(doctorId)) {
+
+                continue;
+            }
+
+            // Date check
+            if (existingAppointment.getAppointmentDate() == null ||
+                    !existingAppointment
+                            .getAppointmentDate()
+                            .equals(appointmentDate)) {
+
+                continue;
+            }
+
+            // Token check
+            String token =
+                    existingAppointment.getTokenNumber();
+
+            if (token == null ||
+                    token.isBlank()) {
+
+                continue;
+            }
+
+            // Expected format: A01, A02, A03...
+            try {
+
+                if (token.toUpperCase().startsWith("A")) {
+
+                    int tokenNumber =
+                            Integer.parseInt(
+                                    token.substring(1)
+                            );
+
+                    if (tokenNumber > highestTokenNumber) {
+
+                        highestTokenNumber =
+                                tokenNumber;
+                    }
+                }
+
+            } catch (NumberFormatException ignored) {
+
+                // Ignore invalid token formats.
+            }
+        }
+
+        return highestTokenNumber + 1;
+    }
+
+    // =========================================================
+    // GET ACTIVE QUEUE
+    // =========================================================
+    //
+    // Active queue includes:
+    //   WAITING
+    //   IN_PROGRESS
+    //
+    // Completed / skipped / cancelled appointments
+    // are excluded.
+    //
+    // This is important because the currently serving
+    // patient must remain visible in the live queue.
     // =========================================================
 
     public List<Appointment> getWaitingQueue(
@@ -107,26 +214,40 @@ public class AppointmentService {
             String appointmentDate) {
 
         List<Appointment> queue =
-                appointmentRepository
-                        .findByDoctor_IdAndAppointmentDateAndStatusOrderByPriorityDescIdAsc(
-                                doctorId,
-                                appointmentDate,
-                                "WAITING"
-                        );
+                appointmentRepository.findAll()
+                        .stream()
+                        .filter(appointment ->
+                                appointment.getDoctor() != null
+                                        && appointment.getDoctor()
+                                        .getId()
+                                        .equals(doctorId)
+                        )
+                        .filter(appointment ->
+                                appointmentDate.equals(
+                                        appointment.getAppointmentDate()
+                                )
+                        )
+                        .filter(appointment -> {
 
-        // Dynamic priority sorting
-        queue.sort(
-                Comparator
-                        .comparing(
-                                Appointment::getPriority,
-                                Comparator.comparingInt(
-                                        this::getPriorityValue
-                                ).reversed()
+                            String status =
+                                    appointment.getStatus();
+
+                            return "WAITING".equalsIgnoreCase(status)
+                                    || "IN_PROGRESS".equalsIgnoreCase(status);
+                        })
+                        .sorted(
+                                Comparator
+                                        .comparing(
+                                                Appointment::getPriority,
+                                                Comparator.comparingInt(
+                                                        this::getPriorityValue
+                                                ).reversed()
+                                        )
+                                        .thenComparing(
+                                                Appointment::getId
+                                        )
                         )
-                        .thenComparing(
-                                Appointment::getId
-                        )
-        );
+                        .toList();
 
         return queue;
     }
@@ -298,7 +419,7 @@ public class AppointmentService {
         }
 
         // -----------------------------------------------------
-        // CURRENT WAITING QUEUE
+        // CURRENT ACTIVE QUEUE
         // -----------------------------------------------------
 
         Long doctorId =
@@ -322,6 +443,15 @@ public class AppointmentService {
 
                 break;
             }
+
+            /*
+             * Only patients who are actually ahead
+             * should contribute to waiting time.
+             *
+             * IN_PROGRESS is included as the currently
+             * serving patient and therefore contributes
+             * to the waiting-time calculation.
+             */
 
             patientsAhead++;
 
