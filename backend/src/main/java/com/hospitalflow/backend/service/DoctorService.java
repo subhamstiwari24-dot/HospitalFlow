@@ -28,6 +28,29 @@ public class DoctorService {
         return doctorRepository.save(doctor);
     }
 
+    public Optional<Doctor> updateDoctor(Long id, Doctor updatedDoctor) {
+
+        return doctorRepository.findById(id).map(existingDoctor -> {
+
+            existingDoctor.setName(updatedDoctor.getName());
+            existingDoctor.setSpecialization(updatedDoctor.getSpecialization());
+            existingDoctor.setQualification(updatedDoctor.getQualification());
+            existingDoctor.setExperience(updatedDoctor.getExperience());
+            existingDoctor.setStatus(updatedDoctor.getStatus());
+            existingDoctor.setConsultationTime(updatedDoctor.getConsultationTime());
+
+            if (updatedDoctor.getHospital() != null) {
+                existingDoctor.setHospital(updatedDoctor.getHospital());
+            }
+
+            if (updatedDoctor.getDepartment() != null) {
+                existingDoctor.setDepartment(updatedDoctor.getDepartment());
+            }
+
+            return doctorRepository.save(existingDoctor);
+        });
+    }
+
     public void deleteDoctor(Long id) {
         doctorRepository.deleteById(id);
     }

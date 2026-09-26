@@ -29,12 +29,23 @@ public class Doctor {
     @JoinColumn(name = "hospital_id")
     private Hospital hospital;
 
+    @ManyToOne
+    @JoinColumn(name = "department_id")
+    private Department department;
+
     public Doctor() {
     }
 
-    public Doctor(String name, String specialization, String qualification,
-                  String experience, String status, String consultationTime,
-                  Hospital hospital) {
+    public Doctor(
+            String name,
+            String specialization,
+            String qualification,
+            String experience,
+            String status,
+            String consultationTime,
+            Hospital hospital,
+            Department department
+    ) {
         this.name = name;
         this.specialization = specialization;
         this.qualification = qualification;
@@ -42,6 +53,7 @@ public class Doctor {
         this.status = status;
         this.consultationTime = consultationTime;
         this.hospital = hospital;
+        this.department = department;
     }
 
     public Long getId() {
@@ -106,5 +118,13 @@ public class Doctor {
 
     public void setHospital(Hospital hospital) {
         this.hospital = hospital;
+    }
+
+    public Department getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(Department department) {
+        this.department = department;
     }
 }

@@ -10,8 +10,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/doctors")
 @CrossOrigin(origins = {
-    "http://localhost:5173",
-    "http://localhost:5175"
+        "http://localhost:5173",
+        "http://localhost:5175"
 })
 public class DoctorController {
 
@@ -43,20 +43,8 @@ public class DoctorController {
             @PathVariable Long id,
             @RequestBody Doctor doctor) {
 
-        return doctorService.getDoctorById(id)
-                .map(existingDoctor -> {
-                    existingDoctor.setName(doctor.getName());
-                    existingDoctor.setSpecialization(doctor.getSpecialization());
-                    existingDoctor.setQualification(doctor.getQualification());
-                    existingDoctor.setExperience(doctor.getExperience());
-                    existingDoctor.setStatus(doctor.getStatus());
-                    existingDoctor.setConsultationTime(doctor.getConsultationTime());
-                    existingDoctor.setHospital(doctor.getHospital());
-
-                    return ResponseEntity.ok(
-                            doctorService.saveDoctor(existingDoctor)
-                    );
-                })
+        return doctorService.updateDoctor(id, doctor)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
