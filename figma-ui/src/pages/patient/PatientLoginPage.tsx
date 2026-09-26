@@ -86,6 +86,7 @@ export default function PatientLoginPage() {
         JSON.stringify({
           patientId: data.patientId,
           fullName: data.fullName,
+          age: data.age,
           phone: data.phone,
           email: data.email,
         })
@@ -289,7 +290,7 @@ export default function PatientLoginPage() {
                   type="button"
                   className="font-semibold text-[#155ead] text-[12px] cursor-pointer hover:opacity-80"
                   onClick={() => {
-                    // Forgot password will be implemented later.
+                    navigate('/patient/forgot-password');
                   }}
                 >
                   Forgot password?

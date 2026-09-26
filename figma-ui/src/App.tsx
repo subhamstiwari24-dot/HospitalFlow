@@ -1,38 +1,17 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
-import { SharedQueueProvider } from './context/SharedQueueContext';
-import { QueueProvider } from './context/QueueContext';
-import { AdminProvider } from './context/AdminContext';
-import { PatientProvider } from './context/PatientContext';
-
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 
-// Doctor pages
-import DashboardPage from './pages/doctor/DashboardPage';
-import QueuePage from './pages/doctor/QueuePage';
-import AppointmentsPage from './pages/doctor/AppointmentsPage';
-import PatientDetailsPage from './pages/doctor/PatientDetailsPage';
+// ==================== PATIENT ====================
 
-// Admin pages
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import DoctorManagementPage from './pages/admin/DoctorManagementPage';
-import AddDoctorPage from './pages/admin/AddDoctorPage';
-import EditDoctorPage from './pages/admin/EditDoctorPage';
-
-import DepartmentManagementPage from './pages/admin/DepartmentManagementPage';
-import DepartmentDetailsPage from './pages/admin/DepartmentDetailsPage';
-import AddDepartmentPage from './pages/admin/AddDepartmentPage';
-
-import AdminAppointmentsPage from './pages/admin/AdminAppointmentsPage';
-import AdminPatientManagementPage from './pages/admin/AdminPatientManagementPage';
-import AdminPatientDetailPage from './pages/admin/AdminPatientDetailPage';
-import AdminAppointmentDetailPage from './pages/admin/AdminAppointmentDetailPage';
-
-// Patient pages
 import PatientEntryPage from './pages/patient/PatientEntryPage';
 import PatientLoginPage from './pages/patient/PatientLoginPage';
 import PatientRegisterPage from './pages/patient/PatientRegisterPage';
+import ForgotPasswordPage from './pages/patient/ForgotPasswordPage';
 import PatientDashboardPage from './pages/patient/PatientDashboardPage';
+import MyAppointmentsPage from './pages/patient/MyAppointmentsPage';
+import OPDHistoryPage from './pages/patient/OPDHistoryPage';
 
 import SearchHospitalPage from './pages/patient/SearchHospitalPage';
 import SelectDepartmentPage from './pages/patient/SelectDepartmentPage';
@@ -43,205 +22,125 @@ import TokenDetailsPage from './pages/patient/TokenDetailsPage';
 import LiveQueuePage from './pages/patient/LiveQueuePage';
 import AppointmentDetailsPage from './pages/patient/AppointmentDetailsPage';
 
+// ==================== CONTEXT ====================
 
-function DoctorRoutes() {
-  return (
-    <QueueProvider>
-      <Routes>
+import { PatientProvider } from './context/PatientContext';
+import { SharedQueueProvider } from './context/SharedQueueContext';
 
-        <Route
-          path="dashboard"
-          element={<DashboardPage />}
-        />
+// ==================== ADMIN ====================
 
-        <Route
-          path="queue"
-          element={<QueuePage />}
-        />
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 
-        <Route
-          path="appointments"
-          element={<AppointmentsPage />}
-        />
+import DoctorManagementPage from './pages/admin/DoctorManagementPage';
+import AddDoctorPage from './pages/admin/AddDoctorPage';
+import EditDoctorPage from './pages/admin/EditDoctorPage';
 
-        <Route
-          path="patients"
-          element={<PatientDetailsPage />}
-        />
+import DepartmentManagementPage from './pages/admin/DepartmentManagementPage';
+import DepartmentDetailsPage from './pages/admin/DepartmentDetailsPage';
+import AddDepartmentPage from './pages/admin/AddDepartmentPage';
 
-        <Route
-          path="settings"
-          element={<DashboardPage />}
-        />
-
-        <Route
-          path="*"
-          element={<Navigate to="dashboard" replace />}
-        />
-
-      </Routes>
-    </QueueProvider>
-  );
-}
+import AdminAppointmentsPage from './pages/admin/AdminAppointmentsPage';
 
 
-function AdminRoutes() {
-  return (
-    <AdminProvider>
-      <Routes>
-
-        {/* Admin Dashboard */}
-        <Route
-          path="dashboard"
-          element={<AdminDashboardPage />}
-        />
-
-        {/* Doctor Management */}
-        <Route
-          path="doctors"
-          element={<DoctorManagementPage />}
-        />
-
-        <Route
-          path="doctors/add"
-          element={<AddDoctorPage />}
-        />
-
-        <Route
-          path="doctors/:id/edit"
-          element={<EditDoctorPage />}
-        />
-
-        {/* Department Management */}
-        <Route
-          path="departments"
-          element={<DepartmentManagementPage />}
-        />
-
-        <Route
-          path="departments/add"
-          element={<AddDepartmentPage />}
-        />
-
-        <Route
-          path="departments/:id"
-          element={<DepartmentDetailsPage />}
-        />
-
-        {/* Appointments */}
-        <Route
-          path="appointments/:appointmentId"
-          element={<AdminAppointmentDetailPage />}
-        />
-
-        <Route
-          path="appointments"
-          element={<AdminAppointmentsPage />}
-        />
-
-        {/* Queue */}
-        <Route
-          path="queue"
-          element={<QueuePage />}
-        />
-
-        {/* Patients */}
-        <Route
-          path="patients/:appointmentId"
-          element={<AdminPatientDetailPage />}
-        />
-
-        <Route
-          path="patients"
-          element={<AdminPatientManagementPage />}
-        />
-
-        {/* Settings */}
-        <Route
-          path="settings"
-          element={<AdminDashboardPage />}
-        />
-
-        <Route
-          path="*"
-          element={<Navigate to="dashboard" replace />}
-        />
-
-      </Routes>
-    </AdminProvider>
-  );
-}
-
+// =====================================================
+// PATIENT ROUTES
+// =====================================================
 
 function PatientRoutes() {
   return (
     <PatientProvider>
       <Routes>
 
-        {/* Guest Entry */}
-        <Route
-          path=""
-          element={<PatientEntryPage />}
-        />
-
-        {/* Patient Authentication */}
+        {/* Patient Login */}
         <Route
           path="login"
           element={<PatientLoginPage />}
         />
 
+        {/* Patient Register */}
         <Route
           path="register"
           element={<PatientRegisterPage />}
         />
 
-        {/* Logged-in Patient Dashboard */}
+        <Route
+          path="forgot-password"
+          element={<ForgotPasswordPage />}
+        />
+
+        {/* Patient Dashboard */}
         <Route
           path="dashboard"
           element={<PatientDashboardPage />}
         />
 
-        {/* Patient Booking Flow */}
+        {/* My Appointments */}
+        <Route
+          path="appointments"
+          element={<MyAppointmentsPage />}
+        />
+
+        {/* OPD History */}
+        <Route
+          path="history"
+          element={<OPDHistoryPage />}
+        />
+
+        {/* Patient Entry / Guest Booking */}
+        <Route
+          path=""
+          element={<PatientEntryPage />}
+        />
+
+        {/* Hospital Selection */}
         <Route
           path="hospital"
           element={<SearchHospitalPage />}
         />
 
+        {/* Department Selection */}
         <Route
           path="department"
           element={<SelectDepartmentPage />}
         />
 
+        {/* Doctor Selection */}
         <Route
           path="doctor"
           element={<SelectDoctorPage />}
         />
 
+        {/* OPD Booking */}
         <Route
           path="book"
           element={<BookOPDPage />}
         />
 
+        {/* Booking Confirmation */}
         <Route
           path="confirmation"
           element={<BookingConfirmationPage />}
         />
 
+        {/* Token Details */}
         <Route
           path="token"
           element={<TokenDetailsPage />}
         />
 
+        {/* Live Queue */}
         <Route
           path="queue"
           element={<LiveQueuePage />}
         />
 
+        {/* Appointment Details */}
         <Route
           path="appointment"
           element={<AppointmentDetailsPage />}
         />
 
+        {/* Unknown Patient Route */}
         <Route
           path="*"
           element={<Navigate to="" replace />}
@@ -253,6 +152,109 @@ function PatientRoutes() {
 }
 
 
+// =====================================================
+// DOCTOR ROUTES
+// =====================================================
+
+function DoctorRoutes() {
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'Arial, sans-serif',
+        background: '#f8fafc',
+      }}
+    >
+      <div
+        style={{
+          textAlign: 'center',
+          padding: '40px',
+        }}
+      >
+        <h2>Doctor Dashboard</h2>
+
+        <p>
+          Doctor module will be connected here.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+
+// =====================================================
+// ADMIN ROUTES
+// =====================================================
+
+function AdminRoutes() {
+  return (
+    <Routes>
+
+      {/* Admin Dashboard */}
+      <Route
+        path="dashboard"
+        element={<AdminDashboardPage />}
+      />
+
+      {/* ==================== DOCTORS ==================== */}
+
+      <Route
+        path="doctors"
+        element={<DoctorManagementPage />}
+      />
+
+      <Route
+        path="doctors/add"
+        element={<AddDoctorPage />}
+      />
+
+      <Route
+        path="doctors/:doctorId/edit"
+        element={<EditDoctorPage />}
+      />
+
+      {/* ==================== DEPARTMENTS ==================== */}
+
+      <Route
+        path="departments"
+        element={<DepartmentManagementPage />}
+      />
+
+      <Route
+        path="departments/add"
+        element={<AddDepartmentPage />}
+      />
+
+      <Route
+        path="departments/:departmentId"
+        element={<DepartmentDetailsPage />}
+      />
+
+      {/* ==================== APPOINTMENTS ==================== */}
+
+      <Route
+        path="appointments"
+        element={<AdminAppointmentsPage />}
+      />
+
+      {/* Unknown Admin Route */}
+      <Route
+        path="*"
+        element={<Navigate to="dashboard" replace />}
+      />
+
+    </Routes>
+  );
+}
+
+
+// =====================================================
+// MAIN APP
+// =====================================================
+
 export default function App() {
   return (
     <SharedQueueProvider>
@@ -261,10 +263,10 @@ export default function App() {
 
         <Routes>
 
-          {/* Main */}
+          {/* Landing Page */}
           <Route
             path="/"
-            element={<Navigate to="/login" replace />}
+            element={<LandingPage />}
           />
 
           {/* Staff Login */}
@@ -291,10 +293,10 @@ export default function App() {
             element={<PatientRoutes />}
           />
 
-          {/* Fallback */}
+          {/* Unknown Route */}
           <Route
             path="*"
-            element={<Navigate to="/login" replace />}
+            element={<Navigate to="/" replace />}
           />
 
         </Routes>

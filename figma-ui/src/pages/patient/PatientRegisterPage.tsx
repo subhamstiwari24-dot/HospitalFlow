@@ -6,6 +6,7 @@ export default function PatientRegisterPage() {
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState('');
+  const [age, setAge] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,6 +14,7 @@ export default function PatientRegisterPage() {
 
   const [errors, setErrors] = useState<{
     fullName?: string;
+    age?: string;
     phone?: string;
     email?: string;
     password?: string;
@@ -21,38 +23,69 @@ export default function PatientRegisterPage() {
   }>({});
 
   const [isLoading, setIsLoading] = useState(false);
+  const [registrationStep, setRegistrationStep] = useState<1 | 2>(1);
+  const [otp, setOtp] = useState('');
+  const [devOtp, setDevOtp] = useState('');
 
   const validate = () => {
     const nextErrors: typeof errors = {};
 
+    // Full Name
     if (!fullName.trim()) {
       nextErrors.fullName = 'Full name is required';
     } else if (fullName.trim().length < 2) {
-      nextErrors.fullName = 'Full name must be at least 2 characters';
+      nextErrors.fullName =
+        'Full name must be at least 2 characters';
     }
 
+    // Age
+    if (!age.trim()) {
+      nextErrors.age = 'Age is required';
+    } else {
+      const numericAge = Number(age);
+
+      if (!Number.isInteger(numericAge)) {
+        nextErrors.age = 'Age must be a whole number';
+      } else if (numericAge < 1) {
+        nextErrors.age = 'Age must be at least 1 year';
+      } else if (numericAge > 120) {
+        nextErrors.age = 'Please enter a valid age';
+      }
+    }
+
+    // Mobile Number
     if (!phone.trim()) {
       nextErrors.phone = 'Mobile number is required';
     } else if (!/^\d{10}$/.test(phone.trim())) {
-      nextErrors.phone = 'Mobile number must be exactly 10 digits';
+      nextErrors.phone =
+        'Mobile number must be exactly 10 digits';
     }
 
+    // Email
     if (!email.trim()) {
       nextErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      nextErrors.email = 'Enter a valid email address';
+    } else if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+    ) {
+      nextErrors.email =
+        'Enter a valid email address';
     }
 
+    // Password
     if (!password.trim()) {
       nextErrors.password = 'Password is required';
     } else if (password.length < 6) {
-      nextErrors.password = 'Password must be at least 6 characters';
+      nextErrors.password =
+        'Password must be at least 6 characters';
     }
 
+    // Confirm Password
     if (!confirmPassword.trim()) {
-      nextErrors.confirmPassword = 'Please confirm your password';
+      nextErrors.confirmPassword =
+        'Please confirm your password';
     } else if (password !== confirmPassword) {
-      nextErrors.confirmPassword = 'Passwords do not match';
+      nextErrors.confirmPassword =
+        'Passwords do not match';
     }
 
     setErrors(nextErrors);
@@ -60,7 +93,9 @@ export default function PatientRegisterPage() {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
 
     if (!validate()) {
@@ -75,39 +110,74 @@ export default function PatientRegisterPage() {
     }));
 
     try {
-      const response = await fetch('/api/patients/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          phone: phone.trim(),
-          email: email.trim(),
-          password,
-        }),
-      });
+      const response = await fetch(
+        '/api/patients/register',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fullName: fullName.trim(),
+            age: Number(age),
+            phone: phone.trim(),
+            email: email.trim(),
+            password,
+          }),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
         setErrors({
           general:
-            data?.message || 'Registration failed. Please try again.',
+            data?.message ||
+            'Registration failed. Please try again.',
         });
+
         return;
       }
 
-      alert('Patient account created successfully!');
-
-      navigate('/patient/login');
+      setDevOtp(data?.devOtp || '');
+      setRegistrationStep(2);
     } catch (error) {
-      console.error('Patient registration error:', error);
+      console.error(
+        'Patient registration error:',
+        error
+      );
 
       setErrors({
         general:
           'Unable to connect to the server. Please make sure the backend is running.',
       });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(otp)) {
+      setErrors({ general: 'Enter the 6-digit OTP' });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/patients/register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), otp }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setErrors({ general: data?.message || 'Invalid or expired OTP' });
+        return;
+      }
+      alert(`Account created. Your Patient ID is ${data.patientId}`);
+      navigate('/patient/login');
+    } catch {
+      setErrors({ general: 'Unable to connect to the server.' });
     } finally {
       setIsLoading(false);
     }
@@ -173,6 +243,16 @@ export default function PatientRegisterPage() {
           {/* Register Card */}
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[24px] sm:p-[32px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)]">
 
+            {registrationStep === 2 ? (
+              <form onSubmit={handleVerifyRegistration} className="flex flex-col gap-[15px]">
+                {errors.general && <div className="bg-[#fff1f2] border border-[#f3c3c7] rounded-[10px] px-[12px] py-[10px]"><p className="text-[#c53a45] text-[12px]">{errors.general}</p></div>}
+                <p className="text-[#526176] text-[13px]">Enter the 6-digit code sent to {email}.</p>
+                {devOtp && <p className="text-[#18865b] text-[12px]">Development OTP: {devOtp}</p>}
+                <input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" maxLength={6} placeholder="Enter OTP" className={inputBase} />
+                <Button variant="primary" type="submit" disabled={isLoading} className="w-full justify-center py-[12px]">{isLoading ? 'Verifying...' : 'Verify Email'}</Button>
+                <button type="button" onClick={() => setRegistrationStep(1)} className="font-semibold text-[#155ead] text-[12px]">Back to registration</button>
+              </form>
+            ) : (
             <form
               onSubmit={handleRegister}
               className="flex flex-col gap-[15px]"
@@ -222,6 +302,43 @@ export default function PatientRegisterPage() {
 
               </div>
 
+              {/* Age */}
+              <div className="flex flex-col gap-[6px]">
+
+                <label
+                  htmlFor="patient-age"
+                  className="font-semibold text-[#142033] text-[13px]"
+                >
+                  Age
+                </label>
+
+                <input
+                  id="patient-age"
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={age}
+                  onChange={(e) => {
+                    setAge(e.target.value);
+
+                    setErrors((current) => ({
+                      ...current,
+                      age: '',
+                      general: '',
+                    }));
+                  }}
+                  placeholder="Enter your age"
+                  className={inputBase}
+                />
+
+                {errors.age && (
+                  <p className="text-[#c53a45] text-[12px]">
+                    {errors.age}
+                  </p>
+                )}
+
+              </div>
+
               {/* Mobile Number */}
               <div className="flex flex-col gap-[6px]">
 
@@ -239,7 +356,8 @@ export default function PatientRegisterPage() {
                   maxLength={10}
                   value={phone}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '');
+                    const value =
+                      e.target.value.replace(/\D/g, '');
 
                     setPhone(value);
 
@@ -384,6 +502,7 @@ export default function PatientRegisterPage() {
               </Button>
 
             </form>
+            )}
 
             {/* Login */}
             <div className="border-t border-[#d8e1ec] mt-[24px] pt-[20px] text-center">
@@ -400,22 +519,6 @@ export default function PatientRegisterPage() {
               </button>
 
             </div>
-
-          </div>
-
-          {/* Guest Booking */}
-          <div className="mt-[16px] bg-white border border-[#d8e1ec] rounded-[14px] p-[18px] text-center shadow-[0px_2px_12px_0px_rgba(19,36,58,0.04)]">
-
-            <p className="font-semibold text-[#142033] text-[13px]">
-              Don't want to register?
-            </p>
-
-            <button
-              onClick={() => navigate('/patient')}
-              className="font-bold text-[#18865b] text-[13px] mt-[5px] cursor-pointer hover:opacity-80"
-            >
-              Continue as Guest →
-            </button>
 
           </div>
 

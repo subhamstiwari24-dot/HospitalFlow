@@ -9,7 +9,8 @@ import java.time.LocalDateTime;
     name = "patients",
     uniqueConstraints = {
         @UniqueConstraint(columnNames = "phone"),
-        @UniqueConstraint(columnNames = "email")
+        @UniqueConstraint(columnNames = "email"),
+        @UniqueConstraint(columnNames = "patient_id")
     }
 )
 public class Patient {
@@ -18,8 +19,15 @@ public class Patient {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    // HospitalFlow unique patient ID
+    @Column(name = "patient_id", nullable = false, unique = true)
+    private String patientId;
+
+    @Column(name = "full_name", nullable = false)
     private String fullName;
+
+    @Column(nullable = false)
+    private Integer age;
 
     @Column(nullable = false, unique = true)
     private String phone;
@@ -27,13 +35,13 @@ public class Patient {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
     @Column(nullable = false)
     private Boolean active = true;
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     public Patient() {
@@ -48,12 +56,28 @@ public class Patient {
         this.id = id;
     }
 
+    public String getPatientId() {
+        return patientId;
+    }
+
+    public void setPatientId(String patientId) {
+        this.patientId = patientId;
+    }
+
     public String getFullName() {
         return fullName;
     }
 
     public void setFullName(String fullName) {
         this.fullName = fullName;
+    }
+
+    public Integer getAge() {
+        return age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
     }
 
     public String getPhone() {

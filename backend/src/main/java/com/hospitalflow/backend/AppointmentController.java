@@ -1,8 +1,7 @@
 package com.hospitalflow.backend;
 
-import com.hospitalflow.backend.dto.QueuePositionResponse;
-import com.hospitalflow.backend.dto.WaitingTimeResponse;
 import com.hospitalflow.backend.entity.Appointment;
+import com.hospitalflow.backend.repository.AppointmentRepository;
 import com.hospitalflow.backend.service.AppointmentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,105 +12,116 @@ import java.util.List;
 @RequestMapping("/api/appointments")
 @CrossOrigin(origins = {
         "http://localhost:5173",
-        "http://localhost:5174",
         "http://localhost:5175"
 })
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final AppointmentRepository appointmentRepository;
 
-    public AppointmentController(AppointmentService appointmentService) {
+    public AppointmentController(
+            AppointmentService appointmentService,
+            AppointmentRepository appointmentRepository
+    ) {
         this.appointmentService = appointmentService;
+        this.appointmentRepository = appointmentRepository;
     }
 
+    // Get all appointments
     @GetMapping
     public List<Appointment> getAllAppointments() {
         return appointmentService.getAllAppointments();
     }
 
+    // Get appointment by ID
     @GetMapping("/{id}")
     public ResponseEntity<Appointment> getAppointmentById(
-            @PathVariable Long id) {
-
+            @PathVariable Long id
+    ) {
         return appointmentService.getAppointmentById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // Get appointments of a particular patient
+    @GetMapping("/patient/{phone}")
+    public ResponseEntity<List<Appointment>> getAppointmentsByPatientPhone(
+            @PathVariable String phone
+    ) {
+        return ResponseEntity.ok(
+                appointmentRepository
+                        .findByPatientPhoneOrderByAppointmentDateDescAppointmentTimeDesc(
+                                phone
+                        )
+        );
+    }
+
+    // Get waiting queue for a doctor
     @GetMapping("/queue")
-    public List<Appointment> getWaitingQueue(
+    public ResponseEntity<List<Appointment>> getQueue(
             @RequestParam Long doctorId,
-            @RequestParam String appointmentDate) {
-
-        return appointmentService.getWaitingQueue(
-                doctorId,
-                appointmentDate
-        );
-    }
-
-    @GetMapping("/{id}/queue-position")
-    public ResponseEntity<QueuePositionResponse> getQueuePosition(
-            @PathVariable Long id) {
-
+            @RequestParam String appointmentDate
+    ) {
         return ResponseEntity.ok(
-                appointmentService.getQueuePosition(id)
+                appointmentService.getWaitingQueue(
+                        doctorId,
+                        appointmentDate
+                )
         );
     }
 
-    @GetMapping("/{id}/waiting-time")
-    public ResponseEntity<WaitingTimeResponse> getWaitingTime(
-            @PathVariable Long id) {
-
-        return ResponseEntity.ok(
-                appointmentService.getWaitingTime(id)
-        );
-    }
-
+    // Create appointment
     @PostMapping
     public Appointment createAppointment(
-            @RequestBody Appointment appointment) {
-
+            @RequestBody Appointment appointment
+    ) {
         return appointmentService.saveAppointment(appointment);
     }
 
+    // Update appointment
     @PutMapping("/{id}")
     public ResponseEntity<Appointment> updateAppointment(
             @PathVariable Long id,
-            @RequestBody Appointment appointment) {
+            @RequestBody Appointment updatedAppointment
+    ) {
 
         return appointmentService.getAppointmentById(id)
                 .map(existingAppointment -> {
 
                     existingAppointment.setPatientName(
-                            appointment.getPatientName()
+                            updatedAppointment.getPatientName()
                     );
 
                     existingAppointment.setPatientPhone(
-                            appointment.getPatientPhone()
+                            updatedAppointment.getPatientPhone()
                     );
 
                     existingAppointment.setAppointmentDate(
-                            appointment.getAppointmentDate()
+                            updatedAppointment.getAppointmentDate()
                     );
 
                     existingAppointment.setAppointmentTime(
-                            appointment.getAppointmentTime()
+                            updatedAppointment.getAppointmentTime()
                     );
 
                     existingAppointment.setTokenNumber(
-                            appointment.getTokenNumber()
+                            updatedAppointment.getTokenNumber()
                     );
 
                     existingAppointment.setStatus(
-                            appointment.getStatus()
+                            updatedAppointment.getStatus()
                     );
 
                     existingAppointment.setDoctor(
-                            appointment.getDoctor()
+                            updatedAppointment.getDoctor()
                     );
 
                     existingAppointment.setHospital(
-                            appointment.getHospital()
+                            updatedAppointment.getHospital()
+                    );
+
+                    existingAppointment.setPriority(
+                            updatedAppointment.getPriority()
                     );
 
                     return ResponseEntity.ok(
@@ -123,19 +133,15 @@ public class AppointmentController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<Appointment> updateStatus(
-            @PathVariable Long id,
-            @RequestParam String status) {
-
-        return ResponseEntity.ok(
-                appointmentService.updateStatus(id, status)
-        );
-    }
-
+    // Delete appointment
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAppointment(
-            @PathVariable Long id) {
+            @PathVariable Long id
+    ) {
+
+        if (appointmentService.getAppointmentById(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
 
         appointmentService.deleteAppointment(id);
 

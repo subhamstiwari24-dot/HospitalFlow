@@ -105,7 +105,7 @@ export default function LoginPage() {
 
           </div>
 
-          {/* Login Card */}
+          {/* Staff Login Card */}
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[24px] sm:p-[32px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)]">
 
             {/* Role Selector */}
@@ -151,7 +151,7 @@ export default function LoginPage() {
 
             </div>
 
-            {/* Form */}
+            {/* Staff Form */}
             <form
               onSubmit={handleLogin}
               className="flex flex-col gap-[16px]"
@@ -269,15 +269,46 @@ export default function LoginPage() {
 
           </div>
 
-          {/* Patient Booking */}
-          <div className="mt-[16px] bg-white border border-[#d8e1ec] rounded-[14px] p-[18px] text-center shadow-[0px_2px_12px_0px_rgba(19,36,58,0.04)]">
+          {/* Patient Login / Registration */}
+          <div className="mt-[16px] bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] text-center shadow-[0px_2px_12px_0px_rgba(19,36,58,0.04)]">
 
             <p className="font-semibold text-[#142033] text-[13px]">
               Are you a patient?
             </p>
 
             <p className="text-[#7b899c] text-[12px] mt-[4px]">
-              Book your OPD appointment without staff login.
+              Login or create an account to manage your OPD appointments.
+            </p>
+
+            {/* Patient Login */}
+            <Button
+              variant="primary"
+              onClick={() => navigate('/patient/login')}
+              className="w-full justify-center mt-[12px] py-[10px]"
+            >
+              Patient Login →
+            </Button>
+
+            {/* Patient Register */}
+            <button
+              type="button"
+              onClick={() => navigate('/patient/register')}
+              className="w-full mt-[10px] py-[10px] rounded-[9px] border border-[#155ead] text-[#155ead] font-semibold text-[13px] cursor-pointer hover:bg-[#f4f8fd] transition-colors"
+            >
+              Create Patient Account
+            </button>
+
+          </div>
+
+          {/* Guest Booking */}
+          <div className="mt-[16px] bg-white border border-[#d8e1ec] rounded-[14px] p-[18px] text-center shadow-[0px_2px_12px_0px_rgba(19,36,58,0.04)]">
+
+            <p className="font-semibold text-[#142033] text-[13px]">
+              Don't want to register?
+            </p>
+
+            <p className="text-[#7b899c] text-[12px] mt-[4px]">
+              You can still book an OPD appointment as a guest.
             </p>
 
             <Button
@@ -285,7 +316,7 @@ export default function LoginPage() {
               onClick={() => navigate('/patient')}
               className="w-full justify-center mt-[12px] py-[10px]"
             >
-              Book Now →
+              Continue as Guest →
             </Button>
 
           </div>

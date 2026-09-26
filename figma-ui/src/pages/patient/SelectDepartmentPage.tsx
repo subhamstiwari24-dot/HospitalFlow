@@ -12,13 +12,31 @@ type BackendDoctor = {
   name: string;
   specialization: string;
   qualification?: string;
-  experience?: number;
+  experience?: string;
   status?: string;
-  consultationTime?: number;
+  consultationTime?: string;
+
   hospital?: {
     id: number;
     name: string;
   };
+
+  department?: {
+    id: number;
+    name: string;
+  } | null;
+};
+
+type BackendDepartment = {
+  id: number;
+  name: string;
+  head?: string | null;
+  rooms?: number | null;
+  status?: string;
+  hospital?: {
+    id: number;
+    name: string;
+  } | null;
 };
 
 const deptIcons: Record<string, string> = {
@@ -46,28 +64,40 @@ const deptIcons: Record<string, string> = {
 const deptDesc: Record<string, string> = {
   'General Medicine':
     'Fever, infections, chronic diseases & general health',
+
   Cardiology:
     'Heart conditions, BP management, ECG & echo',
+
   Orthopaedics:
     'Bone, joint, spine & sports injuries',
+
   Orthopedics:
     'Bone, joint, spine & sports injuries',
+
   Paediatrics:
     "Children's health from newborn to 18 years",
+
   Pediatrics:
     "Children's health from newborn to 18 years",
+
   Dermatology:
     'Skin, hair & nail conditions',
+
   Neurology:
     'Brain, spine & nervous system disorders',
+
   Gynaecology:
     "Women's health, pregnancy & reproductive care",
+
   Gynecology:
     "Women's health, pregnancy & reproductive care",
+
   ENT:
     'Ear, nose & throat conditions',
+
   Ophthalmology:
     'Eye care & vision problems',
+
   Dental:
     'Teeth, gums & oral health',
 };
@@ -83,8 +113,10 @@ export default function SelectDepartmentPage() {
     setSelectedSlot,
   } = usePatient();
 
+  const [departments, setDepartments] = useState<BackendDepartment[]>([]);
   const [doctors, setDoctors] = useState<BackendDoctor[]>([]);
-  const [loadingDoctors, setLoadingDoctors] = useState(true);
+
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [retryKey, setRetryKey] = useState(0);
 
@@ -103,91 +135,128 @@ export default function SelectDepartmentPage() {
   }, [selectedHospital, navigate]);
 
   /*
-   * Load doctors from Spring Boot.
+   * Load REAL departments and doctors from backend.
    *
-   * Departments are derived from doctor.specialization
-   * because the current backend does not have a separate
-   * Department entity.
+   * Departments are now loaded directly from:
+   * /api/departments/hospital/{hospitalId}
+   *
+   * Doctors are loaded separately so we can
+   * calculate doctor availability/count.
    */
   useEffect(() => {
     if (!selectedHospital) return;
 
-    const loadDoctors = async () => {
+    const loadData = async () => {
       try {
-        setLoadingDoctors(true);
+        setLoading(true);
         setError('');
 
-        const response = await fetch(`${API_URL}/doctors`);
+        const [departmentResponse, doctorResponse] =
+          await Promise.all([
+            fetch(
+              `${API_URL}/departments/hospital/${selectedHospital.id}`
+            ),
+            fetch(`${API_URL}/doctors`),
+          ]);
 
-        if (!response.ok) {
+        if (!departmentResponse.ok) {
+          throw new Error('Unable to load departments');
+        }
+
+        if (!doctorResponse.ok) {
           throw new Error('Unable to load doctors');
         }
 
-        const data: BackendDoctor[] = await response.json();
+        const departmentData: BackendDepartment[] =
+          await departmentResponse.json();
+
+        const doctorData: BackendDoctor[] =
+          await doctorResponse.json();
 
         /*
          * Keep only doctors belonging to
          * the currently selected hospital.
          */
-        const hospitalDoctors = data.filter(
+        const hospitalDoctors = doctorData.filter(
           (doctor) =>
             doctor.hospital?.id === selectedHospital.id
         );
 
+        /*
+         * Keep only active departments for patient booking.
+         */
+        const activeDepartments = departmentData.filter(
+          (department) =>
+            department.status?.toLowerCase() !== 'inactive'
+        );
+
+        setDepartments(activeDepartments);
         setDoctors(hospitalDoctors);
       } catch (err) {
-        console.error('Doctor loading error:', err);
+        console.error('Department loading error:', err);
 
         setError(
           'Unable to load departments from HospitalFlow backend.'
         );
 
+        setDepartments([]);
         setDoctors([]);
       } finally {
-        setLoadingDoctors(false);
+        setLoading(false);
       }
     };
 
-    loadDoctors();
+    loadData();
   }, [selectedHospital, retryKey]);
 
   /*
-   * Build departments from doctor specializations.
+   * Calculate doctor count and available doctor count
+   * for every REAL department.
    */
-  const departments = useMemo(() => {
-    const departmentMap = new Map<
-      string,
+  const departmentStats = useMemo(() => {
+    const stats = new Map<
+      number,
       {
-        name: string;
         doctors: BackendDoctor[];
+        available: number;
       }
     >();
 
-    doctors.forEach((doctor) => {
-      const specialization = doctor.specialization?.trim();
-
-      if (!specialization) return;
-
-      if (!departmentMap.has(specialization)) {
-        departmentMap.set(specialization, {
-          name: specialization,
-          doctors: [],
-        });
-      }
-
-      departmentMap
-        .get(specialization)!
-        .doctors.push(doctor);
+    departments.forEach((department) => {
+      stats.set(department.id, {
+        doctors: [],
+        available: 0,
+      });
     });
 
-    return Array.from(departmentMap.values());
-  }, [doctors]);
+    doctors.forEach((doctor) => {
+      const departmentId = doctor.department?.id;
+
+      if (!departmentId) {
+        return;
+      }
+
+      const departmentStat = stats.get(departmentId);
+
+      if (!departmentStat) {
+        return;
+      }
+
+      departmentStat.doctors.push(doctor);
+
+      if (doctor.status?.toLowerCase() === 'available') {
+        departmentStat.available += 1;
+      }
+    });
+
+    return stats;
+  }, [departments, doctors]);
 
   /*
-   * Select department
+   * Select department.
    */
-  const handleSelect = (department: string) => {
-    setSelectedDepartment(department);
+  const handleSelect = (department: BackendDepartment) => {
+    setSelectedDepartment(department.name);
 
     /*
      * Reset doctor and slot whenever
@@ -246,7 +315,8 @@ export default function SelectDepartmentPage() {
         </p>
       </div>
 
-      {error && !loadingDoctors && (
+      {/* ERROR */}
+      {error && !loading && (
         <ErrorState
           description={error}
           onRetry={() => setRetryKey((key) => key + 1)}
@@ -254,7 +324,7 @@ export default function SelectDepartmentPage() {
       )}
 
       {/* LOADING */}
-      {loadingDoctors && (
+      {loading && (
         <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[24px] text-center mb-[28px]">
           <p className="text-[#526176] text-[14px]">
             Loading departments...
@@ -263,37 +333,36 @@ export default function SelectDepartmentPage() {
       )}
 
       {/* DEPARTMENTS */}
-      {!loadingDoctors && !error && (
+      {!loading && !error && (
         <>
           {departments.length === 0 ? (
             <EmptyState
               icon={EmptyIcons.grid(28)}
               title="No departments available"
-              description="No doctors or departments are currently listed for this hospital."
+              description="No active departments are currently listed for this hospital."
             />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px] mb-[28px]">
               {departments.map((department) => {
-                const doctorCount = department.doctors.length;
+                const stats = departmentStats.get(department.id);
 
-                const available = department.doctors.filter(
-                  (doctor) =>
-                    doctor.status?.toLowerCase() === 'available'
-                ).length;
+                const doctorCount = stats?.doctors.length ?? 0;
+                const available = stats?.available ?? 0;
 
                 const isSelected =
                   selectedDepartment === department.name;
 
                 return (
                   <div
-                    key={department.name}
-                    onClick={() =>
-                      handleSelect(department.name)
-                    }
+                    key={department.id}
+                    onClick={() => handleSelect(department)}
                     onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
+                      if (
+                        event.key === 'Enter' ||
+                        event.key === ' '
+                      ) {
                         event.preventDefault();
-                        handleSelect(department.name);
+                        handleSelect(department);
                       }
                     }}
                     role="button"
