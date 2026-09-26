@@ -11,10 +11,12 @@ export default function LoginPage() {
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [errors, setErrors] = useState<{
     employeeId?: string;
     password?: string;
+    general?: string;
   }>({});
 
   const validate = () => {
@@ -39,17 +41,39 @@ export default function LoginPage() {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validate()) {
       return;
     }
 
-    if (role === 'Doctor') {
-      navigate('/doctor/dashboard');
-    } else {
-      navigate('/admin/dashboard');
+    setIsLoading(true);
+    setErrors({});
+    try {
+      if (role === 'Doctor') {
+        const response = await fetch('/api/doctors/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: employeeId.trim(),
+            password,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          setErrors({ general: data?.message || 'Doctor login failed' });
+          return;
+        }
+        sessionStorage.setItem('hospitalflow_doctor', JSON.stringify(data));
+        navigate('/doctor/dashboard');
+      } else {
+        setErrors({ general: 'Admin authentication is not configured in the current backend.' });
+      }
+    } catch {
+      setErrors({ general: 'Unable to connect to the server.' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -157,6 +181,12 @@ export default function LoginPage() {
               className="flex flex-col gap-[16px]"
             >
 
+              {errors.general && (
+                <div className="bg-[#fff1f2] border border-[#f3c3c7] rounded-[10px] px-[12px] py-[10px]">
+                  <p className="text-[#c53a45] text-[12px]">{errors.general}</p>
+                </div>
+              )}
+
               {/* Employee / Doctor ID */}
               <div className="flex flex-col gap-[6px]">
 
@@ -260,9 +290,10 @@ export default function LoginPage() {
               <Button
                 variant="primary"
                 type="submit"
+                disabled={isLoading}
                 className="w-full justify-center py-[12px]"
               >
-                Sign In
+                {isLoading ? 'Signing In...' : 'Sign In'}
               </Button>
 
             </form>

@@ -27,6 +27,7 @@ interface FormState {
   room: string;
   phone: string;
   email: string;
+  password: string;
 }
 
 const emptyForm: FormState = {
@@ -38,6 +39,7 @@ const emptyForm: FormState = {
   room: '',
   phone: '',
   email: '',
+  password: '',
 };
 
 function Field({
@@ -73,7 +75,7 @@ export default function AddDoctorPage() {
     useState<FormState>(emptyForm);
 
   const [errors, setErrors] =
-    useState<Partial<FormState>>({});
+    useState<Record<string, string>>({});
 
   const [departments, setDepartments] =
     useState<Department[]>([]);
@@ -202,6 +204,10 @@ export default function AddDoctorPage() {
       } is required`;
     }
 
+    if (field === 'password' && value.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+
     if (
       field === 'phone' &&
       value.trim() &&
@@ -222,8 +228,7 @@ export default function AddDoctorPage() {
   };
 
   const validate = (): boolean => {
-    const validationErrors: Partial<FormState> =
-      {};
+    const validationErrors: Record<string, string> = {};
 
     (
       Object.keys(form) as (keyof FormState)[]
@@ -310,6 +315,9 @@ export default function AddDoctorPage() {
             department: {
               id: selectedDepartment.id,
             },
+
+            email: form.email.trim(),
+            passwordHash: form.password,
           }),
         }
       );
@@ -505,6 +513,25 @@ export default function AddDoctorPage() {
                   <p className="text-[#c53a45] text-[12px]">
                     {errors.email}
                   </p>
+                )}
+              </Field>
+
+              <Field label="Login Password" required>
+                <input
+                  id="add-doctor-password"
+                  type="password"
+                  value={form.password}
+                  onChange={set('password')}
+                  onBlur={() => setErrors((current) => ({
+                    ...current,
+                    password: validateField('password', form.password),
+                  }))}
+                  aria-invalid={Boolean(errors.password)}
+                  placeholder="At least 6 characters"
+                  className={inputClass}
+                />
+                {errors.password && (
+                  <p className="text-[#c53a45] text-[12px]">{errors.password}</p>
                 )}
               </Field>
             </div>

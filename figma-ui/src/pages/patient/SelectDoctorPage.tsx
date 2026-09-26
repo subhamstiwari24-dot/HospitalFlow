@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import PatientLayout from '../../components/PatientLayout';
 import Button from '../../components/Button';
 import StatusBadge from '../../components/StatusBadge';
@@ -8,15 +9,26 @@ import { usePageLoad } from '../../hooks/usePageLoad';
 import { SkDoctorSelect } from '../../components/Skeleton';
 import EmptyState, { EmptyIcons, ErrorState } from '../../components/EmptyState';
 
+
+// =====================================================
+// BACKEND TYPES
+// =====================================================
+
 type BackendDoctor = {
   id: number;
   name: string;
   specialization: string;
   qualification?: string;
-  experience?: number;
+  experience?: string | number;
   status?: string;
-  consultationTime?: number;
+  consultationTime?: string | number;
+
   hospital?: {
+    id: number;
+    name?: string;
+  };
+
+  department?: {
     id: number;
     name: string;
   };
@@ -24,12 +36,19 @@ type BackendDoctor = {
 
 type BackendAppointment = {
   id: number;
+
   doctor?: {
     id: number;
   };
+
   appointmentDate: string;
   status: string;
 };
+
+
+// =====================================================
+// FRONTEND DOCTOR VIEW
+// =====================================================
 
 type DoctorView = {
   id: string;
@@ -46,6 +65,11 @@ type DoctorView = {
   nextSlot: string;
 };
 
+
+// =====================================================
+// QUEUE INDICATOR
+// =====================================================
+
 function QueueIndicator({ length }: { length: number }) {
   const color =
     length <= 2
@@ -55,7 +79,9 @@ function QueueIndicator({ length }: { length: number }) {
         : 'text-[#c53a45]';
 
   const label =
-    length === 0 ? 'No wait' : `${length} ahead`;
+    length === 0
+      ? 'No wait'
+      : `${length} ahead`;
 
   return (
     <p className={`font-semibold text-[12px] ${color}`}>
@@ -64,29 +90,50 @@ function QueueIndicator({ length }: { length: number }) {
   );
 }
 
+
+// =====================================================
+// NORMALIZE DOCTOR STATUS
+// =====================================================
+
 function normalizeStatus(status?: string): string {
-  if (!status) return 'Unavailable';
+  if (!status) {
+    return 'Unavailable';
+  }
 
   const value = status.toLowerCase().trim();
 
-  if (value === 'available') return 'Available';
-  if (value === 'busy') return 'Busy';
-  if (value === 'delayed') return 'Delayed';
-  if (value === 'on break') return 'On Break';
-  if (value === 'offline') return 'Offline';
-  if (value === 'unavailable') return 'Unavailable';
+  if (value === 'available') {
+    return 'Available';
+  }
+
+  if (value === 'busy') {
+    return 'Busy';
+  }
+
+  if (value === 'delayed') {
+    return 'Delayed';
+  }
+
+  if (value === 'on break') {
+    return 'On Break';
+  }
+
+  if (value === 'offline') {
+    return 'Offline';
+  }
+
+  if (value === 'unavailable') {
+    return 'Unavailable';
+  }
 
   return status;
 }
 
-/*
- * Converts:
- * "Thu, 24 Sep 2026"
- * into:
- * "2026-09-24"
- *
- * Backend queue API expects yyyy-MM-dd.
- */
+
+// =====================================================
+// DATE CONVERTER
+// =====================================================
+
 function convertDateToBackendFormat(date: string): string {
   const parsed = new Date(date);
 
@@ -98,10 +145,6 @@ function convertDateToBackendFormat(date: string): string {
     return `${year}-${month}-${day}`;
   }
 
-  /*
-   * Fallback for strings such as:
-   * Thu, 24 Sep 2026
-   */
   const match = date.match(
     /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i
   );
@@ -132,12 +175,18 @@ function convertDateToBackendFormat(date: string): string {
   return `${year}-${month}-${day}`;
 }
 
+
+// =====================================================
+// MAIN PAGE
+// =====================================================
+
 export default function SelectDoctorPage() {
   const navigate = useNavigate();
 
   const {
     selectedHospital,
     selectedDepartment,
+    selectedDepartmentId,
     selectedDoctor,
     setSelectedDoctor,
     setSelectedSlot,
@@ -146,26 +195,31 @@ export default function SelectDoctorPage() {
 
   const loading = usePageLoad(500);
 
-  const [backendDoctors, setBackendDoctors] = useState<BackendDoctor[]>(
-    []
-  );
+  const [backendDoctors, setBackendDoctors] =
+    useState<BackendDoctor[]>([]);
 
-  const [appointments, setAppointments] = useState<
-    BackendAppointment[]
-  >([]);
+  const [appointments, setAppointments] =
+    useState<BackendAppointment[]>([]);
 
-  const [loadingDoctors, setLoadingDoctors] = useState(true);
+  const [loadingDoctors, setLoadingDoctors] =
+    useState(true);
+
   const [error, setError] = useState('');
+
   const [retryKey, setRetryKey] = useState(0);
 
   const API_URL = '/api';
 
-  /*
-   * Redirect if patient skipped previous steps.
-   */
+
+  // ===================================================
+  // CHECK PREVIOUS STEPS
+  // ===================================================
+
   useEffect(() => {
     if (!selectedHospital || !selectedDepartment) {
-      navigate('/patient/hospital', { replace: true });
+      navigate('/patient/hospital', {
+        replace: true,
+      });
     }
   }, [
     selectedHospital,
@@ -173,9 +227,11 @@ export default function SelectDoctorPage() {
     navigate,
   ]);
 
-  /*
-   * Load real doctors and appointments.
-   */
+
+  // ===================================================
+  // LOAD DOCTORS + APPOINTMENTS
+  // ===================================================
+
   useEffect(() => {
     if (!selectedHospital || !selectedDepartment) {
       return;
@@ -186,18 +242,24 @@ export default function SelectDoctorPage() {
         setLoadingDoctors(true);
         setError('');
 
-        const [doctorResponse, appointmentResponse] =
-          await Promise.all([
-            fetch(`${API_URL}/doctors`),
-            fetch(`${API_URL}/appointments`),
-          ]);
+        const [
+          doctorResponse,
+          appointmentResponse,
+        ] = await Promise.all([
+          fetch(`${API_URL}/doctors`),
+          fetch(`${API_URL}/appointments`),
+        ]);
 
         if (!doctorResponse.ok) {
-          throw new Error('Unable to load doctors');
+          throw new Error(
+            'Unable to load doctors'
+          );
         }
 
         if (!appointmentResponse.ok) {
-          throw new Error('Unable to load appointments');
+          throw new Error(
+            'Unable to load appointments'
+          );
         }
 
         const doctorsData: BackendDoctor[] =
@@ -206,10 +268,29 @@ export default function SelectDoctorPage() {
         const appointmentsData: BackendAppointment[] =
           await appointmentResponse.json();
 
+        console.log(
+          'HospitalFlow doctors:',
+          doctorsData
+        );
+
+        console.log(
+          'Selected hospital:',
+          selectedHospital
+        );
+
+        console.log(
+          'Selected department:',
+          selectedDepartment
+        );
+
         setBackendDoctors(doctorsData);
         setAppointments(appointmentsData);
+
       } catch (err) {
-        console.error('Doctor loading error:', err);
+        console.error(
+          'Doctor loading error:',
+          err
+        );
 
         setError(
           'Unable to load doctors from HospitalFlow backend.'
@@ -217,83 +298,174 @@ export default function SelectDoctorPage() {
 
         setBackendDoctors([]);
         setAppointments([]);
+
       } finally {
         setLoadingDoctors(false);
       }
     };
 
     loadData();
-  }, [selectedHospital, selectedDepartment, retryKey]);
 
-  /*
-   * Convert backend doctors into the structure
-   * expected by the existing PatientContext.
-   */
+  }, [
+    selectedHospital,
+    selectedDepartment,
+    retryKey,
+  ]);
+
+
+  // ===================================================
+  // CONVERT BACKEND DOCTORS
+  // ===================================================
+
   const doctors = useMemo<DoctorView[]>(() => {
-    if (!selectedHospital || !selectedDepartment) {
+
+    if (
+      !selectedHospital ||
+      !selectedDepartment
+    ) {
       return [];
     }
 
-    const hospitalDoctors = backendDoctors.filter(
-      (doctor) =>
-        doctor.hospital?.id === selectedHospital.id &&
-        doctor.specialization?.trim().toLowerCase() ===
-          selectedDepartment.trim().toLowerCase()
-    );
+
+    // =================================================
+    // IMPORTANT FIX
+    //
+    // BEFORE:
+    // doctor.specialization === selectedDepartment
+    //
+    // NOW:
+    // doctor.department.name === selectedDepartment
+    //
+    // Because specialization and department are
+    // different backend fields.
+    // =================================================
+
+    const hospitalDoctors =
+      backendDoctors.filter((doctor) => {
+
+        const sameHospital =
+          Number(doctor.hospital?.id) ===
+          Number(selectedHospital.id);
+
+        const sameDepartment =
+          Number(doctor.department?.id) ===
+          Number(selectedDepartmentId);
+
+        console.log(
+          'Doctor filter:',
+          {
+            doctor: doctor.name,
+            doctorHospital:
+              doctor.hospital?.id,
+            selectedHospital:
+              selectedHospital.id,
+            doctorDepartment:
+              doctor.department?.name,
+            selectedDepartment,
+            sameHospital,
+            sameDepartment,
+          }
+        );
+
+        return (
+          sameHospital &&
+          sameDepartment
+        );
+      });
+
+
+    // =================================================
+    // CREATE FRONTEND DOCTOR OBJECTS
+    // =================================================
 
     return hospitalDoctors.map((doctor) => {
-      const doctorAppointments = appointments.filter(
-        (appointment) =>
-          appointment.doctor?.id === doctor.id
-      );
+
+      const doctorAppointments =
+        appointments.filter(
+          (appointment) =>
+            appointment.doctor?.id ===
+            doctor.id
+        );
+
 
       const waitingAppointments =
         doctorAppointments.filter(
           (appointment) =>
-            appointment.status.toUpperCase() === 'WAITING'
+            appointment.status
+              ?.toUpperCase() ===
+            'WAITING'
         );
+
 
       return {
         id: String(doctor.id),
+
         name: doctor.name,
-        specialization: doctor.specialization,
-        department: selectedDepartment,
-        status: normalizeStatus(doctor.status),
-        room: 'Room not assigned',
+
+        specialization:
+          doctor.specialization,
+
+        department:
+          doctor.department?.name ??
+          selectedDepartment,
+
+        status:
+          normalizeStatus(
+            doctor.status
+          ),
+
+        room:
+          'Room not assigned',
+
         experience:
           doctor.experience !== undefined
             ? `${doctor.experience} years experience`
             : 'Experience not specified',
+
         fee: 0,
-        queueLength: waitingAppointments.length,
+
+        queueLength:
+          waitingAppointments.length,
+
         rating: 0,
-        patientsToday: doctorAppointments.length,
-        nextSlot: 'Slot selection next',
+
+        patientsToday:
+          doctorAppointments.length,
+
+        nextSlot:
+          'Slot selection next',
       };
     });
+
   }, [
     backendDoctors,
     appointments,
     selectedHospital,
     selectedDepartment,
+    selectedDepartmentId,
   ]);
 
-  /*
-   * Select doctor.
-   */
-  const handleSelect = (doctor: DoctorView) => {
+
+  // ===================================================
+  // SELECT DOCTOR
+  // ===================================================
+
+  const handleSelect = (
+    doctor: DoctorView
+  ) => {
     setSelectedDoctor(doctor);
     setSelectedSlot(null);
   };
 
-  /*
-   * Calculate selected doctor's wait.
-   *
-   * This is only a visual queue indication.
-   * Actual waiting-time prediction will come from
-   * the existing AI service later in the flow.
-   */
-  const getEstimatedWait = (doctor: DoctorView) => {
+
+  // ===================================================
+  // ESTIMATED WAIT
+  // ===================================================
+
+  const getEstimatedWait = (
+    doctor: DoctorView
+  ) => {
+
     if (doctor.queueLength === 0) {
       return 0;
     }
@@ -301,9 +473,22 @@ export default function SelectDoctorPage() {
     return doctor.queueLength * 10;
   };
 
-  if (!selectedHospital || !selectedDepartment) {
+
+  // ===================================================
+  // SAFETY
+  // ===================================================
+
+  if (
+    !selectedHospital ||
+    !selectedDepartment
+  ) {
     return null;
   }
+
+
+  // ===================================================
+  // SKELETON
+  // ===================================================
 
   if (loading) {
     return (
@@ -317,241 +502,390 @@ export default function SelectDoctorPage() {
     );
   }
 
+
+  // ===================================================
+  // UI
+  // ===================================================
+
   return (
     <PatientLayout
       step={2}
       backTo="/patient/department"
       maxWidth="max-w-[860px]"
     >
+
+      {/* ============================================= */}
       {/* HEADER */}
+      {/* ============================================= */}
+
       <div className="mb-[24px]">
+
         <div className="flex items-center gap-[8px] flex-wrap mb-[6px]">
+
           <p className="font-normal text-[#7b899c] text-[13px]">
             {selectedHospital.name}
           </p>
 
-          <span className="text-[#d8e1ec]">›</span>
+          <span className="text-[#d8e1ec]">
+            ›
+          </span>
 
           <p className="font-normal text-[#7b899c] text-[13px]">
             {selectedDepartment}
           </p>
 
-          <span className="text-[#d8e1ec]">›</span>
+          <span className="text-[#d8e1ec]">
+            ›
+          </span>
 
           <p className="font-semibold text-[#142033] text-[13px]">
             Select Doctor
           </p>
+
         </div>
+
 
         <h1 className="font-bold text-[#142033] text-[24px]">
           Choose Your Doctor
         </h1>
 
+
         <p className="font-normal text-[#526176] text-[14px] mt-[4px]">
+
           {doctors.length} doctor
-          {doctors.length !== 1 ? 's' : ''} available in{' '}
+          {doctors.length !== 1
+            ? 's'
+            : ''}{' '}
+
+          available in{' '}
+
           {selectedDepartment}
+
         </p>
+
       </div>
+
+
+      {/* ============================================= */}
+      {/* ERROR */}
+      {/* ============================================= */}
 
       {error && !loadingDoctors && (
         <ErrorState
           description={error}
-          onRetry={() => setRetryKey((key) => key + 1)}
+          onRetry={() =>
+            setRetryKey(
+              (key) => key + 1
+            )
+          }
         />
       )}
 
+
+      {/* ============================================= */}
       {/* LOADING */}
+      {/* ============================================= */}
+
       {loadingDoctors && (
         <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[24px] text-center mb-[28px]">
+
           <p className="text-[#526176] text-[14px]">
             Loading doctors from HospitalFlow...
           </p>
+
         </div>
       )}
 
+
+      {/* ============================================= */}
       {/* DOCTORS */}
-      {!loadingDoctors && !error && (
-        <div className="flex flex-col gap-[12px] mb-[28px]">
-          {doctors.map((doctor) => {
-            const isSelected =
-              selectedDoctor?.id === doctor.id;
+      {/* ============================================= */}
 
-            const waitMins =
-              getEstimatedWait(doctor);
+      {!loadingDoctors &&
+        !error && (
+          <div className="flex flex-col gap-[12px] mb-[28px]">
 
-            return (
-              <div
-                key={doctor.id}
-                onClick={() => handleSelect(doctor)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    handleSelect(doctor);
+            {doctors.map((doctor) => {
+
+              const isSelected =
+                selectedDoctor?.id ===
+                doctor.id;
+
+              const waitMins =
+                getEstimatedWait(
+                  doctor
+                );
+
+
+              return (
+                <div
+                  key={doctor.id}
+                  onClick={() =>
+                    handleSelect(
+                      doctor
+                    )
                   }
-                }}
-                role="button"
-                tabIndex={0}
-                className={`bg-white border rounded-[14px] p-[20px] cursor-pointer transition-[border-color,box-shadow,transform] focus-visible:outline-2 focus-visible:outline-[#2475d0] focus-visible:outline-offset-2 active:translate-y-px ${
-                  isSelected
-                    ? 'border-[#155ead] shadow-[0px_0px_0px_3px_rgba(21,94,173,0.12)]'
-                    : 'border-[#d8e1ec] hover:border-[#afc0d3] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]'
-                }`}
-              >
-                <div className="flex gap-[16px] items-start">
-                  {/* AVATAR */}
-                  <div
-                    className={`size-[52px] rounded-[14px] flex items-center justify-center shrink-0 ${
-                      isSelected
-                        ? 'bg-[#eaf3fd]'
-                        : 'bg-[#f4f7fb]'
-                    }`}
-                  >
-                    <p
-                      className={`font-bold text-[16px] ${
-                        isSelected
-                          ? 'text-[#155ead]'
-                          : 'text-[#526176]'
-                      }`}
-                    >
-                      {doctor.name
-                        .replace(/^Dr\.\s*/i, '')
-                        .split(' ')
-                        .map((word) => word[0])
-                        .join('')
-                        .slice(0, 2)}
-                    </p>
-                  </div>
+                  onKeyDown={(event) => {
 
-                  {/* INFO */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-[10px] flex-wrap mb-[3px]">
-                      <p className="font-bold text-[#142033] text-[16px]">
-                        {doctor.name}
-                      </p>
+                    if (
+                      event.key ===
+                        'Enter' ||
+                      event.key === ' '
+                    ) {
 
-                      <StatusBadge status={doctor.status} />
-                    </div>
+                      event.preventDefault();
 
-                    <p className="font-normal text-[#526176] text-[13px] mb-[10px]">
-                      {doctor.specialization}
-                    </p>
+                      handleSelect(
+                        doctor
+                      );
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className={`bg-white border rounded-[14px] p-[20px] cursor-pointer transition-[border-color,box-shadow,transform] focus-visible:outline-2 focus-visible:outline-[#2475d0] focus-visible:outline-offset-2 active:translate-y-px ${
+                    isSelected
+                      ? 'border-[#155ead] shadow-[0px_0px_0px_3px_rgba(21,94,173,0.12)]'
+                      : 'border-[#d8e1ec] hover:border-[#afc0d3] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]'
+                  }`}
+                >
 
-                    <div className="flex items-center gap-[18px] flex-wrap">
-                      <div className="flex items-center gap-[6px]">
-                        <span className="text-[#7b899c] text-[12px]">
-                          🎓
-                        </span>
+                  <div className="flex gap-[16px] items-start">
 
-                        <p className="font-normal text-[#526176] text-[12px]">
-                          {doctor.experience}
-                        </p>
-                      </div>
 
-                      <div className="flex items-center gap-[6px]">
-                        <span className="text-[#7b899c] text-[12px]">
-                          👥
-                        </span>
+                    {/* ================================= */}
+                    {/* AVATAR */}
+                    {/* ================================= */}
 
-                        <p className="font-normal text-[#526176] text-[12px]">
-                          {doctor.patientsToday} appointments
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-[6px]">
-                        <span className="text-[#7b899c] text-[12px]">
-                          ⏳
-                        </span>
-
-                        <QueueIndicator
-                          length={doctor.queueLength}
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-[6px]">
-                        <span className="text-[#7b899c] text-[12px]">
-                          🕐
-                        </span>
-
-                        <p className="font-normal text-[#526176] text-[12px]">
-                          {waitMins === 0
-                            ? 'No current wait'
-                            : `~${waitMins} min estimated`}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* BACKEND INFORMATION */}
-                    <div className="flex gap-[6px] mt-[12px] flex-wrap">
-                      {doctor.room !== 'Room not assigned' && (
-                        <span className="bg-[#f4f7fb] text-[#526176] text-[11px] font-medium px-[8px] py-[3px] rounded-[6px]">
-                          {doctor.room}
-                        </span>
-                      )}
-
-                      <span className="bg-[#e8f7f1] text-[#18865b] text-[11px] font-semibold px-[8px] py-[3px] rounded-[6px]">
-                        HospitalFlow Connected
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* SELECTOR */}
-                  <div className="flex flex-col items-end gap-[10px] shrink-0">
                     <div
-                      className={`size-[22px] rounded-[999px] border-2 flex items-center justify-center transition-colors ${
+                      className={`size-[52px] rounded-[14px] flex items-center justify-center shrink-0 ${
                         isSelected
-                          ? 'border-[#155ead] bg-[#155ead]'
-                          : 'border-[#d8e1ec]'
+                          ? 'bg-[#eaf3fd]'
+                          : 'bg-[#f4f7fb]'
                       }`}
                     >
-                      {isSelected && (
-                        <span className="text-white text-[11px] font-bold">
-                          ✓
+
+                      <p
+                        className={`font-bold text-[16px] ${
+                          isSelected
+                            ? 'text-[#155ead]'
+                            : 'text-[#526176]'
+                        }`}
+                      >
+
+                        {doctor.name
+                          .replace(
+                            /^Dr\.\s*/i,
+                            ''
+                          )
+                          .split(' ')
+                          .map(
+                            (word) =>
+                              word[0]
+                          )
+                          .join('')
+                          .slice(0, 2)}
+
+                      </p>
+
+                    </div>
+
+
+                    {/* ================================= */}
+                    {/* INFO */}
+                    {/* ================================= */}
+
+                    <div className="flex-1 min-w-0">
+
+                      <div className="flex items-center gap-[10px] flex-wrap mb-[3px]">
+
+                        <p className="font-bold text-[#142033] text-[16px]">
+                          {doctor.name}
+                        </p>
+
+                        <StatusBadge
+                          status={
+                            doctor.status
+                          }
+                        />
+
+                      </div>
+
+
+                      <p className="font-normal text-[#526176] text-[13px] mb-[10px]">
+                        {doctor.specialization}
+                      </p>
+
+
+                      <div className="flex items-center gap-[18px] flex-wrap">
+
+                        <div className="flex items-center gap-[6px]">
+
+                          <span className="text-[#7b899c] text-[12px]">
+                            🎓
+                          </span>
+
+                          <p className="font-normal text-[#526176] text-[12px]">
+                            {doctor.experience}
+                          </p>
+
+                        </div>
+
+
+                        <div className="flex items-center gap-[6px]">
+
+                          <span className="text-[#7b899c] text-[12px]">
+                            👥
+                          </span>
+
+                          <p className="font-normal text-[#526176] text-[12px]">
+                            {doctor.patientsToday}{' '}
+                            appointments
+                          </p>
+
+                        </div>
+
+
+                        <div className="flex items-center gap-[6px]">
+
+                          <span className="text-[#7b899c] text-[12px]">
+                            ⏳
+                          </span>
+
+                          <QueueIndicator
+                            length={
+                              doctor.queueLength
+                            }
+                          />
+
+                        </div>
+
+
+                        <div className="flex items-center gap-[6px]">
+
+                          <span className="text-[#7b899c] text-[12px]">
+                            🕐
+                          </span>
+
+                          <p className="font-normal text-[#526176] text-[12px]">
+
+                            {waitMins === 0
+                              ? 'No current wait'
+                              : `~${waitMins} min estimated`}
+
+                          </p>
+
+                        </div>
+
+                      </div>
+
+
+                      {/* ================================= */}
+                      {/* BACKEND INFORMATION */}
+                      {/* ================================= */}
+
+                      <div className="flex gap-[6px] mt-[12px] flex-wrap">
+
+                        {doctor.room !==
+                          'Room not assigned' && (
+                          <span className="bg-[#f4f7fb] text-[#526176] text-[11px] font-medium px-[8px] py-[3px] rounded-[6px]">
+                            {doctor.room}
+                          </span>
+                        )}
+
+                        <span className="bg-[#e8f7f1] text-[#18865b] text-[11px] font-semibold px-[8px] py-[3px] rounded-[6px]">
+                          HospitalFlow Connected
                         </span>
-                      )}
+
+                      </div>
+
                     </div>
 
-                    <div className="text-right">
-                      <p className="font-semibold text-[#526176] text-[12px]">
-                        Consultation fee
-                      </p>
 
-                      <p className="font-normal text-[#7b899c] text-[10px]">
-                        Not specified
-                      </p>
+                    {/* ================================= */}
+                    {/* SELECTOR */}
+                    {/* ================================= */}
+
+                    <div className="flex flex-col items-end gap-[10px] shrink-0">
+
+                      <div
+                        className={`size-[22px] rounded-[999px] border-2 flex items-center justify-center transition-colors ${
+                          isSelected
+                            ? 'border-[#155ead] bg-[#155ead]'
+                            : 'border-[#d8e1ec]'
+                        }`}
+                      >
+
+                        {isSelected && (
+                          <span className="text-white text-[11px] font-bold">
+                            ✓
+                          </span>
+                        )}
+
+                      </div>
+
+
+                      <div className="text-right">
+
+                        <p className="font-semibold text-[#526176] text-[12px]">
+                          Consultation fee
+                        </p>
+
+                        <p className="font-normal text-[#7b899c] text-[10px]">
+                          Not specified
+                        </p>
+
+                      </div>
+
+
+                      <div className="bg-[#eaf3fd] px-[8px] py-[3px] rounded-[6px]">
+
+                        <p className="font-semibold text-[#155ead] text-[11px]">
+                          Next: Select slot
+                        </p>
+
+                      </div>
+
                     </div>
 
-                    <div className="bg-[#eaf3fd] px-[8px] py-[3px] rounded-[6px]">
-                      <p className="font-semibold text-[#155ead] text-[11px]">
-                        Next: Select slot
-                      </p>
-                    </div>
                   </div>
+
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          {/* EMPTY */}
-          {doctors.length === 0 && !error && (
-            <EmptyState
-              icon={EmptyIcons.stethoscope(28)}
-              title="No doctors available"
-              description="There are no doctors available in this department for the selected hospital."
-            />
-          )}
-        </div>
-      )}
 
+            {/* ========================================= */}
+            {/* EMPTY STATE */}
+            {/* ========================================= */}
+
+            {doctors.length === 0 &&
+              !error && (
+                <EmptyState
+                  icon={EmptyIcons.stethoscope(28)}
+                  title="No doctors available"
+                  description={`There are no doctors assigned to ${selectedDepartment} at ${selectedHospital.name}.`}
+                />
+              )}
+
+          </div>
+        )}
+
+
+      {/* ============================================= */}
       {/* CTA */}
+      {/* ============================================= */}
+
       <Button
         variant="primary"
-        onClick={() => navigate('/patient/book')}
+        onClick={() =>
+          navigate('/patient/book')
+        }
         disabled={!selectedDoctor}
         className="px-[28px] py-[12px] text-[14px]"
       >
         Book OPD Appointment →
       </Button>
+
     </PatientLayout>
   );
 }

@@ -4,10 +4,12 @@ ALTER TABLE patients ADD COLUMN IF NOT EXISTS patient_id VARCHAR(32);
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS age INTEGER;
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS active BOOLEAN;
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS created_at TIMESTAMP;
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS email_verified BOOLEAN;
 
 UPDATE patients SET age = 1 WHERE age IS NULL;
 UPDATE patients SET active = TRUE WHERE active IS NULL;
 UPDATE patients SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL;
+UPDATE patients SET email_verified = TRUE WHERE email_verified IS NULL;
 
 SELECT setval(
     'patient_id_seq',
@@ -29,8 +31,12 @@ ALTER TABLE patients ALTER COLUMN patient_id SET NOT NULL;
 ALTER TABLE patients ALTER COLUMN age SET NOT NULL;
 ALTER TABLE patients ALTER COLUMN active SET NOT NULL;
 ALTER TABLE patients ALTER COLUMN created_at SET NOT NULL;
+ALTER TABLE patients ALTER COLUMN email_verified SET NOT NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_patients_patient_id ON patients(patient_id);
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS email VARCHAR(320);
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_doctors_email ON doctors(email) WHERE email IS NOT NULL;
 CREATE TABLE IF NOT EXISTS otp_verifications (
     id BIGSERIAL PRIMARY KEY,
     identifier VARCHAR(320) NOT NULL,

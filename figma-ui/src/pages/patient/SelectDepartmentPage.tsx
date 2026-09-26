@@ -109,6 +109,7 @@ export default function SelectDepartmentPage() {
     selectedHospital,
     selectedDepartment,
     setSelectedDepartment,
+    setSelectedDepartmentId,
     setSelectedDoctor,
     setSelectedSlot,
   } = usePatient();
@@ -179,7 +180,7 @@ export default function SelectDepartmentPage() {
          */
         const hospitalDoctors = doctorData.filter(
           (doctor) =>
-            doctor.hospital?.id === selectedHospital.id
+            Number(doctor.hospital?.id) === Number(selectedHospital.id)
         );
 
         /*
@@ -257,6 +258,7 @@ export default function SelectDepartmentPage() {
    */
   const handleSelect = (department: BackendDepartment) => {
     setSelectedDepartment(department.name);
+    setSelectedDepartmentId(department.id);
 
     /*
      * Reset doctor and slot whenever

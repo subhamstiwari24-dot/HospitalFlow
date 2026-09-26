@@ -44,6 +44,9 @@ public class Patient {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "email_verified", nullable = false)
+    private Boolean emailVerified = true;
+
     public Patient() {
         this.createdAt = LocalDateTime.now();
     }
@@ -118,5 +121,13 @@ public class Patient {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Boolean getEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(Boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 }

@@ -1,0 +1,25 @@
+# PostgreSQL
+spring.datasource.url=jdbc:postgresql://localhost:5432/hospitalflow
+spring.datasource.username=postgres
+spring.datasource.password=YOUR_POSTGRES_PASSWORD
+
+# JPA / Hibernate
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+# Gmail SMTP
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=YOUR_GMAIL_ADDRESS
+spring.mail.password=YOUR_GMAIL_APP_PASSWORD
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+# HospitalFlow email
+hospitalflow.mail.from=YOUR_GMAIL_ADDRESS
+hospitalflow.otp.dev-mode=false
+
+# Server
+server.port=8080

@@ -92,12 +92,9 @@ public class PatientController {
 
             patientService.savePendingRegistration(request.fullName(), request.age(), request.phone(),
                     request.email(), request.password());
-            String devOtp = otpService.issue(request.email(), OtpVerification.Purpose.REGISTRATION);
+                        otpService.issue(request.email(), OtpVerification.Purpose.REGISTRATION);
             Map<String, Object> response = new HashMap<>();
             response.put("message", "A verification OTP has been sent to your email");
-            if (devOtp != null) {
-                response.put("devOtp", devOtp);
-            }
 
             return ResponseEntity
                     .status(HttpStatus.ACCEPTED)
@@ -112,6 +109,9 @@ public class PatientController {
                             e.getMessage()
                     ));
 
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("message", "Email delivery is not configured"));
         } catch (Exception e) {
 
             return ResponseEntity
@@ -134,10 +134,9 @@ public class PatientController {
         @PostMapping("/register/resend")
         public ResponseEntity<?> resendRegistrationOtp(@RequestBody EmailRequest request) {
                 try {
-                        String devOtp = otpService.issue(request.email(), OtpVerification.Purpose.REGISTRATION);
+                        otpService.issue(request.email(), OtpVerification.Purpose.REGISTRATION);
                         Map<String, Object> response = new HashMap<>();
                         response.put("message", "A verification OTP has been sent to your email");
-                        if (devOtp != null) response.put("devOtp", devOtp);
                         return ResponseEntity.accepted().body(response);
                 } catch (IllegalArgumentException e) {
                         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("message", e.getMessage()));
@@ -151,8 +150,7 @@ public class PatientController {
                         return ResponseEntity.ok(Map.of("message", generic));
                 }
                 try {
-                        String devOtp = otpService.issue(request.email(), OtpVerification.Purpose.FORGOT_PASSWORD);
-                        if (devOtp != null) return ResponseEntity.ok(Map.of("message", generic, "devOtp", devOtp));
+                            otpService.issue(request.email(), OtpVerification.Purpose.FORGOT_PASSWORD);
                 } catch (IllegalArgumentException ignored) {
                         // Keep cooldown state private.
                 }

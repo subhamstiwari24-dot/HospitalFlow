@@ -11,7 +11,6 @@ import PatientInitials from '../../components/PatientInitials';
 import EmptyState, { EmptyIcons, ErrorState } from '../../components/EmptyState';
 
 const API_URL = '/api';
-const DOCTOR_ID = 1;
 
 type BackendStatus =
   | 'WAITING'
@@ -196,6 +195,8 @@ export default function QueuePage() {
     useState('');
 
   const today = getTodayDate();
+  const storedDoctor = sessionStorage.getItem('hospitalflow_doctor');
+  const sessionDoctorId = storedDoctor ? Number(JSON.parse(storedDoctor).doctorId) : NaN;
 
   /**
    * Load all appointments from backend.
@@ -247,14 +248,14 @@ export default function QueuePage() {
               appointment.appointmentDate
             ).trim();
 
-          const doctorId =
+          const appointmentDoctorId =
             Number(
               appointment.doctor?.id
             );
 
           return (
             appointmentDate === today &&
-            doctorId === DOCTOR_ID
+            appointmentDoctorId === sessionDoctorId
           );
         });
 

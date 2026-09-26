@@ -22,6 +22,7 @@ const STORAGE_KEYS = {
   patientPhone: 'hospitalflow_patient_phone',
   selectedHospital: 'hospitalflow_selected_hospital',
   selectedDepartment: 'hospitalflow_selected_department',
+  selectedDepartmentId: 'hospitalflow_selected_department_id',
   selectedDoctor: 'hospitalflow_selected_doctor',
   selectedDate: 'hospitalflow_selected_date',
   selectedSlot: 'hospitalflow_selected_slot',
@@ -59,6 +60,8 @@ interface PatientContextValue {
 
   selectedDepartment: string | null;
   setSelectedDepartment: (d: string | null) => void;
+  selectedDepartmentId: number | null;
+  setSelectedDepartmentId: (id: number | null) => void;
   selectedDoctor: SelectedDoctor | null;
   setSelectedDoctor: (d: SelectedDoctor | null) => void;
 
@@ -290,6 +293,14 @@ export function PatientProvider({
       )
     );
 
+  const [selectedDepartmentId, setSelectedDepartmentId] =
+    useState<number | null>(() =>
+      readStorage<number | null>(
+        STORAGE_KEYS.selectedDepartmentId,
+        null
+      )
+    );
+
   const [selectedDoctor, setSelectedDoctor] =
     useState<SelectedDoctor | null>(() =>
       readStorage<SelectedDoctor | null>(
@@ -405,6 +416,18 @@ export function PatientProvider({
         removeStorage(
           STORAGE_KEYS.selectedDepartment
         );
+      }
+    },
+    []
+  );
+
+  const updateSelectedDepartmentId = useCallback(
+    (departmentId: number | null) => {
+      setSelectedDepartmentId(departmentId);
+      if (departmentId !== null) {
+        writeStorage(STORAGE_KEYS.selectedDepartmentId, departmentId);
+      } else {
+        removeStorage(STORAGE_KEYS.selectedDepartmentId);
       }
     },
     []
@@ -804,6 +827,10 @@ export function PatientProvider({
         selectedDepartment,
         setSelectedDepartment:
           updateSelectedDepartment,
+
+        selectedDepartmentId,
+        setSelectedDepartmentId:
+          updateSelectedDepartmentId,
 
         selectedDoctor,
         setSelectedDoctor:

@@ -1,6 +1,7 @@
 package com.hospitalflow.backend.entity;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
 @Table(name = "doctors")
@@ -24,6 +25,13 @@ public class Doctor {
     private String status;
 
     private String consultationTime;
+
+    @Column(unique = true)
+    private String email;
+
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @Column(name = "password_hash")
+    private String passwordHash;
 
     @ManyToOne
     @JoinColumn(name = "hospital_id")
@@ -110,6 +118,22 @@ public class Doctor {
 
     public void setConsultationTime(String consultationTime) {
         this.consultationTime = consultationTime;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public Hospital getHospital() {

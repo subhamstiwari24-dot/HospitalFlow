@@ -25,7 +25,8 @@ export default function PatientRegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [registrationStep, setRegistrationStep] = useState<1 | 2>(1);
   const [otp, setOtp] = useState('');
-  const [devOtp, setDevOtp] = useState('');
+  const [resendMessage, setResendMessage] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const validate = () => {
     const nextErrors: typeof errors = {};
@@ -139,7 +140,6 @@ export default function PatientRegisterPage() {
         return;
       }
 
-      setDevOtp(data?.devOtp || '');
       setRegistrationStep(2);
     } catch (error) {
       console.error(
@@ -151,6 +151,39 @@ export default function PatientRegisterPage() {
         general:
           'Unable to connect to the server. Please make sure the backend is running.',
       });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendRegistrationOtp = async () => {
+    if (resendCooldown > 0) return;
+    setIsLoading(true);
+    setResendMessage('');
+    try {
+      const response = await fetch('/api/patients/register/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setResendMessage(data?.message || 'Unable to resend OTP');
+        return;
+      }
+      setResendMessage('A new OTP was sent to your email.');
+      setResendCooldown(60);
+      const timer = window.setInterval(() => {
+        setResendCooldown((current) => {
+          if (current <= 1) {
+            window.clearInterval(timer);
+            return 0;
+          }
+          return current - 1;
+        });
+      }, 1000);
+    } catch {
+      setResendMessage('Unable to connect to the server.');
     } finally {
       setIsLoading(false);
     }
@@ -247,9 +280,10 @@ export default function PatientRegisterPage() {
               <form onSubmit={handleVerifyRegistration} className="flex flex-col gap-[15px]">
                 {errors.general && <div className="bg-[#fff1f2] border border-[#f3c3c7] rounded-[10px] px-[12px] py-[10px]"><p className="text-[#c53a45] text-[12px]">{errors.general}</p></div>}
                 <p className="text-[#526176] text-[13px]">Enter the 6-digit code sent to {email}.</p>
-                {devOtp && <p className="text-[#18865b] text-[12px]">Development OTP: {devOtp}</p>}
+                {resendMessage && <p className="text-[#18865b] text-[12px]">{resendMessage}</p>}
                 <input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" maxLength={6} placeholder="Enter OTP" className={inputBase} />
                 <Button variant="primary" type="submit" disabled={isLoading} className="w-full justify-center py-[12px]">{isLoading ? 'Verifying...' : 'Verify Email'}</Button>
+                <button type="button" onClick={handleResendRegistrationOtp} disabled={isLoading || resendCooldown > 0} className="font-semibold text-[#155ead] text-[12px] disabled:opacity-50">{resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}</button>
                 <button type="button" onClick={() => setRegistrationStep(1)} className="font-semibold text-[#155ead] text-[12px]">Back to registration</button>
               </form>
             ) : (

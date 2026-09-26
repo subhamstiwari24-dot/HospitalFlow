@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/doctors")
@@ -25,6 +26,26 @@ public class DoctorController {
     public List<Doctor> getAllDoctors() {
         return doctorService.getAllDoctors();
     }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        if (request.identifier() == null || request.password() == null
+                || request.identifier().isBlank() || request.password().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Doctor ID/email and password are required"));
+        }
+        return doctorService.authenticate(request.identifier(), request.password())
+                .map(doctor -> ResponseEntity.ok(Map.of(
+                        "message", "Login successful",
+                        "role", "DOCTOR",
+                        "doctorId", doctor.getId(),
+                        "name", doctor.getName(),
+                        "email", doctor.getEmail() == null ? "" : doctor.getEmail()
+                )))
+                .orElseGet(() -> ResponseEntity.status(401)
+                        .body(Map.of("message", "Invalid doctor ID/email or password")));
+    }
+
+    public record LoginRequest(String identifier, String password) {}
 
     @GetMapping("/{id}")
     public ResponseEntity<Doctor> getDoctorById(@PathVariable Long id) {

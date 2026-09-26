@@ -233,8 +233,6 @@ export default function DoctorManagementPage() {
 
             patients: patientCounts.get(doctor.id) ?? 0,
 
-            // IMPORTANT:
-            // Use the real backend department relationship.
             department: doctor.department?.name ?? 'Not assigned',
 
             room: 'Room not assigned',
@@ -317,16 +315,6 @@ export default function DoctorManagementPage() {
           status: doc.status === 'Offline' ? 'Available' : 'Offline',
           consultationTime: doc.consultationTime,
           hospital: doc.hospital,
-
-          // Preserve current department relationship.
-          department: doc.department
-            ? {
-                id:
-                  doctors.find((doctor) => doctor.id === doc.id)?.department
-                    ? undefined
-                    : undefined,
-              }
-            : undefined,
         }),
       });
 
@@ -412,7 +400,7 @@ export default function DoctorManagementPage() {
 
           <p className="font-normal text-[#526176] text-[14px] mt-[4px]">
             {doctors.length} doctor
-            {doctors.length !== 1 ? 's' : ''} · North Campus
+            {doctors.length !== 1 ? 's' : ''} · Metro Health Hospital
           </p>
         </div>
 

@@ -2,7 +2,6 @@ package com.hospitalflow.backend.service;
 
 import com.hospitalflow.backend.entity.OtpVerification;
 import com.hospitalflow.backend.repository.OtpVerificationRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,7 +46,7 @@ public class OtpService {
         verification.setCreatedAt(now);
         repository.save(verification);
         mailService.sendOtp(normalized, otp, purpose);
-        return mailService.isDevMode() ? otp : null;
+        return null;
     }
 
     @Transactional

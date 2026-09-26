@@ -82,6 +82,7 @@ public class PatientService {
         );
 
         patient.setActive(true);
+        patient.setEmailVerified(true);
 
         return patientRepository.save(patient);
     }
@@ -131,6 +132,7 @@ public class PatientService {
                 patient.setEmail(email.trim().toLowerCase());
                 patient.setPasswordHash(alreadyHashed ? password : passwordEncoder.encode(password));
                 patient.setActive(true);
+                patient.setEmailVerified(true);
                 return patientRepository.save(patient);
         }
 

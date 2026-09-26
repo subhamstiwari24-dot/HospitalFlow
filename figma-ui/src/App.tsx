@@ -27,6 +27,13 @@ import AppointmentDetailsPage from './pages/patient/AppointmentDetailsPage';
 import { PatientProvider } from './context/PatientContext';
 import { SharedQueueProvider } from './context/SharedQueueContext';
 
+// ==================== DOCTOR ====================
+
+import DoctorDashboardPage from './pages/doctor/DashboardPage';
+import DoctorQueuePage from './pages/doctor/QueuePage';
+import DoctorAppointmentsPage from './pages/doctor/AppointmentsPage';
+import DoctorPatientDetailsPage from './pages/doctor/PatientDetailsPage';
+
 // ==================== ADMIN ====================
 
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -51,13 +58,11 @@ function PatientRoutes() {
     <PatientProvider>
       <Routes>
 
-        {/* Patient Login */}
         <Route
           path="login"
           element={<PatientLoginPage />}
         />
 
-        {/* Patient Register */}
         <Route
           path="register"
           element={<PatientRegisterPage />}
@@ -68,79 +73,66 @@ function PatientRoutes() {
           element={<ForgotPasswordPage />}
         />
 
-        {/* Patient Dashboard */}
         <Route
           path="dashboard"
           element={<PatientDashboardPage />}
         />
 
-        {/* My Appointments */}
         <Route
           path="appointments"
           element={<MyAppointmentsPage />}
         />
 
-        {/* OPD History */}
         <Route
           path="history"
           element={<OPDHistoryPage />}
         />
 
-        {/* Patient Entry / Guest Booking */}
         <Route
           path=""
           element={<PatientEntryPage />}
         />
 
-        {/* Hospital Selection */}
         <Route
           path="hospital"
           element={<SearchHospitalPage />}
         />
 
-        {/* Department Selection */}
         <Route
           path="department"
           element={<SelectDepartmentPage />}
         />
 
-        {/* Doctor Selection */}
         <Route
           path="doctor"
           element={<SelectDoctorPage />}
         />
 
-        {/* OPD Booking */}
         <Route
           path="book"
           element={<BookOPDPage />}
         />
 
-        {/* Booking Confirmation */}
         <Route
           path="confirmation"
           element={<BookingConfirmationPage />}
         />
 
-        {/* Token Details */}
         <Route
           path="token"
           element={<TokenDetailsPage />}
         />
 
-        {/* Live Queue */}
         <Route
           path="queue"
           element={<LiveQueuePage />}
         />
 
-        {/* Appointment Details */}
         <Route
           path="appointment"
           element={<AppointmentDetailsPage />}
         />
 
-        {/* Unknown Patient Route */}
         <Route
           path="*"
           element={<Navigate to="" replace />}
@@ -158,29 +150,55 @@ function PatientRoutes() {
 
 function DoctorRoutes() {
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'Arial, sans-serif',
-        background: '#f8fafc',
-      }}
-    >
-      <div
-        style={{
-          textAlign: 'center',
-          padding: '40px',
-        }}
-      >
-        <h2>Doctor Dashboard</h2>
+    <Routes>
 
-        <p>
-          Doctor module will be connected here.
-        </p>
-      </div>
-    </div>
+      {/* Doctor Dashboard */}
+      <Route
+        path="dashboard"
+        element={<DoctorDashboardPage />}
+      />
+
+      {/* Doctor Queue */}
+      <Route
+        path="queue"
+        element={<DoctorQueuePage />}
+      />
+
+      {/* Doctor Appointments */}
+      <Route
+        path="appointments"
+        element={<DoctorAppointmentsPage />}
+      />
+
+      {/* Doctor Patient Details */}
+      <Route
+        path="patients"
+        element={<DoctorPatientDetailsPage />}
+      />
+
+      {/* Default Doctor Route */}
+      <Route
+        path=""
+        element={
+          <Navigate
+            to="dashboard"
+            replace
+          />
+        }
+      />
+
+      {/* Unknown Doctor Route */}
+      <Route
+        path="*"
+        element={
+          <Navigate
+            to="dashboard"
+            replace
+          />
+        }
+      />
+
+    </Routes>
   );
 }
 
@@ -243,7 +261,12 @@ function AdminRoutes() {
       {/* Unknown Admin Route */}
       <Route
         path="*"
-        element={<Navigate to="dashboard" replace />}
+        element={
+          <Navigate
+            to="dashboard"
+            replace
+          />
+        }
       />
 
     </Routes>
@@ -263,7 +286,7 @@ export default function App() {
 
         <Routes>
 
-          {/* Landing Page */}
+          {/* Landing */}
           <Route
             path="/"
             element={<LandingPage />}
@@ -293,10 +316,15 @@ export default function App() {
             element={<PatientRoutes />}
           />
 
-          {/* Unknown Route */}
+          {/* Unknown */}
           <Route
             path="*"
-            element={<Navigate to="/" replace />}
+            element={
+              <Navigate
+                to="/"
+                replace
+              />
+            }
           />
 
         </Routes>
