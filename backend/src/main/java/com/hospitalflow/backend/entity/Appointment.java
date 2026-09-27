@@ -13,11 +13,17 @@ public class Appointment {
     @Column(nullable = false)
     private String patientName;
 
+    private Integer patientAge;
+
     private String patientPhone;
 
     private String appointmentDate;
 
     private String appointmentTime;
+
+    // Patient's reason/problem for visiting the doctor
+    @Column(columnDefinition = "TEXT")
+    private String reasonForVisit;
 
     @Column(nullable = false)
     private String tokenNumber;
@@ -51,6 +57,14 @@ public class Appointment {
         this.patientName = patientName;
     }
 
+    public Integer getPatientAge() {
+        return patientAge;
+    }
+
+    public void setPatientAge(Integer patientAge) {
+        this.patientAge = patientAge;
+    }
+
     public String getPatientPhone() {
         return patientPhone;
     }
@@ -73,6 +87,14 @@ public class Appointment {
 
     public void setAppointmentTime(String appointmentTime) {
         this.appointmentTime = appointmentTime;
+    }
+
+    public String getReasonForVisit() {
+        return reasonForVisit;
+    }
+
+    public void setReasonForVisit(String reasonForVisit) {
+        this.reasonForVisit = reasonForVisit;
     }
 
     public String getTokenNumber() {

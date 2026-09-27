@@ -332,22 +332,6 @@ export default function PatientLoginPage() {
 
           </div>
 
-          {/* Guest Booking */}
-          <div className="mt-[16px] bg-white border border-[#d8e1ec] rounded-[14px] p-[18px] text-center shadow-[0px_2px_12px_0px_rgba(19,36,58,0.04)]">
-
-            <p className="font-semibold text-[#142033] text-[13px]">
-              Don't want to register?
-            </p>
-
-            <button
-              onClick={() => navigate('/patient')}
-              className="font-bold text-[#18865b] text-[13px] mt-[5px] cursor-pointer hover:opacity-80"
-            >
-              Continue as Guest →
-            </button>
-
-          </div>
-
         </div>
 
       </div>

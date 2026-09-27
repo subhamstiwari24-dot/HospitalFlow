@@ -19,7 +19,9 @@ const API_URL = '/api';
 const STORAGE_KEYS = {
   booking: 'hospitalflow_patient_booking',
   patientName: 'hospitalflow_patient_name',
+  patientAge: 'hospitalflow_patient_age',
   patientPhone: 'hospitalflow_patient_phone',
+  reasonForVisit: 'hospitalflow_patient_reason',
   selectedHospital: 'hospitalflow_selected_hospital',
   selectedDepartment: 'hospitalflow_selected_department',
   selectedDepartmentId: 'hospitalflow_selected_department_id',
@@ -51,8 +53,13 @@ export interface TokenView {
 interface PatientContextValue {
   // Patient identity
   patientName: string;
+  patientAge: number | null;
   patientPhone: string;
+  reasonForVisit: string;
+
   setPatientIdentity: (name: string, phone: string) => void;
+  setPatientAge: (age: number | null) => void;
+  setReasonForVisit: (reason: string) => void;
 
   // Booking funnel selections
   selectedHospital: Hospital | null;
@@ -60,8 +67,10 @@ interface PatientContextValue {
 
   selectedDepartment: string | null;
   setSelectedDepartment: (d: string | null) => void;
+
   selectedDepartmentId: number | null;
   setSelectedDepartmentId: (id: number | null) => void;
+
   selectedDoctor: SelectedDoctor | null;
   setSelectedDoctor: (d: SelectedDoctor | null) => void;
 
@@ -136,11 +145,11 @@ function removeStorage(key: string) {
 /**
  * Converts UI date:
  *
- * "Thu, 24 Sep 2026"
+ * "Sun, 27 Sep 2026"
  *
  * to:
  *
- * "2026-09-24"
+ * "2026-09-27"
  */
 function convertDateToBackendFormat(
   dateString: string
@@ -149,9 +158,11 @@ function convertDateToBackendFormat(
 
   if (!Number.isNaN(parsed.getTime())) {
     const year = parsed.getFullYear();
+
     const month = String(
       parsed.getMonth() + 1
     ).padStart(2, '0');
+
     const day = String(
       parsed.getDate()
     ).padStart(2, '0');
@@ -193,6 +204,7 @@ function convertDateToBackendFormat(
 
 function getTodayDisplayDate(): string {
   const now = new Date();
+
   const weekdays = [
     'Sun',
     'Mon',
@@ -202,6 +214,7 @@ function getTodayDisplayDate(): string {
     'Fri',
     'Sat',
   ];
+
   const months = [
     'Jan',
     'Feb',
@@ -250,15 +263,10 @@ export function PatientProvider({
   const shared = useSharedQueue();
 
   /*
-   * IMPORTANT:
-   *
    * These values are initialized directly from localStorage.
    *
-   * This means when user refreshes:
-   *
-   * /patient/queue
-   *
-   * booking is restored immediately instead of becoming null.
+   * This means when user refreshes the patient flow,
+   * patient information remains available.
    */
 
   const [patientName, setPatientName] =
@@ -269,10 +277,26 @@ export function PatientProvider({
       )
     );
 
+  const [patientAge, setPatientAgeState] =
+    useState<number | null>(() =>
+      readStorage<number | null>(
+        STORAGE_KEYS.patientAge,
+        null
+      )
+    );
+
   const [patientPhone, setPatientPhone] =
     useState<string>(() =>
       readStorage(
         STORAGE_KEYS.patientPhone,
+        ''
+      )
+    );
+
+  const [reasonForVisit, setReasonForVisitState] =
+    useState<string>(() =>
+      readStorage(
+        STORAGE_KEYS.reasonForVisit,
         ''
       )
     );
@@ -326,11 +350,10 @@ export function PatientProvider({
     );
 
   /*
-   * THIS IS THE MAIN FIX.
-   *
    * Booking is restored from localStorage
    * immediately when the page loads.
    */
+
   const [booking, setBooking] =
     useState<PatientBooking | null>(() =>
       readStorage<PatientBooking | null>(
@@ -359,13 +382,17 @@ export function PatientProvider({
         const today = getTodayDisplayDate();
 
         setSelectedDate(today);
+
         writeStorage(
           STORAGE_KEYS.selectedDate,
           today
         );
 
         setSelectedSlot(null);
-        removeStorage(STORAGE_KEYS.selectedSlot);
+
+        removeStorage(
+          STORAGE_KEYS.selectedSlot
+        );
       }
 
       writeStorage(
@@ -379,6 +406,45 @@ export function PatientProvider({
       );
     },
     [patientName, patientPhone]
+  );
+
+  /* ============================================================
+     PATIENT AGE
+     ============================================================ */
+
+  const updatePatientAge = useCallback(
+    (age: number | null) => {
+      setPatientAgeState(age);
+
+      if (age === null) {
+        removeStorage(
+          STORAGE_KEYS.patientAge
+        );
+        return;
+      }
+
+      writeStorage(
+        STORAGE_KEYS.patientAge,
+        age
+      );
+    },
+    []
+  );
+
+  /* ============================================================
+     REASON FOR VISIT
+     ============================================================ */
+
+  const updateReasonForVisit = useCallback(
+    (reason: string) => {
+      setReasonForVisitState(reason);
+
+      writeStorage(
+        STORAGE_KEYS.reasonForVisit,
+        reason
+      );
+    },
+    []
   );
 
   /* ============================================================
@@ -423,11 +489,19 @@ export function PatientProvider({
 
   const updateSelectedDepartmentId = useCallback(
     (departmentId: number | null) => {
-      setSelectedDepartmentId(departmentId);
+      setSelectedDepartmentId(
+        departmentId
+      );
+
       if (departmentId !== null) {
-        writeStorage(STORAGE_KEYS.selectedDepartmentId, departmentId);
+        writeStorage(
+          STORAGE_KEYS.selectedDepartmentId,
+          departmentId
+        );
       } else {
-        removeStorage(STORAGE_KEYS.selectedDepartmentId);
+        removeStorage(
+          STORAGE_KEYS.selectedDepartmentId
+        );
       }
     },
     []
@@ -486,18 +560,7 @@ export function PatientProvider({
      ============================================================ */
 
   /*
-   * SharedQueueContext is now the backend source of truth.
-   *
-   * Example:
-   *
-   * Backend:
-   * A01 -> COMPLETED
-   * A02 -> COMPLETED
-   * A03 -> IN_PROGRESS
-   * A04 -> WAITING
-   * A05 -> WAITING
-   *
-   * Patient UI receives the same statuses.
+   * SharedQueueContext is the backend source of truth.
    */
 
   const queueTokens: TokenView[] =
@@ -508,6 +571,113 @@ export function PatientProvider({
 
   const currentServing =
     shared.currentServing;
+
+  /* ============================================================
+     SYNC LOGGED-IN PATIENT PROFILE
+     ============================================================ */
+
+  const fetchLatestLoggedInPatientProfile = useCallback(
+    async (): Promise<{
+      fullName?: string;
+      age?: number | string;
+      phone?: string;
+    } | null> => {
+      try {
+        const storedPatient =
+          sessionStorage.getItem('hospitalflow_patient');
+
+        if (!storedPatient) {
+          return null;
+        }
+
+        const patientSession = JSON.parse(storedPatient);
+
+        if (!patientSession?.phone) {
+          return null;
+        }
+
+        const response = await fetch(
+          `${API_URL}/patients/profile/${encodeURIComponent(
+            patientSession.phone
+          )}`
+        );
+
+        if (!response.ok) {
+          return null;
+        }
+
+        const profile = await response.json();
+
+        /*
+         * Sync latest name from backend profile.
+         */
+        if (
+          typeof profile.fullName === 'string' &&
+          profile.fullName.trim()
+        ) {
+          const latestName =
+            profile.fullName.trim();
+
+          setPatientName(latestName);
+
+          writeStorage(
+            STORAGE_KEYS.patientName,
+            latestName
+          );
+        }
+
+        /*
+         * Sync latest age from backend profile.
+         */
+        const normalizedAge = Number(profile.age);
+
+        if (
+          Number.isInteger(normalizedAge) &&
+          normalizedAge >= 1 &&
+          normalizedAge <= 120
+        ) {
+          setPatientAgeState(normalizedAge);
+
+          writeStorage(
+            STORAGE_KEYS.patientAge,
+            normalizedAge
+          );
+        }
+
+        /*
+         * IMPORTANT:
+         * Sync the latest phone from the backend profile.
+         *
+         * This prevents an old phone number stored in
+         * localStorage from being used during booking.
+         */
+        if (
+          typeof profile.phone === 'string' &&
+          profile.phone.trim()
+        ) {
+          const latestPhone =
+            profile.phone.trim();
+
+          setPatientPhone(latestPhone);
+
+          writeStorage(
+            STORAGE_KEYS.patientPhone,
+            latestPhone
+          );
+        }
+
+        return profile;
+      } catch (error) {
+        console.error(
+          'Unable to sync latest patient profile:',
+          error
+        );
+
+        return null;
+      }
+    },
+    []
+  );
 
   /* ============================================================
      REAL BACKEND BOOKING
@@ -539,15 +709,80 @@ export function PatientProvider({
         );
       }
 
-      if (!patientName.trim()) {
+      /*
+       * IMPORTANT:
+       * For a logged-in patient, always fetch the latest
+       * profile before booking. This prevents old name,
+       * age, or phone values in localStorage from being used
+       * after the patient edits their profile.
+       */
+      const latestProfile =
+        await fetchLatestLoggedInPatientProfile();
+
+      const bookingName =
+        typeof latestProfile?.fullName === 'string' &&
+        latestProfile.fullName.trim()
+          ? latestProfile.fullName.trim()
+          : patientName;
+
+      const profileAge =
+        Number(latestProfile?.age);
+
+      const bookingAge =
+        Number.isInteger(profileAge) &&
+        profileAge >= 1 &&
+        profileAge <= 120
+          ? profileAge
+          : patientAge;
+
+      /*
+       * IMPORTANT:
+       * Always prefer the latest phone returned by
+       * the backend patient profile.
+       *
+       * Fallback to the existing patientPhone only when
+       * the profile does not contain a valid phone.
+       */
+      const profilePhone =
+        typeof latestProfile?.phone === 'string' &&
+        latestProfile.phone.trim()
+          ? latestProfile.phone.trim()
+          : patientPhone.trim();
+
+      if (bookingAge !== null) {
+        setPatientAgeState(bookingAge);
+
+        writeStorage(
+          STORAGE_KEYS.patientAge,
+          bookingAge
+        );
+      }
+
+      if (!bookingName.trim()) {
         throw new Error(
           'Patient name is required.'
         );
       }
 
-      if (!patientPhone.trim()) {
+      if (
+        bookingAge === null ||
+        bookingAge < 1 ||
+        bookingAge > 120
+      ) {
+        throw new Error(
+          'Patient age must be between 1 and 120.'
+        );
+      }
+
+      if (!profilePhone.trim()) {
         throw new Error(
           'Patient phone number is required.'
+        );
+      }
+
+      if (!reasonForVisit.trim()) {
+        throw new Error(
+          'Reason for visit is required.'
         );
       }
 
@@ -556,12 +791,28 @@ export function PatientProvider({
           selectedDate
         );
 
+      /*
+       * Appointment payload sent to Spring Boot.
+       *
+       * This includes:
+       * - latest patient name
+       * - latest patient age
+       * - latest patient phone
+       * - reasonForVisit
+       */
+
       const appointmentPayload = {
         patientName:
-          patientName.trim(),
+          bookingName.trim(),
+
+        patientAge:
+          bookingAge,
 
         patientPhone:
-          patientPhone.trim(),
+          profilePhone,
+
+        reasonForVisit:
+          reasonForVisit.trim(),
 
         appointmentDate:
           backendDate,
@@ -621,9 +872,10 @@ export function PatientProvider({
       const createdAppointment =
         await response.json();
 
-      const appointmentId = Number(
-        createdAppointment.id
-      );
+      const appointmentId =
+        Number(
+          createdAppointment.id
+        );
 
       if (!Number.isInteger(appointmentId)) {
         throw new Error(
@@ -749,12 +1001,12 @@ export function PatientProvider({
       );
 
       /*
-       * SharedQueueContext already listens to
-       * backend/WebSocket.
+       * SharedQueueContext listens to backend/WebSocket.
        *
        * Force a refresh so newly created
        * appointment appears immediately.
        */
+
       await shared.refreshQueue();
 
       return newBooking;
@@ -766,9 +1018,12 @@ export function PatientProvider({
       selectedDate,
       selectedSlot,
       patientName,
+      patientAge,
       patientPhone,
+      reasonForVisit,
       currentServing,
       shared,
+      fetchLatestLoggedInPatientProfile,
     ]
   );
 
@@ -815,39 +1070,57 @@ export function PatientProvider({
   return (
     <PatientContext.Provider
       value={{
+        // Patient identity
         patientName,
+        patientAge,
         patientPhone,
+        reasonForVisit,
 
         setPatientIdentity,
 
+        setPatientAge:
+          updatePatientAge,
+
+        setReasonForVisit:
+          updateReasonForVisit,
+
+        // Booking selections
         selectedHospital,
+
         setSelectedHospital:
           updateSelectedHospital,
 
         selectedDepartment,
+
         setSelectedDepartment:
           updateSelectedDepartment,
 
         selectedDepartmentId,
+
         setSelectedDepartmentId:
           updateSelectedDepartmentId,
 
         selectedDoctor,
+
         setSelectedDoctor:
           updateSelectedDoctor,
 
         selectedDate,
+
         setSelectedDate:
           updateSelectedDate,
 
         selectedSlot,
+
         setSelectedSlot:
           updateSelectedSlot,
 
+        // Booking
         booking,
         confirmBooking,
         cancelBooking,
 
+        // Queue
         queueTokens,
         currentServing,
         advanceQueue,

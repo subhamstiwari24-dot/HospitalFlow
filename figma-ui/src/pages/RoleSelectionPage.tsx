@@ -100,23 +100,6 @@ export default function RoleSelectionPage() {
 
           </div>
 
-          {/* Guest option */}
-          <div className="text-center mt-[30px]">
-
-            <p className="text-[#7b899c] text-[13px]">
-              Don't want to create an account?
-            </p>
-
-            <button
-              type="button"
-              onClick={() => navigate('/patient')}
-              className="mt-[8px] text-[#155ead] font-semibold text-[13px] hover:underline cursor-pointer"
-            >
-              Continue as Guest →
-            </button>
-
-          </div>
-
         </div>
 
       </main>

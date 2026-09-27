@@ -27,13 +27,19 @@ public class AppointmentController {
         this.appointmentRepository = appointmentRepository;
     }
 
-    // Get all appointments
+    // =====================================================
+    // GET ALL APPOINTMENTS
+    // =====================================================
+
     @GetMapping
     public List<Appointment> getAllAppointments() {
         return appointmentService.getAllAppointments();
     }
 
-    // Get appointment by ID
+    // =====================================================
+    // GET APPOINTMENT BY ID
+    // =====================================================
+
     @GetMapping("/{id}")
     public ResponseEntity<Appointment> getAppointmentById(
             @PathVariable Long id
@@ -43,7 +49,10 @@ public class AppointmentController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Get appointments of a particular patient
+    // =====================================================
+    // GET PATIENT APPOINTMENTS
+    // =====================================================
+
     @GetMapping("/patient/{phone}")
     public ResponseEntity<List<Appointment>> getAppointmentsByPatientPhone(
             @PathVariable String phone
@@ -56,7 +65,10 @@ public class AppointmentController {
         );
     }
 
-    // Get waiting queue for a doctor
+    // =====================================================
+    // GET WAITING QUEUE FOR DOCTOR
+    // =====================================================
+
     @GetMapping("/queue")
     public ResponseEntity<List<Appointment>> getQueue(
             @RequestParam Long doctorId,
@@ -70,7 +82,10 @@ public class AppointmentController {
         );
     }
 
-    // Create appointment
+    // =====================================================
+    // CREATE APPOINTMENT
+    // =====================================================
+
     @PostMapping
     public Appointment createAppointment(
             @RequestBody Appointment appointment
@@ -78,7 +93,10 @@ public class AppointmentController {
         return appointmentService.saveAppointment(appointment);
     }
 
-    // Update appointment
+    // =====================================================
+    // UPDATE APPOINTMENT
+    // =====================================================
+
     @PutMapping("/{id}")
     public ResponseEntity<Appointment> updateAppointment(
             @PathVariable Long id,
@@ -133,7 +151,46 @@ public class AppointmentController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Delete appointment
+    // =====================================================
+    // UPDATE APPOINTMENT STATUS
+    // =====================================================
+    //
+    // Used by:
+    // Doctor Queue
+    // Admin Queue
+    // Shared Queue
+    //
+    // Example:
+    // PATCH /api/appointments/23/status?status=IN_PROGRESS
+    //
+    // =====================================================
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Appointment> updateAppointmentStatus(
+            @PathVariable Long id,
+            @RequestParam String status
+    ) {
+
+        try {
+
+            Appointment updatedAppointment =
+                    appointmentService.updateStatus(
+                            id,
+                            status
+                    );
+
+            return ResponseEntity.ok(updatedAppointment);
+
+        } catch (RuntimeException e) {
+
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // =====================================================
+    // DELETE APPOINTMENT
+    // =====================================================
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAppointment(
             @PathVariable Long id

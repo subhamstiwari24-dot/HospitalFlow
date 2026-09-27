@@ -70,7 +70,6 @@ export default function LandingPage() {
 
             </button>
 
-
             {/* Patient */}
             <button
               type="button"
@@ -95,23 +94,6 @@ export default function LandingPage() {
                 Continue as Patient →
               </div>
 
-            </button>
-
-          </div>
-
-          {/* Guest Booking */}
-          <div className="text-center mt-[28px]">
-
-            <p className="text-[#7b899c] text-[13px]">
-              Don't want to create an account?
-            </p>
-
-            <button
-              type="button"
-              onClick={() => navigate('/patient')}
-              className="mt-[6px] text-[#159570] font-semibold text-[13px] hover:underline cursor-pointer"
-            >
-              Continue as Guest →
             </button>
 
           </div>

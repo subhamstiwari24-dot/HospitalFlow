@@ -12,13 +12,35 @@ import {
   isTenDigitPhone,
 } from '../../utils/validation';
 
-const DATES = [
-  'Thu, 24 Sep 2026',
-  'Fri, 25 Sep 2026',
-  'Sat, 26 Sep 2026',
-  'Mon, 28 Sep 2026',
-  'Tue, 29 Sep 2026',
-];
+/*
+ * Generate only today's date + next 4 days.
+ *
+ * This means previous dates will never appear in the
+ * booking date selector.
+ */
+const getAvailableDates = (): string[] => {
+  const dates: string[] = [];
+  const today = new Date();
+
+  for (let i = 0; i < 5; i++) {
+    const date = new Date(today);
+
+    date.setDate(today.getDate() + i);
+
+    const formattedDate = date.toLocaleDateString('en-GB', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    dates.push(formattedDate);
+  }
+
+  return dates;
+};
+
+const DATES = getAvailableDates();
 
 export default function BookOPDPage() {
   const navigate = useNavigate();
@@ -33,13 +55,20 @@ export default function BookOPDPage() {
     setSelectedSlot,
     patientName,
     patientPhone,
+    reasonForVisit,
+    setReasonForVisit,
     confirmBooking,
   } = usePatient();
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Current time updates every 30 seconds
+  /*
+   * Current time updates every 30 seconds.
+   *
+   * This is important for today's slots because a slot can
+   * become unavailable while the patient is on this page.
+   */
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -64,7 +93,7 @@ export default function BookOPDPage() {
   /*
    * Convert selected date like:
    *
-   * Sat, 26 Sep 2026
+   * Sun, 27 Sep 2026
    *
    * into a Date object.
    */
@@ -134,11 +163,14 @@ export default function BookOPDPage() {
    * Check whether a slot has already passed.
    *
    * Example:
+   *
    * Current time = 5:30 PM
    *
    * 5:20 PM -> true
    * 5:30 PM -> true
    * 5:40 PM -> false
+   *
+   * For future dates, no slot is considered past.
    */
   const isPastSlot = (slotTime: string): boolean => {
     if (!isSelectedDateToday()) {
@@ -181,9 +213,11 @@ export default function BookOPDPage() {
   /*
    * Only show slots that have not already passed.
    *
-   * For future dates all slots remain visible.
+   * Today:
+   *   Past slots are hidden.
    *
-   * For today, past slots are removed completely.
+   * Future dates:
+   *   All slots remain visible.
    */
   const visibleSlots = opdSlots.filter(
     (slot) => !isPastSlot(slot.time)
@@ -193,9 +227,8 @@ export default function BookOPDPage() {
     setSelectedDate(date);
 
     /*
-     * If selected slot is from the previous date,
-     * clear it so patient must choose a valid slot
-     * for the newly selected date.
+     * Clear previously selected slot whenever the
+     * patient changes the date.
      */
     setSelectedSlot('');
     setError('');
@@ -206,6 +239,10 @@ export default function BookOPDPage() {
       return;
     }
 
+    /*
+     * Extra protection against selecting a slot that
+     * passed while the page was open.
+     */
     if (isPastSlot(slotTime)) {
       return;
     }
@@ -227,23 +264,46 @@ export default function BookOPDPage() {
      */
     if (isPastSlot(selectedSlot)) {
       setSelectedSlot('');
+
       setError(
         'This time slot has already passed. Please select another slot.'
       );
+
       return;
     }
 
+    /*
+     * Validate patient name.
+     */
     if (!hasMinimumLength(patientName, 2)) {
       setError(
         'Full name must be at least 2 characters.'
       );
+
       return;
     }
 
+    /*
+     * Validate mobile number.
+     */
     if (!isTenDigitPhone(patientPhone)) {
       setError(
         'Mobile number must be exactly 10 digits.'
       );
+
+      return;
+    }
+
+    /*
+     * Validate reason for visit before creating
+     * the appointment. Registered patients enter
+     * this at booking time.
+     */
+    if (!reasonForVisit.trim()) {
+      setError(
+        'Please enter your reason for visit.'
+      );
+
       return;
     }
 
@@ -394,6 +454,49 @@ export default function BookOPDPage() {
 
               </div>
 
+            </div>
+
+          </div>
+
+          {/* ==================== REASON FOR VISIT ==================== */}
+
+          <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
+
+            <div className="flex items-center gap-[8px] mb-[12px]">
+
+              <div className="bg-[#6750a4] h-[20px] rounded-[2px] w-[4px]" />
+
+              <p className="font-bold text-[#142033] text-[15px]">
+                Reason for Visit
+              </p>
+
+              <span className="text-[#d14343] text-[13px]">
+                *
+              </span>
+
+            </div>
+
+            <p className="font-normal text-[#7b899c] text-[12px] mb-[8px]">
+              Briefly describe why you are visiting the doctor.
+            </p>
+
+            <textarea
+              value={reasonForVisit}
+              onChange={(event) => {
+                setReasonForVisit(event.target.value);
+                setError('');
+              }}
+              disabled={submitting}
+              rows={4}
+              maxLength={500}
+              placeholder="Example: Fever and weakness for the last 2 days"
+              className="w-full resize-none rounded-[10px] border border-[#d8e1ec] bg-white px-[12px] py-[10px] text-[13px] text-[#142033] outline-none transition-colors placeholder:text-[#9aa7b8] focus:border-[#155ead] focus:ring-2 focus:ring-[#155ead]/10 disabled:bg-[#f4f7fb] disabled:cursor-not-allowed"
+            />
+
+            <div className="flex justify-end mt-[5px]">
+              <span className="text-[10px] text-[#7b899c]">
+                {reasonForVisit.length}/500
+              </span>
             </div>
 
           </div>

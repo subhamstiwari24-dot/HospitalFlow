@@ -12,6 +12,7 @@ import ForgotPasswordPage from './pages/patient/ForgotPasswordPage';
 import PatientDashboardPage from './pages/patient/PatientDashboardPage';
 import MyAppointmentsPage from './pages/patient/MyAppointmentsPage';
 import OPDHistoryPage from './pages/patient/OPDHistoryPage';
+import PatientProfilePage from './pages/patient/PatientProfilePage';
 
 import SearchHospitalPage from './pages/patient/SearchHospitalPage';
 import SelectDepartmentPage from './pages/patient/SelectDepartmentPage';
@@ -26,6 +27,7 @@ import AppointmentDetailsPage from './pages/patient/AppointmentDetailsPage';
 
 import { PatientProvider } from './context/PatientContext';
 import { SharedQueueProvider } from './context/SharedQueueContext';
+import { QueueProvider } from './context/QueueContext';
 
 // ==================== DOCTOR ====================
 
@@ -58,6 +60,8 @@ function PatientRoutes() {
     <PatientProvider>
       <Routes>
 
+        {/* ==================== AUTH ==================== */}
+
         <Route
           path="login"
           element={<PatientLoginPage />}
@@ -72,6 +76,9 @@ function PatientRoutes() {
           path="forgot-password"
           element={<ForgotPasswordPage />}
         />
+
+
+        {/* ==================== PATIENT MAIN ==================== */}
 
         <Route
           path="dashboard"
@@ -88,10 +95,23 @@ function PatientRoutes() {
           element={<OPDHistoryPage />}
         />
 
+        {/* ==================== PATIENT PROFILE ==================== */}
+
+        <Route
+          path="profile"
+          element={<PatientProfilePage />}
+        />
+
+
+        {/* ==================== GUEST / PATIENT ENTRY ==================== */}
+
         <Route
           path=""
           element={<PatientEntryPage />}
         />
+
+
+        {/* ==================== BOOK OPD FLOW ==================== */}
 
         <Route
           path="hospital"
@@ -133,6 +153,9 @@ function PatientRoutes() {
           element={<AppointmentDetailsPage />}
         />
 
+
+        {/* ==================== UNKNOWN PATIENT ROUTE ==================== */}
+
         <Route
           path="*"
           element={<Navigate to="" replace />}
@@ -152,31 +175,26 @@ function DoctorRoutes() {
   return (
     <Routes>
 
-      {/* Doctor Dashboard */}
       <Route
         path="dashboard"
         element={<DoctorDashboardPage />}
       />
 
-      {/* Doctor Queue */}
       <Route
         path="queue"
         element={<DoctorQueuePage />}
       />
 
-      {/* Doctor Appointments */}
       <Route
         path="appointments"
         element={<DoctorAppointmentsPage />}
       />
 
-      {/* Doctor Patient Details */}
       <Route
         path="patients"
         element={<DoctorPatientDetailsPage />}
       />
 
-      {/* Default Doctor Route */}
       <Route
         path=""
         element={
@@ -187,7 +205,6 @@ function DoctorRoutes() {
         }
       />
 
-      {/* Unknown Doctor Route */}
       <Route
         path="*"
         element={
@@ -211,7 +228,6 @@ function AdminRoutes() {
   return (
     <Routes>
 
-      {/* Admin Dashboard */}
       <Route
         path="dashboard"
         element={<AdminDashboardPage />}
@@ -234,6 +250,7 @@ function AdminRoutes() {
         element={<EditDoctorPage />}
       />
 
+
       {/* ==================== DEPARTMENTS ==================== */}
 
       <Route
@@ -251,6 +268,7 @@ function AdminRoutes() {
         element={<DepartmentDetailsPage />}
       />
 
+
       {/* ==================== APPOINTMENTS ==================== */}
 
       <Route
@@ -258,7 +276,9 @@ function AdminRoutes() {
         element={<AdminAppointmentsPage />}
       />
 
-      {/* Unknown Admin Route */}
+
+      {/* ==================== UNKNOWN ADMIN ROUTE ==================== */}
+
       <Route
         path="*"
         element={
@@ -280,57 +300,78 @@ function AdminRoutes() {
 
 export default function App() {
   return (
-    <SharedQueueProvider>
+    <BrowserRouter>
 
-      <BrowserRouter>
+      {/* SharedQueueProvider must be outside QueueProvider
+          because QueueProvider uses useSharedQueue(). */}
 
-        <Routes>
+      <SharedQueueProvider>
 
-          {/* Landing */}
-          <Route
-            path="/"
-            element={<LandingPage />}
-          />
+        {/* QueueProvider provides useQueue() to
+            Doctor Dashboard / Doctor Queue / related pages. */}
 
-          {/* Staff Login */}
-          <Route
-            path="/login"
-            element={<LoginPage />}
-          />
+        <QueueProvider>
 
-          {/* Doctor */}
-          <Route
-            path="/doctor/*"
-            element={<DoctorRoutes />}
-          />
+          <Routes>
 
-          {/* Admin */}
-          <Route
-            path="/admin/*"
-            element={<AdminRoutes />}
-          />
+            {/* ==================== LANDING ==================== */}
 
-          {/* Patient */}
-          <Route
-            path="/patient/*"
-            element={<PatientRoutes />}
-          />
+            <Route
+              path="/"
+              element={<LandingPage />}
+            />
 
-          {/* Unknown */}
-          <Route
-            path="*"
-            element={
-              <Navigate
-                to="/"
-                replace
-              />
-            }
-          />
 
-        </Routes>
+            {/* ==================== STAFF LOGIN ==================== */}
 
-      </BrowserRouter>
+            <Route
+              path="/login"
+              element={<LoginPage />}
+            />
 
-    </SharedQueueProvider>
+
+            {/* ==================== DOCTOR ==================== */}
+
+            <Route
+              path="/doctor/*"
+              element={<DoctorRoutes />}
+            />
+
+
+            {/* ==================== ADMIN ==================== */}
+
+            <Route
+              path="/admin/*"
+              element={<AdminRoutes />}
+            />
+
+
+            {/* ==================== PATIENT ==================== */}
+
+            <Route
+              path="/patient/*"
+              element={<PatientRoutes />}
+            />
+
+
+            {/* ==================== UNKNOWN ==================== */}
+
+            <Route
+              path="*"
+              element={
+                <Navigate
+                  to="/"
+                  replace
+                />
+              }
+            />
+
+          </Routes>
+
+        </QueueProvider>
+
+      </SharedQueueProvider>
+
+    </BrowserRouter>
   );
 }

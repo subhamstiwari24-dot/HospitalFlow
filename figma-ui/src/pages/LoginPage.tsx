@@ -50,28 +50,45 @@ export default function LoginPage() {
 
     setIsLoading(true);
     setErrors({});
+
     try {
       if (role === 'Doctor') {
         const response = await fetch('/api/doctors/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify({
             identifier: employeeId.trim(),
             password,
           }),
         });
+
         const data = await response.json();
+
         if (!response.ok) {
-          setErrors({ general: data?.message || 'Doctor login failed' });
+          setErrors({
+            general: data?.message || 'Doctor login failed',
+          });
           return;
         }
-        sessionStorage.setItem('hospitalflow_doctor', JSON.stringify(data));
+
+        sessionStorage.setItem(
+          'hospitalflow_doctor',
+          JSON.stringify(data)
+        );
+
         navigate('/doctor/dashboard');
       } else {
-        setErrors({ general: 'Admin authentication is not configured in the current backend.' });
+        setErrors({
+          general:
+            'Admin authentication is not configured in the current backend.',
+        });
       }
     } catch {
-      setErrors({ general: 'Unable to connect to the server.' });
+      setErrors({
+        general: 'Unable to connect to the server.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -181,9 +198,12 @@ export default function LoginPage() {
               className="flex flex-col gap-[16px]"
             >
 
+              {/* General Error */}
               {errors.general && (
                 <div className="bg-[#fff1f2] border border-[#f3c3c7] rounded-[10px] px-[12px] py-[10px]">
-                  <p className="text-[#c53a45] text-[12px]">{errors.general}</p>
+                  <p className="text-[#c53a45] text-[12px]">
+                    {errors.general}
+                  </p>
                 </div>
               )}
 
@@ -194,7 +214,9 @@ export default function LoginPage() {
                   htmlFor="employee-id"
                   className="font-semibold text-[#142033] text-[13px]"
                 >
-                  {role === 'Doctor' ? 'Email or Doctor ID' : 'Employee ID'}
+                  {role === 'Doctor'
+                    ? 'Email or Doctor ID'
+                    : 'Employee ID'}
                 </label>
 
                 <input
@@ -328,27 +350,6 @@ export default function LoginPage() {
             >
               Create Patient Account
             </button>
-
-          </div>
-
-          {/* Guest Booking */}
-          <div className="mt-[16px] bg-white border border-[#d8e1ec] rounded-[14px] p-[18px] text-center shadow-[0px_2px_12px_0px_rgba(19,36,58,0.04)]">
-
-            <p className="font-semibold text-[#142033] text-[13px]">
-              Don't want to register?
-            </p>
-
-            <p className="text-[#7b899c] text-[12px] mt-[4px]">
-              You can still book an OPD appointment as a guest.
-            </p>
-
-            <Button
-              variant="success"
-              onClick={() => navigate('/patient')}
-              className="w-full justify-center mt-[12px] py-[10px]"
-            >
-              Continue as Guest →
-            </Button>
 
           </div>
 

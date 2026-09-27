@@ -4,6 +4,7 @@ import com.hospitalflow.backend.entity.Patient;
 import com.hospitalflow.backend.entity.OtpVerification;
 import com.hospitalflow.backend.service.OtpService;
 import com.hospitalflow.backend.service.PatientService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +22,19 @@ import java.util.Optional;
 public class PatientController {
 
     private final PatientService patientService;
-        private final OtpService otpService;
+    private final OtpService otpService;
 
-        public PatientController(PatientService patientService, OtpService otpService) {
+    public PatientController(
+            PatientService patientService,
+            OtpService otpService
+    ) {
         this.patientService = patientService;
-                this.otpService = otpService;
+        this.otpService = otpService;
     }
+
+    /* ============================================================
+       PATIENT REGISTRATION
+       ============================================================ */
 
     @PostMapping("/register")
     public ResponseEntity<?> registerPatient(
@@ -86,15 +94,36 @@ public class PatientController {
                         ));
             }
 
-            if (!request.email().trim().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Enter a valid email address"));
+            if (!request.email().trim()
+                    .matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+
+                return ResponseEntity.badRequest()
+                        .body(Map.of(
+                                "message",
+                                "Enter a valid email address"
+                        ));
             }
 
-            patientService.savePendingRegistration(request.fullName(), request.age(), request.phone(),
-                    request.email(), request.password());
-                        otpService.issue(request.email(), OtpVerification.Purpose.REGISTRATION);
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "A verification OTP has been sent to your email");
+            patientService.savePendingRegistration(
+                    request.fullName(),
+                    request.age(),
+                    request.phone(),
+                    request.email(),
+                    request.password()
+            );
+
+            otpService.issue(
+                    request.email(),
+                    OtpVerification.Purpose.REGISTRATION
+            );
+
+            Map<String, Object> response =
+                    new HashMap<>();
+
+            response.put(
+                    "message",
+                    "A verification OTP has been sent to your email"
+            );
 
             return ResponseEntity
                     .status(HttpStatus.ACCEPTED)
@@ -110,90 +139,420 @@ public class PatientController {
                     ));
 
         } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of("message", "Email delivery is not configured"));
+
+            return ResponseEntity
+                    .status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(
+                            "message",
+                            "Email delivery is not configured"
+                    ));
+
         } catch (Exception e) {
 
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", "Registration failed"));
+                    .body(Map.of(
+                            "message",
+                            "Registration failed"
+                    ));
         }
     }
 
-        @PostMapping("/register/verify")
-        public ResponseEntity<?> verifyRegistration(@RequestBody OtpRequest request) {
-                try {
-                        otpService.verify(request.email(), OtpVerification.Purpose.REGISTRATION, request.otp());
-                        Patient patient = patientService.completePendingRegistration(request.email().trim().toLowerCase());
-                        return ResponseEntity.status(HttpStatus.CREATED).body(patientResponse("Patient registered successfully", patient));
-                } catch (IllegalArgumentException e) {
-                        return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
-                }
+    /* ============================================================
+       VERIFY REGISTRATION OTP
+       ============================================================ */
+
+    @PostMapping("/register/verify")
+    public ResponseEntity<?> verifyRegistration(
+            @RequestBody OtpRequest request
+    ) {
+
+        try {
+
+            otpService.verify(
+                    request.email(),
+                    OtpVerification.Purpose.REGISTRATION,
+                    request.otp()
+            );
+
+            Patient patient =
+                    patientService.completePendingRegistration(
+                            request.email()
+                    );
+
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(
+                            patientResponse(
+                                    "Patient registered successfully",
+                                    patient
+                            )
+                    );
+
+        } catch (IllegalArgumentException e) {
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of(
+                            "message",
+                            e.getMessage()
+                    ));
+        }
+    }
+
+    /* ============================================================
+       RESEND REGISTRATION OTP
+       ============================================================ */
+
+    @PostMapping("/register/resend")
+    public ResponseEntity<?> resendRegistrationOtp(
+            @RequestBody EmailRequest request
+    ) {
+
+        try {
+
+            otpService.issue(
+                    request.email(),
+                    OtpVerification.Purpose.REGISTRATION
+            );
+
+            Map<String, Object> response =
+                    new HashMap<>();
+
+            response.put(
+                    "message",
+                    "A verification OTP has been sent to your email"
+            );
+
+            return ResponseEntity
+                    .accepted()
+                    .body(response);
+
+        } catch (IllegalArgumentException e) {
+
+            return ResponseEntity
+                    .status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of(
+                            "message",
+                            e.getMessage()
+                    ));
+        }
+    }
+
+    /* ============================================================
+       FORGOT PASSWORD - REQUEST OTP
+       ============================================================ */
+
+    @PostMapping("/forgot-password/request")
+    public ResponseEntity<?> requestPasswordReset(
+            @RequestBody EmailRequest request
+    ) {
+
+        String generic =
+                "If an account exists with this email, an OTP has been sent.";
+
+        if (request.email() == null ||
+                !request.email()
+                        .trim()
+                        .matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+
+            return ResponseEntity.ok(
+                    Map.of("message", generic)
+            );
         }
 
-        @PostMapping("/register/resend")
-        public ResponseEntity<?> resendRegistrationOtp(@RequestBody EmailRequest request) {
-                try {
-                        otpService.issue(request.email(), OtpVerification.Purpose.REGISTRATION);
-                        Map<String, Object> response = new HashMap<>();
-                        response.put("message", "A verification OTP has been sent to your email");
-                        return ResponseEntity.accepted().body(response);
-                } catch (IllegalArgumentException e) {
-                        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("message", e.getMessage()));
-                }
+        try {
+
+            otpService.issue(
+                    request.email(),
+                    OtpVerification.Purpose.FORGOT_PASSWORD
+            );
+
+        } catch (IllegalArgumentException ignored) {
+            // Keep cooldown state private.
         }
 
-        @PostMapping("/forgot-password/request")
-        public ResponseEntity<?> requestPasswordReset(@RequestBody EmailRequest request) {
-                String generic = "If an account exists with this email, an OTP has been sent.";
-                if (request.email() == null || !request.email().trim().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
-                        return ResponseEntity.ok(Map.of("message", generic));
-                }
-                try {
-                            otpService.issue(request.email(), OtpVerification.Purpose.FORGOT_PASSWORD);
-                } catch (IllegalArgumentException ignored) {
-                        // Keep cooldown state private.
-                }
-                return ResponseEntity.ok(Map.of("message", generic));
+        return ResponseEntity.ok(
+                Map.of("message", generic)
+        );
+    }
+
+    /* ============================================================
+       FORGOT PASSWORD - VERIFY OTP
+       ============================================================ */
+
+    @PostMapping("/forgot-password/verify")
+    public ResponseEntity<?> verifyPasswordReset(
+            @RequestBody OtpRequest request
+    ) {
+
+        try {
+
+            String resetToken =
+                    otpService.verify(
+                            request.email(),
+                            OtpVerification.Purpose.FORGOT_PASSWORD,
+                            request.otp()
+                    );
+
+            return ResponseEntity.ok(
+                    Map.of(
+                            "message",
+                            "OTP verified",
+                            "resetToken",
+                            resetToken
+                    )
+            );
+
+        } catch (IllegalArgumentException e) {
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of(
+                            "message",
+                            e.getMessage()
+                    ));
+        }
+    }
+
+    /* ============================================================
+       FORGOT PASSWORD - RESET
+       ============================================================ */
+
+    @PostMapping("/forgot-password/reset")
+    public ResponseEntity<?> resetPassword(
+            @RequestBody ResetPasswordRequest request
+    ) {
+
+        if (request.newPassword() == null ||
+                request.newPassword().length() < 6) {
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of(
+                            "message",
+                            "Password must be at least 6 characters"
+                    ));
         }
 
-        @PostMapping("/forgot-password/verify")
-        public ResponseEntity<?> verifyPasswordReset(@RequestBody OtpRequest request) {
-                try {
-                        String resetToken = otpService.verify(request.email(), OtpVerification.Purpose.FORGOT_PASSWORD, request.otp());
-                        return ResponseEntity.ok(Map.of("message", "OTP verified", "resetToken", resetToken));
-                } catch (IllegalArgumentException e) {
-                        return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
-                }
+        if (!otpService.isValidResetToken(
+                request.email(),
+                request.resetToken()
+        )) {
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of(
+                            "message",
+                            "Invalid or expired reset session"
+                    ));
         }
 
-        @PostMapping("/forgot-password/reset")
-        public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
-                if (request.newPassword() == null || request.newPassword().length() < 6) {
-                        return ResponseEntity.badRequest().body(Map.of("message", "Password must be at least 6 characters"));
-                }
-                if (!otpService.isValidResetToken(request.email(), request.resetToken())) {
-                        return ResponseEntity.badRequest().body(Map.of("message", "Invalid or expired reset session"));
-                }
-                try {
-                        patientService.updatePassword(request.email().trim().toLowerCase(), request.newPassword());
-                            otpService.consumeResetToken(request.email(), request.resetToken());
-                        return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
-                } catch (IllegalArgumentException e) {
-                        return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
-                }
-        }
+        try {
 
-        private Map<String, Object> patientResponse(String message, Patient patient) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("message", message);
-                response.put("patientId", patient.getPatientId());
-                response.put("fullName", patient.getFullName());
-                response.put("age", patient.getAge());
-                response.put("phone", patient.getPhone());
-                response.put("email", patient.getEmail());
-                return response;
+            patientService.updatePassword(
+                    request.email()
+                            .trim()
+                            .toLowerCase(),
+                    request.newPassword()
+            );
+
+            otpService.consumeResetToken(
+                    request.email(),
+                    request.resetToken()
+            );
+
+            return ResponseEntity.ok(
+                    Map.of(
+                            "message",
+                            "Password updated successfully"
+                    )
+            );
+
+        } catch (IllegalArgumentException e) {
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of(
+                            "message",
+                            e.getMessage()
+                    ));
         }
+    }
+
+    /* ============================================================
+       PATIENT PROFILE - GET
+       ============================================================ */
+
+    @GetMapping("/profile/{phone}")
+    public ResponseEntity<?> getPatientProfile(
+            @PathVariable String phone
+    ) {
+
+        return patientService
+                .findByPhone(phone)
+                .map(patient -> {
+
+                    Map<String, Object> response =
+                            new HashMap<>();
+
+                    response.put(
+                            "patientId",
+                            patient.getPatientId()
+                    );
+
+                    response.put(
+                            "fullName",
+                            patient.getFullName()
+                    );
+
+                    response.put(
+                            "age",
+                            patient.getAge()
+                    );
+
+                    response.put(
+                            "phone",
+                            patient.getPhone()
+                    );
+
+                    response.put(
+                            "email",
+                            patient.getEmail()
+                    );
+
+                    response.put(
+                            "active",
+                            patient.getActive()
+                    );
+
+                    return ResponseEntity.ok(response);
+                })
+                .orElseGet(() ->
+                        ResponseEntity
+                                .status(HttpStatus.NOT_FOUND)
+                                .body(
+                                        Map.of(
+                                                "message",
+                                                "Patient profile not found"
+                                        )
+                                )
+                );
+    }
+
+    /* ============================================================
+       PATIENT PROFILE - UPDATE
+       ============================================================ */
+
+    @PutMapping("/profile/{phone}")
+    public ResponseEntity<?> updatePatientProfile(
+            @PathVariable String phone,
+            @RequestBody UpdateProfileRequest request
+    ) {
+
+        try {
+
+            if (request.fullName() == null ||
+                    request.fullName().trim().isEmpty()) {
+
+                return ResponseEntity
+                        .badRequest()
+                        .body(
+                                Map.of(
+                                        "message",
+                                        "Full name is required"
+                                )
+                        );
+            }
+
+            if (request.age() == null ||
+                    request.age() < 1 ||
+                    request.age() > 120) {
+
+                return ResponseEntity
+                        .badRequest()
+                        .body(
+                                Map.of(
+                                        "message",
+                                        "Please enter a valid age between 1 and 120"
+                                )
+                        );
+            }
+
+            Patient patient =
+                    patientService.updateProfile(
+                            phone,
+                            request.fullName(),
+                            request.age()
+                    );
+
+            Map<String, Object> response =
+                    new HashMap<>();
+
+            response.put(
+                    "message",
+                    "Profile updated successfully"
+            );
+
+            response.put(
+                    "patientId",
+                    patient.getPatientId()
+            );
+
+            response.put(
+                    "fullName",
+                    patient.getFullName()
+            );
+
+            response.put(
+                    "age",
+                    patient.getAge()
+            );
+
+            response.put(
+                    "phone",
+                    patient.getPhone()
+            );
+
+            response.put(
+                    "email",
+                    patient.getEmail()
+            );
+
+            response.put(
+                    "active",
+                    patient.getActive()
+            );
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(
+                            Map.of(
+                                    "message",
+                                    e.getMessage()
+                            )
+                    );
+
+        } catch (Exception e) {
+
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(
+                            Map.of(
+                                    "message",
+                                    "Unable to update patient profile"
+                            )
+                    );
+        }
+    }
+
+    /* ============================================================
+       PATIENT LOGIN
+       ============================================================ */
 
     @PostMapping("/login")
     public ResponseEntity<?> loginPatient(
@@ -203,7 +562,8 @@ public class PatientController {
         if (request.phone() == null ||
                 request.phone().trim().isEmpty()) {
 
-            return ResponseEntity.badRequest()
+            return ResponseEntity
+                    .badRequest()
                     .body(Map.of(
                             "message",
                             "Mobile number is required"
@@ -213,7 +573,8 @@ public class PatientController {
         if (request.password() == null ||
                 request.password().isEmpty()) {
 
-            return ResponseEntity.badRequest()
+            return ResponseEntity
+                    .badRequest()
                     .body(Map.of(
                             "message",
                             "Password is required"
@@ -221,7 +582,9 @@ public class PatientController {
         }
 
         Optional<Patient> patientOptional =
-                patientService.findByPhone(request.phone());
+                patientService.findByPhone(
+                        request.phone()
+                );
 
         if (patientOptional.isEmpty()) {
 
@@ -233,9 +596,12 @@ public class PatientController {
                     ));
         }
 
-        Patient patient = patientOptional.get();
+        Patient patient =
+                patientOptional.get();
 
-        if (!Boolean.TRUE.equals(patient.getActive())) {
+        if (!Boolean.TRUE.equals(
+                patient.getActive()
+        )) {
 
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
@@ -261,7 +627,8 @@ public class PatientController {
                     ));
         }
 
-        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> response =
+                new HashMap<>();
 
         response.put(
                 "message",
@@ -296,6 +663,55 @@ public class PatientController {
         return ResponseEntity.ok(response);
     }
 
+    /* ============================================================
+       COMMON PATIENT RESPONSE
+       ============================================================ */
+
+    private Map<String, Object> patientResponse(
+            String message,
+            Patient patient
+    ) {
+
+        Map<String, Object> response =
+                new HashMap<>();
+
+        response.put(
+                "message",
+                message
+        );
+
+        response.put(
+                "patientId",
+                patient.getPatientId()
+        );
+
+        response.put(
+                "fullName",
+                patient.getFullName()
+        );
+
+        response.put(
+                "age",
+                patient.getAge()
+        );
+
+        response.put(
+                "phone",
+                patient.getPhone()
+        );
+
+        response.put(
+                "email",
+                patient.getEmail()
+        );
+
+        return response;
+    }
+
+    /* ============================================================
+       REQUEST RECORDS
+       ============================================================ */
+
     public record RegisterRequest(
             String fullName,
             Integer age,
@@ -311,9 +727,27 @@ public class PatientController {
     ) {
     }
 
-        public record EmailRequest(String email) {}
+    public record EmailRequest(
+            String email
+    ) {
+    }
 
-        public record OtpRequest(String email, String otp) {}
+    public record OtpRequest(
+            String email,
+            String otp
+    ) {
+    }
 
-        public record ResetPasswordRequest(String email, String resetToken, String newPassword) {}
+    public record ResetPasswordRequest(
+            String email,
+            String resetToken,
+            String newPassword
+    ) {
+    }
+
+    public record UpdateProfileRequest(
+            String fullName,
+            Integer age
+    ) {
+    }
 }

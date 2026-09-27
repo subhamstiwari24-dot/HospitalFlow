@@ -65,6 +65,14 @@ function getTodayDate(): string {
 
 /* -------------------------------------------------------
    Backend appointment → QueuePatient
+
+   IMPORTANT:
+   Appointment already contains:
+   - patientAge
+   - patientPhone
+   - reasonForVisit
+
+   Older code was hardcoding age = 0.
 ------------------------------------------------------- */
 
 function appointmentToQueuePatient(
@@ -120,6 +128,17 @@ function appointmentToQueuePatient(
     priority = 'Priority';
   }
 
+  const patientAge = Number(
+    appointment.patientAge
+  );
+
+  const safeAge =
+    Number.isInteger(patientAge) &&
+    patientAge >= 1 &&
+    patientAge <= 120
+      ? patientAge
+      : 0;
+
   return {
     id: String(appointment.id),
 
@@ -132,7 +151,8 @@ function appointmentToQueuePatient(
 
     name: patientName,
 
-    age: 0,
+    // FIX: use the age entered during booking.
+    age: safeAge,
 
     gender: '—',
 
@@ -144,9 +164,26 @@ function appointmentToQueuePatient(
 
     priority,
 
+    // Keep the phone coming from the backend.
+    phone:
+      appointment.patientPhone ?? '—',
+
     consultationStatus,
 
     waitTime: 0,
+
+    /*
+     * These two fields are attached for the
+     * Patient Details page.
+     *
+     * QueuePatient in the shared type may not
+     * declare them yet, so the object is cast
+     * to QueuePatient after adding them.
+     */
+    reasonForVisit:
+      appointment.reasonForVisit ?? '',
+  } as QueuePatient & {
+    reasonForVisit?: string;
   };
 }
 
