@@ -186,7 +186,6 @@ export default function SelectDoctorPage() {
   const {
     selectedHospital,
     selectedDepartment,
-    selectedDepartmentId,
     selectedDoctor,
     setSelectedDoctor,
     setSelectedSlot,
@@ -348,8 +347,12 @@ export default function SelectDoctorPage() {
           Number(selectedHospital.id);
 
         const sameDepartment =
-          Number(doctor.department?.id) ===
-          Number(selectedDepartmentId);
+          doctor.department?.name
+            ?.trim()
+            .toLowerCase() ===
+          selectedDepartment
+            .trim()
+            .toLowerCase();
 
         console.log(
           'Doctor filter:',
@@ -380,11 +383,22 @@ export default function SelectDoctorPage() {
 
     return hospitalDoctors.map((doctor) => {
 
+      const today = new Date();
+
+      const todayBackendDate =
+        `${today.getFullYear()}-${String(
+          today.getMonth() + 1
+        ).padStart(2, '0')}-${String(
+          today.getDate()
+        ).padStart(2, '0')}`;
+
       const doctorAppointments =
         appointments.filter(
           (appointment) =>
             appointment.doctor?.id ===
-            doctor.id
+              doctor.id &&
+            appointment.appointmentDate ===
+              todayBackendDate
         );
 
 
@@ -442,7 +456,6 @@ export default function SelectDoctorPage() {
     appointments,
     selectedHospital,
     selectedDepartment,
-    selectedDepartmentId,
   ]);
 
 

@@ -6,6 +6,8 @@ import com.hospitalflow.backend.entity.Appointment;
 import com.hospitalflow.backend.repository.AppointmentRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.client.RestClient;
 
 import java.util.Comparator;
@@ -52,6 +54,72 @@ public class AppointmentService {
     // =========================================================
 
     public Appointment saveAppointment(Appointment appointment) {
+
+        // =====================================================
+        // DUPLICATE BOOKING PROTECTION
+        // =====================================================
+        //
+        // Same patient + same doctor + same date + same time
+        // is not allowed.
+        //
+        // CANCELLED appointments are ignored by this check.
+        // Different patients can still use the same slot until
+        // the slot capacity is reached by SlotService.
+        // =====================================================
+
+        if (appointment.getDoctor() == null ||
+                appointment.getDoctor().getId() == null) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Doctor is required."
+            );
+        }
+
+        if (appointment.getAppointmentDate() == null ||
+                appointment.getAppointmentDate().isBlank()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Appointment date is required."
+            );
+        }
+
+        if (appointment.getAppointmentTime() == null ||
+                appointment.getAppointmentTime().isBlank()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Appointment time is required."
+            );
+        }
+
+        if (appointment.getPatientPhone() == null ||
+                appointment.getPatientPhone().isBlank()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Patient phone is required."
+            );
+        }
+
+        boolean duplicate =
+                appointmentRepository
+                        .existsByDoctor_IdAndAppointmentDateAndAppointmentTimeAndPatientPhoneAndStatusNot(
+                                appointment.getDoctor().getId(),
+                                appointment.getAppointmentDate(),
+                                appointment.getAppointmentTime(),
+                                appointment.getPatientPhone(),
+                                "CANCELLED"
+                        );
+
+        if (duplicate) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "You already have an appointment with this doctor for the selected date and time."
+            );
+        }
 
         // Default priority
         if (appointment.getPriority() == null ||
@@ -112,7 +180,7 @@ public class AppointmentService {
         // Real-time update
         messagingTemplate.convertAndSend(
                 "/topic/queue",
-                savedAppointment
+                "APPOINTMENT_CREATED"
         );
 
         return savedAppointment;

@@ -577,11 +577,7 @@ export function PatientProvider({
      ============================================================ */
 
   const fetchLatestLoggedInPatientProfile = useCallback(
-    async (): Promise<{
-      fullName?: string;
-      age?: number | string;
-      phone?: string;
-    } | null> => {
+    async (): Promise<{ fullName?: string; age?: number } | null> => {
       try {
         const storedPatient =
           sessionStorage.getItem('hospitalflow_patient');
@@ -608,61 +604,29 @@ export function PatientProvider({
 
         const profile = await response.json();
 
-        /*
-         * Sync latest name from backend profile.
-         */
         if (
           typeof profile.fullName === 'string' &&
           profile.fullName.trim()
         ) {
-          const latestName =
-            profile.fullName.trim();
-
-          setPatientName(latestName);
+          setPatientName(profile.fullName.trim());
 
           writeStorage(
             STORAGE_KEYS.patientName,
-            latestName
+            profile.fullName.trim()
           );
         }
 
-        /*
-         * Sync latest age from backend profile.
-         */
-        const normalizedAge = Number(profile.age);
-
         if (
-          Number.isInteger(normalizedAge) &&
-          normalizedAge >= 1 &&
-          normalizedAge <= 120
+          typeof profile.age === 'number' &&
+          Number.isInteger(profile.age) &&
+          profile.age >= 1 &&
+          profile.age <= 120
         ) {
-          setPatientAgeState(normalizedAge);
+          setPatientAgeState(profile.age);
 
           writeStorage(
             STORAGE_KEYS.patientAge,
-            normalizedAge
-          );
-        }
-
-        /*
-         * IMPORTANT:
-         * Sync the latest phone from the backend profile.
-         *
-         * This prevents an old phone number stored in
-         * localStorage from being used during booking.
-         */
-        if (
-          typeof profile.phone === 'string' &&
-          profile.phone.trim()
-        ) {
-          const latestPhone =
-            profile.phone.trim();
-
-          setPatientPhone(latestPhone);
-
-          writeStorage(
-            STORAGE_KEYS.patientPhone,
-            latestPhone
+            profile.age
           );
         }
 
@@ -712,9 +676,9 @@ export function PatientProvider({
       /*
        * IMPORTANT:
        * For a logged-in patient, always fetch the latest
-       * profile before booking. This prevents old name,
-       * age, or phone values in localStorage from being used
-       * after the patient edits their profile.
+       * profile before booking. This prevents an old age
+       * value in localStorage from being used after the
+       * patient edits their profile.
        */
       const latestProfile =
         await fetchLatestLoggedInPatientProfile();
@@ -725,38 +689,10 @@ export function PatientProvider({
           ? latestProfile.fullName.trim()
           : patientName;
 
-      const profileAge =
-        Number(latestProfile?.age);
-
       const bookingAge =
-        Number.isInteger(profileAge) &&
-        profileAge >= 1 &&
-        profileAge <= 120
-          ? profileAge
+        typeof latestProfile?.age === 'number'
+          ? latestProfile.age
           : patientAge;
-
-      /*
-       * IMPORTANT:
-       * Always prefer the latest phone returned by
-       * the backend patient profile.
-       *
-       * Fallback to the existing patientPhone only when
-       * the profile does not contain a valid phone.
-       */
-      const profilePhone =
-        typeof latestProfile?.phone === 'string' &&
-        latestProfile.phone.trim()
-          ? latestProfile.phone.trim()
-          : patientPhone.trim();
-
-      if (bookingAge !== null) {
-        setPatientAgeState(bookingAge);
-
-        writeStorage(
-          STORAGE_KEYS.patientAge,
-          bookingAge
-        );
-      }
 
       if (!bookingName.trim()) {
         throw new Error(
@@ -774,7 +710,7 @@ export function PatientProvider({
         );
       }
 
-      if (!profilePhone.trim()) {
+      if (!patientPhone.trim()) {
         throw new Error(
           'Patient phone number is required.'
         );
@@ -794,10 +730,8 @@ export function PatientProvider({
       /*
        * Appointment payload sent to Spring Boot.
        *
-       * This includes:
-       * - latest patient name
-       * - latest patient age
-       * - latest patient phone
+       * This now includes:
+       * - patientAge
        * - reasonForVisit
        */
 
@@ -809,7 +743,7 @@ export function PatientProvider({
           bookingAge,
 
         patientPhone:
-          profilePhone,
+          patientPhone.trim(),
 
         reasonForVisit:
           reasonForVisit.trim(),
@@ -860,11 +794,59 @@ export function PatientProvider({
         );
 
       if (!response.ok) {
-        const errorText =
-          await response.text();
+        /*
+         * Handle backend booking errors in a
+         * user-friendly way.
+         *
+         * 409 = duplicate booking.
+         */
+        let backendMessage = '';
+
+        try {
+          const errorBody = await response.json();
+
+          if (
+            errorBody &&
+            typeof errorBody.message === 'string'
+          ) {
+            backendMessage =
+              errorBody.message.trim();
+          }
+        } catch {
+          /*
+           * Some backend errors may not contain
+           * a JSON response body.
+           */
+        }
+
+        if (response.status === 409) {
+          throw new Error(
+            'You already have an appointment with this doctor for the selected date and time. Please choose another time slot.'
+          );
+        }
+
+        if (response.status === 400) {
+          throw new Error(
+            backendMessage ||
+              'The booking information is invalid. Please check your details and try again.'
+          );
+        }
+
+        if (response.status === 404) {
+          throw new Error(
+            backendMessage ||
+              'The selected doctor or hospital could not be found.'
+          );
+        }
+
+        if (response.status >= 500) {
+          throw new Error(
+            'The booking service is temporarily unavailable. Please try again.'
+          );
+        }
 
         throw new Error(
-          errorText ||
+          backendMessage ||
             `Booking failed with status ${response.status}`
         );
       }

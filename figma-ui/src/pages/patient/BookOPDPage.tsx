@@ -5,18 +5,32 @@ import PatientLayout from '../../components/PatientLayout';
 import Button from '../../components/Button';
 import StatusBadge from '../../components/StatusBadge';
 import { usePatient } from '../../context/PatientContext';
-import { opdSlots } from '../../data/mockData';
 import { ErrorState } from '../../components/EmptyState';
+
 import {
   hasMinimumLength,
   isTenDigitPhone,
 } from '../../utils/validation';
 
+type BackendSlot = {
+  id: string;
+  time: string;
+  available: boolean;
+  remaining: number;
+};
+
+type BackendAppointment = {
+  id: number;
+  appointmentDate?: string;
+  appointmentTime?: string;
+  status?: string;
+  doctor?: {
+    id?: number;
+  };
+};
+
 /*
- * Generate only today's date + next 4 days.
- *
- * This means previous dates will never appear in the
- * booking date selector.
+ * Generate today's date + next 4 days.
  */
 const getAvailableDates = (): string[] => {
   const dates: string[] = [];
@@ -64,12 +78,44 @@ export default function BookOPDPage() {
   const [error, setError] = useState('');
 
   /*
-   * Current time updates every 30 seconds.
+   * REAL BACKEND SLOTS
    *
-   * This is important for today's slots because a slot can
-   * become unavailable while the patient is on this page.
+   * No mock opdSlots are used.
    */
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [opdSlots, setOpdSlots] = useState<BackendSlot[]>([]);
+
+  /*
+   * Loading state while backend slots are being fetched.
+   */
+  const [slotsLoading, setSlotsLoading] = useState(false);
+
+  /*
+   * Current time is kept only for the Live indicator.
+   *
+   * Slot availability itself is decided by backend.
+   */
+  const [currentTime, setCurrentTime] = useState(
+    new Date()
+  );
+
+  /*
+   * REAL QUEUE SUMMARY
+   *
+   * These values come from PostgreSQL through the
+   * Appointment API. No patientsToday / queueLength /
+   * nextSlot mock values are used here.
+   */
+  const [patientsToday, setPatientsToday] =
+    useState(0);
+
+  const [currentlyWaiting, setCurrentlyWaiting] =
+    useState(0);
+
+  const [queueLoading, setQueueLoading] =
+    useState(false);
+
+  const [queueError, setQueueError] =
+    useState('');
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -81,6 +127,10 @@ export default function BookOPDPage() {
     };
   }, []);
 
+  /*
+   * If required selection is missing,
+   * return to hospital selection.
+   */
   if (
     !selectedHospital ||
     !selectedDepartment ||
@@ -91,17 +141,17 @@ export default function BookOPDPage() {
   }
 
   /*
-   * Convert selected date like:
+   * Convert:
    *
-   * Sun, 27 Sep 2026
+   * Mon, 28 Sep 2026
    *
-   * into a Date object.
+   * into a JavaScript Date.
    */
   const parseSelectedDate = (
     dateString: string
   ): Date | null => {
     const match = dateString.match(
-      /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),\s(\d{1,2})\s([A-Za-z]{3})\s(\d{4})$/
+      /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),\s(\d{1,2})\s([A-Za-z]{3,9})\s(\d{4})$/
     );
 
     if (!match) {
@@ -120,6 +170,8 @@ export default function BookOPDPage() {
       Jul: 6,
       Aug: 7,
       Sep: 8,
+      Sept: 8,
+      September: 8,
       Oct: 9,
       Nov: 10,
       Dec: 11,
@@ -139,7 +191,282 @@ export default function BookOPDPage() {
   };
 
   /*
-   * Check whether the selected date is today.
+   * =====================================================
+   * FETCH REAL SLOTS FROM BACKEND
+   * =====================================================
+   *
+   * Example:
+   *
+   * GET
+   * http://localhost:8080/api/doctors/1/slots?date=2026-09-28
+   */
+  useEffect(() => {
+    const loadSlots = async () => {
+      if (
+        !selectedDoctor?.id ||
+        !selectedDate
+      ) {
+        setOpdSlots([]);
+        return;
+      }
+
+      const selectedDateObject =
+        parseSelectedDate(selectedDate);
+
+      if (!selectedDateObject) {
+        setOpdSlots([]);
+        return;
+      }
+
+      const year =
+        selectedDateObject.getFullYear();
+
+      const month = String(
+        selectedDateObject.getMonth() + 1
+      ).padStart(2, '0');
+
+      const day = String(
+        selectedDateObject.getDate()
+      ).padStart(2, '0');
+
+      const backendDate =
+        `${year}-${month}-${day}`;
+
+      setSlotsLoading(true);
+      setError('');
+
+      /*
+       * Whenever date changes, remove old selected slot.
+       */
+      setSelectedSlot('');
+
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/doctors/${selectedDoctor.id}/slots?date=${backendDate}`
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Unable to load time slots (${response.status})`
+          );
+        }
+
+        const data: unknown =
+          await response.json();
+
+        if (
+          !data ||
+          typeof data !== 'object' ||
+          !Array.isArray(
+            (data as { slots?: unknown }).slots
+          )
+        ) {
+          throw new Error(
+            'Invalid slot response from server.'
+          );
+        }
+
+        const slots =
+          (data as {
+            slots: BackendSlot[];
+          }).slots;
+
+        setOpdSlots(slots);
+
+      } catch (err) {
+        console.error(
+          'Unable to load slots:',
+          err
+        );
+
+        setOpdSlots([]);
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Unable to load available time slots.'
+        );
+
+      } finally {
+        setSlotsLoading(false);
+      }
+    };
+
+    void loadSlots();
+
+  }, [
+    selectedDoctor?.id,
+    selectedDate,
+  ]);
+
+  /*
+   * =====================================================
+   * FETCH REAL QUEUE SUMMARY FROM BACKEND
+   * =====================================================
+   *
+   * Patients today:
+   *   All non-cancelled appointments for this doctor/date.
+   *
+   * Currently waiting:
+   *   WAITING appointments returned by the queue endpoint.
+   *
+   * The existing backend APIs are used; no new backend
+   * endpoint is required for this summary.
+   */
+  useEffect(() => {
+    const loadQueueSummary = async () => {
+      if (
+        !selectedDoctor?.id ||
+        !selectedDate
+      ) {
+        setPatientsToday(0);
+        setCurrentlyWaiting(0);
+        setQueueError('');
+        return;
+      }
+
+      const selectedDateObject =
+        parseSelectedDate(selectedDate);
+
+      if (!selectedDateObject) {
+        setPatientsToday(0);
+        setCurrentlyWaiting(0);
+        setQueueError(
+          'Unable to read the selected date.'
+        );
+        return;
+      }
+
+      const year =
+        selectedDateObject.getFullYear();
+
+      const month = String(
+        selectedDateObject.getMonth() + 1
+      ).padStart(2, '0');
+
+      const day = String(
+        selectedDateObject.getDate()
+      ).padStart(2, '0');
+
+      const backendDate =
+        `${year}-${month}-${day}`;
+
+      setQueueLoading(true);
+      setQueueError('');
+
+      try {
+        /*
+         * 1. Get all appointments.
+         * Used to calculate total patients for
+         * the selected doctor/date.
+         */
+        const appointmentsResponse =
+          await fetch(
+            'http://localhost:8080/api/appointments'
+          );
+
+        if (!appointmentsResponse.ok) {
+          throw new Error(
+            `Unable to load today's appointments (${appointmentsResponse.status})`
+          );
+        }
+
+        const appointmentsData: unknown =
+          await appointmentsResponse.json();
+
+        if (!Array.isArray(appointmentsData)) {
+          throw new Error(
+            'Invalid appointments response from server.'
+          );
+        }
+
+        const doctorAppointments =
+          (appointmentsData as BackendAppointment[])
+            .filter(
+              (appointment) =>
+                Number(
+                  appointment.doctor?.id
+                ) === Number(selectedDoctor.id)
+            )
+            .filter(
+              (appointment) =>
+                appointment.appointmentDate ===
+                backendDate
+            )
+            .filter(
+              (appointment) =>
+                String(
+                  appointment.status ?? ''
+                ).toUpperCase() !==
+                'CANCELLED'
+            );
+
+        setPatientsToday(
+          doctorAppointments.length
+        );
+
+        /*
+         * 2. Get the active waiting queue.
+         */
+        const queueResponse =
+          await fetch(
+            `http://localhost:8080/api/appointments/queue?doctorId=${selectedDoctor.id}&appointmentDate=${backendDate}`
+          );
+
+        if (!queueResponse.ok) {
+          throw new Error(
+            `Unable to load live queue (${queueResponse.status})`
+          );
+        }
+
+        const queueData: unknown =
+          await queueResponse.json();
+
+        if (!Array.isArray(queueData)) {
+          throw new Error(
+            'Invalid queue response from server.'
+          );
+        }
+
+        /*
+         * The current queue endpoint returns WAITING
+         * appointments. Count them directly.
+         */
+        setCurrentlyWaiting(
+          queueData.length
+        );
+
+      } catch (err) {
+        console.error(
+          'Unable to load queue summary:',
+          err
+        );
+
+        setPatientsToday(0);
+        setCurrentlyWaiting(0);
+
+        setQueueError(
+          err instanceof Error
+            ? err.message
+            : 'Unable to load live queue.'
+        );
+
+      } finally {
+        setQueueLoading(false);
+      }
+    };
+
+    void loadQueueSummary();
+
+  }, [
+    selectedDoctor?.id,
+    selectedDate,
+  ]);
+
+  /*
+   * Check whether selected date is today.
+   *
+   * Used only for the "Live" indicator.
    */
   const isSelectedDateToday = (): boolean => {
     const selectedDateObject =
@@ -160,90 +487,50 @@ export default function BookOPDPage() {
   };
 
   /*
-   * Check whether a slot has already passed.
+   * IMPORTANT:
    *
-   * Example:
+   * Do NOT filter slots on frontend based on current time.
    *
-   * Current time = 5:30 PM
+   * Backend SlotService already decides:
    *
-   * 5:20 PM -> true
-   * 5:30 PM -> true
-   * 5:40 PM -> false
+   * available: true / false
+   * remaining: number
    *
-   * For future dates, no slot is considered past.
+   * Therefore frontend simply displays the backend result.
    */
-  const isPastSlot = (slotTime: string): boolean => {
-    if (!isSelectedDateToday()) {
-      return false;
-    }
-
-    const timeMatch = slotTime.match(
-      /(\d{1,2}):(\d{2})\s*(AM|PM)/i
-    );
-
-    if (!timeMatch) {
-      return false;
-    }
-
-    let hours = Number(timeMatch[1]);
-    const minutes = Number(timeMatch[2]);
-
-    const period = timeMatch[3].toUpperCase();
-
-    if (period === 'PM' && hours !== 12) {
-      hours += 12;
-    }
-
-    if (period === 'AM' && hours === 12) {
-      hours = 0;
-    }
-
-    const slotDateTime = new Date(currentTime);
-
-    slotDateTime.setHours(
-      hours,
-      minutes,
-      0,
-      0
-    );
-
-    return slotDateTime <= currentTime;
-  };
+  const visibleSlots = opdSlots;
 
   /*
-   * Only show slots that have not already passed.
+   * First available slot from the backend.
    *
-   * Today:
-   *   Past slots are hidden.
-   *
-   * Future dates:
-   *   All slots remain visible.
+   * This replaces selectedDoctor.nextSlot mock data.
    */
-  const visibleSlots = opdSlots.filter(
-    (slot) => !isPastSlot(slot.time)
-  );
+  const nextAvailableSlot =
+    visibleSlots.find(
+      (slot) => slot.available
+    )?.time ?? 'No slots available';
 
-  const handleDateChange = (date: string) => {
-    setSelectedDate(date);
-
-    /*
-     * Clear previously selected slot whenever the
-     * patient changes the date.
-     */
-    setSelectedSlot('');
-    setError('');
-  };
-
-  const handleSlotSelect = (slotTime: string) => {
+  /*
+   * Select a time slot.
+   */
+  const handleSlotSelect = (
+    slotTime: string
+  ) => {
     if (submitting) {
       return;
     }
 
+    const slot =
+      opdSlots.find(
+        (item) =>
+          item.time === slotTime
+      );
+
     /*
-     * Extra protection against selecting a slot that
-     * passed while the page was open.
+     * Extra protection:
+     * only an available backend slot can be selected.
      */
-    if (isPastSlot(slotTime)) {
+    if (!slot || !slot.available) {
       return;
     }
 
@@ -251,22 +538,48 @@ export default function BookOPDPage() {
     setError('');
   };
 
+  /*
+   * Change selected date.
+   */
+  const handleDateChange = (
+    date: string
+  ) => {
+    setSelectedDate(date);
+    setSelectedSlot('');
+    setError('');
+  };
+
+  /*
+   * =====================================================
+   * CONFIRM BOOKING
+   * =====================================================
+   */
   const handleBook = async () => {
-    if (!selectedSlot || submitting) {
+    if (
+      !selectedSlot ||
+      submitting
+    ) {
       return;
     }
 
     /*
-     * Final frontend check before booking.
-     *
-     * If the patient kept the page open and the selected
-     * slot has just passed, don't allow the booking.
+     * Make sure selected slot still exists
+     * and is marked available by backend.
      */
-    if (isPastSlot(selectedSlot)) {
+    const selectedSlotData =
+      opdSlots.find(
+        (slot) =>
+          slot.time === selectedSlot
+      );
+
+    if (
+      !selectedSlotData ||
+      !selectedSlotData.available
+    ) {
       setSelectedSlot('');
 
       setError(
-        'This time slot has already passed. Please select another slot.'
+        'This time slot is no longer available. Please select another slot.'
       );
 
       return;
@@ -275,7 +588,12 @@ export default function BookOPDPage() {
     /*
      * Validate patient name.
      */
-    if (!hasMinimumLength(patientName, 2)) {
+    if (
+      !hasMinimumLength(
+        patientName,
+        2
+      )
+    ) {
       setError(
         'Full name must be at least 2 characters.'
       );
@@ -284,9 +602,13 @@ export default function BookOPDPage() {
     }
 
     /*
-     * Validate mobile number.
+     * Validate phone.
      */
-    if (!isTenDigitPhone(patientPhone)) {
+    if (
+      !isTenDigitPhone(
+        patientPhone
+      )
+    ) {
       setError(
         'Mobile number must be exactly 10 digits.'
       );
@@ -295,11 +617,11 @@ export default function BookOPDPage() {
     }
 
     /*
-     * Validate reason for visit before creating
-     * the appointment. Registered patients enter
-     * this at booking time.
+     * Validate reason.
      */
-    if (!reasonForVisit.trim()) {
+    if (
+      !reasonForVisit.trim()
+    ) {
       setError(
         'Please enter your reason for visit.'
       );
@@ -315,14 +637,17 @@ export default function BookOPDPage() {
         'Creating HospitalFlow appointment...'
       );
 
-      const booking = await confirmBooking();
+      const booking =
+        await confirmBooking();
 
       console.log(
         'Appointment successfully created:',
         booking
       );
 
-      navigate('/patient/confirmation');
+      navigate(
+        '/patient/confirmation'
+      );
 
     } catch (err) {
       console.error(
@@ -349,7 +674,9 @@ export default function BookOPDPage() {
       maxWidth="max-w-[860px]"
     >
 
-      {/* ==================== HEADER ==================== */}
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
 
       <div className="mb-[24px]">
 
@@ -365,11 +692,15 @@ export default function BookOPDPage() {
 
       <div className="flex flex-col lg:flex-row gap-[14px] lg:gap-[18px]">
 
-        {/* ==================== LEFT ==================== */}
+        {/* ===================================================
+            LEFT SIDE
+        =================================================== */}
 
         <div className="flex-1 min-w-0 flex flex-col gap-[16px]">
 
-          {/* ==================== BOOKING SUMMARY ==================== */}
+          {/* =================================================
+              BOOKING SUMMARY
+          ================================================= */}
 
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
 
@@ -449,7 +780,9 @@ export default function BookOPDPage() {
                 </p>
 
                 <StatusBadge
-                  status={selectedDoctor.status}
+                  status={
+                    selectedDoctor.status
+                  }
                 />
 
               </div>
@@ -458,7 +791,9 @@ export default function BookOPDPage() {
 
           </div>
 
-          {/* ==================== REASON FOR VISIT ==================== */}
+          {/* =================================================
+              REASON FOR VISIT
+          ================================================= */}
 
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
 
@@ -483,7 +818,10 @@ export default function BookOPDPage() {
             <textarea
               value={reasonForVisit}
               onChange={(event) => {
-                setReasonForVisit(event.target.value);
+                setReasonForVisit(
+                  event.target.value
+                );
+
                 setError('');
               }}
               disabled={submitting}
@@ -494,14 +832,18 @@ export default function BookOPDPage() {
             />
 
             <div className="flex justify-end mt-[5px]">
+
               <span className="text-[10px] text-[#7b899c]">
                 {reasonForVisit.length}/500
               </span>
+
             </div>
 
           </div>
 
-          {/* ==================== DATE ==================== */}
+          {/* =================================================
+              SELECT DATE
+          ================================================= */}
 
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
 
@@ -522,7 +864,9 @@ export default function BookOPDPage() {
                 <button
                   key={date}
                   onClick={() =>
-                    handleDateChange(date)
+                    handleDateChange(
+                      date
+                    )
                   }
                   disabled={submitting}
                   className={`px-[14px] py-[9px] rounded-[10px] text-[12px] font-semibold border transition-colors ${
@@ -544,7 +888,9 @@ export default function BookOPDPage() {
 
           </div>
 
-          {/* ==================== TIME SLOTS ==================== */}
+          {/* =================================================
+              SELECT TIME SLOT
+          ================================================= */}
 
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
 
@@ -568,7 +914,25 @@ export default function BookOPDPage() {
 
             </div>
 
-            {visibleSlots.length === 0 ? (
+            {/* =================================================
+                LOADING
+            ================================================= */}
+
+            {slotsLoading ? (
+
+              <div className="bg-[#f4f7fb] border border-[#d8e1ec] rounded-[10px] px-[14px] py-[18px] text-center">
+
+                <p className="font-semibold text-[#526176] text-[13px]">
+                  Loading available time slots...
+                </p>
+
+                <p className="font-normal text-[#7b899c] text-[11px] mt-[4px]">
+                  Checking live availability.
+                </p>
+
+              </div>
+
+            ) : visibleSlots.length === 0 ? (
 
               <div className="bg-[#f4f7fb] border border-[#d8e1ec] rounded-[10px] px-[14px] py-[18px] text-center">
 
@@ -577,7 +941,7 @@ export default function BookOPDPage() {
                 </p>
 
                 <p className="font-normal text-[#7b899c] text-[11px] mt-[4px]">
-                  All remaining slots for today have passed.
+                  There are currently no slots returned by the server for this date.
                   Please select another date.
                 </p>
 
@@ -590,13 +954,14 @@ export default function BookOPDPage() {
                 {visibleSlots.map((slot) => {
 
                   const isSelected =
-                    selectedSlot === slot.time;
+                    selectedSlot ===
+                    slot.time;
 
                   return (
+
                     <button
-                      key={slot.time}
+                      key={slot.id}
                       onClick={() =>
-                        slot.available &&
                         handleSlotSelect(
                           slot.time
                         )
@@ -626,7 +991,8 @@ export default function BookOPDPage() {
                         {slot.time}
                       </p>
 
-                      {slot.available && (
+                      {slot.available ? (
+
                         <p
                           className={`font-normal text-[10px] mt-[2px] ${
                             isSelected
@@ -636,43 +1002,60 @@ export default function BookOPDPage() {
                         >
                           {slot.remaining} left
                         </p>
-                      )}
 
-                      {!slot.available && (
+                      ) : (
+
                         <p className="font-normal text-[#afc0d3] text-[10px] mt-[2px]">
                           Full
                         </p>
+
                       )}
 
                     </button>
+
                   );
+
                 })}
 
               </div>
 
             )}
 
-            {!selectedSlot && visibleSlots.length > 0 && (
-              <p className="font-normal text-[#a86508] text-[12px] mt-[10px]">
-                Please select a time slot to continue.
-              </p>
-            )}
+            {!slotsLoading &&
+              !selectedSlot &&
+              visibleSlots.length > 0 && (
+
+                <p className="font-normal text-[#a86508] text-[12px] mt-[10px]">
+                  Please select a time slot to continue.
+                </p>
+
+              )}
 
           </div>
 
         </div>
 
-        {/* ==================== RIGHT ==================== */}
+        {/* ===================================================
+            RIGHT SIDE
+        =================================================== */}
 
         <div className="w-full lg:w-[240px] lg:shrink-0 flex flex-col gap-[14px]">
 
-          {/* ==================== TODAY'S QUEUE ==================== */}
+          {/* =================================================
+              TODAY'S QUEUE
+          ================================================= */}
 
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[18px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
 
             <p className="font-bold text-[#142033] text-[14px] mb-[12px]">
-              Today's Queue
+              Queue Summary
             </p>
+
+            {queueError && (
+              <p className="text-[#b42318] text-[11px] mb-[8px]">
+                {queueError}
+              </p>
+            )}
 
             <div className="flex flex-col gap-[6px]">
 
@@ -680,22 +1063,30 @@ export default function BookOPDPage() {
                 {
                   label: 'Patients today',
                   value:
-                    selectedDoctor.patientsToday,
+                    queueLoading
+                      ? '...'
+                      : patientsToday,
                 },
                 {
                   label: 'Currently waiting',
                   value:
-                    selectedDoctor.queueLength,
+                    queueLoading
+                      ? '...'
+                      : currentlyWaiting,
                 },
                 {
                   label: 'Est. wait',
                   value:
-                    `~${selectedDoctor.queueLength * 12} min`,
+                    queueLoading
+                      ? '...'
+                      : currentlyWaiting === 0
+                      ? 'No wait'
+                      : `~${currentlyWaiting * 10} min`,
                 },
                 {
                   label: 'Next slot',
                   value:
-                    selectedDoctor.nextSlot,
+                    nextAvailableSlot,
                 },
               ].map((row) => (
 
@@ -720,7 +1111,9 @@ export default function BookOPDPage() {
 
           </div>
 
-          {/* ==================== HOW IT WORKS ==================== */}
+          {/* =================================================
+              HOW IT WORKS
+          ================================================= */}
 
           <div className="bg-[#eaf3fd] border border-[#c3d9f7] rounded-[12px] p-[14px]">
 
@@ -740,9 +1133,12 @@ export default function BookOPDPage() {
 
       </div>
 
-      {/* ==================== ERROR ==================== */}
+      {/* =====================================================
+          ERROR
+      ===================================================== */}
 
       {error && (
+
         <div className="mt-[18px]">
 
           <ErrorState
@@ -754,16 +1150,23 @@ export default function BookOPDPage() {
           />
 
         </div>
+
       )}
 
-      {/* ==================== BOOK BUTTON ==================== */}
+      {/* =====================================================
+          CONFIRM BOOKING
+      ===================================================== */}
 
       <div className="mt-[24px] flex items-center gap-[12px] flex-wrap">
 
         <Button
           variant="primary"
           onClick={handleBook}
-          disabled={!selectedSlot || submitting}
+          disabled={
+            !selectedSlot ||
+            submitting ||
+            slotsLoading
+          }
           loading={submitting}
           className="px-[32px] py-[13px] text-[15px]"
         >

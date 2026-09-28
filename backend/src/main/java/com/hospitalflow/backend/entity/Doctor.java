@@ -24,7 +24,13 @@ public class Doctor {
     @Column(nullable = false)
     private String status;
 
+    // Average consultation duration
     private String consultationTime;
+
+    // OPD working hours
+    private String opdStartTime;
+
+    private String opdEndTime;
 
     @Column(unique = true)
     private String email;
@@ -118,6 +124,22 @@ public class Doctor {
 
     public void setConsultationTime(String consultationTime) {
         this.consultationTime = consultationTime;
+    }
+
+    public String getOpdStartTime() {
+        return opdStartTime;
+    }
+
+    public void setOpdStartTime(String opdStartTime) {
+        this.opdStartTime = opdStartTime;
+    }
+
+    public String getOpdEndTime() {
+        return opdEndTime;
+    }
+
+    public void setOpdEndTime(String opdEndTime) {
+        this.opdEndTime = opdEndTime;
     }
 
     public String getEmail() {
