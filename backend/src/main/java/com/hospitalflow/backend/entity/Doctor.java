@@ -27,6 +27,10 @@ public class Doctor {
     // Average consultation duration
     private String consultationTime;
 
+    // Consultation fee in INR
+    @Column(name = "consultation_fee", nullable = false)
+    private Double consultationFee = 0.0;
+
     // OPD working hours
     private String opdStartTime;
 
@@ -124,6 +128,14 @@ public class Doctor {
 
     public void setConsultationTime(String consultationTime) {
         this.consultationTime = consultationTime;
+    }
+
+    public Double getConsultationFee() {
+        return consultationFee;
+    }
+
+    public void setConsultationFee(Double consultationFee) {
+        this.consultationFee = consultationFee;
     }
 
     public String getOpdStartTime() {

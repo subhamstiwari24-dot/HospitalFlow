@@ -26,7 +26,7 @@ public class PaymentController {
     }
 
     // =====================================================
-    // CREATE PAYMENT
+    // CREATE PAYMENT + RAZORPAY ORDER
     // =====================================================
 
     @PostMapping("/create")
@@ -37,11 +37,10 @@ public class PaymentController {
 
         try {
 
-            Payment payment =
-                    paymentService.createPayment(
-                            appointmentId,
-                            amount
-                    );
+            Payment payment = paymentService.createPayment(
+                    appointmentId,
+                    amount
+            );
 
             return ResponseEntity
                     .status(HttpStatus.CREATED)
@@ -49,19 +48,34 @@ public class PaymentController {
 
         } catch (IllegalArgumentException e) {
 
+            e.printStackTrace();
+
             return ResponseEntity
                     .badRequest()
-                    .body(Map.of(
-                            "error", e.getMessage()
-                    ));
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage() != null
+                                            ? e.getMessage()
+                                            : "Invalid payment request"
+                            )
+                    );
 
         } catch (RuntimeException e) {
 
+            // Print complete error in backend terminal
+            e.printStackTrace();
+
             return ResponseEntity
-                    .status(HttpStatus.NOT_FOUND)
-                    .body(Map.of(
-                            "error", e.getMessage()
-                    ));
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage() != null
+                                            ? e.getMessage()
+                                            : "Unknown payment error"
+                            )
+                    );
         }
     }
 
@@ -77,17 +91,26 @@ public class PaymentController {
         try {
 
             Payment payment =
-                    paymentService.getPayment(paymentId);
+                    paymentService.getPayment(
+                            paymentId
+                    );
 
             return ResponseEntity.ok(payment);
 
         } catch (RuntimeException e) {
 
+            e.printStackTrace();
+
             return ResponseEntity
                     .status(HttpStatus.NOT_FOUND)
-                    .body(Map.of(
-                            "error", e.getMessage()
-                    ));
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage() != null
+                                            ? e.getMessage()
+                                            : "Payment not found"
+                            )
+                    );
         }
     }
 
@@ -111,11 +134,57 @@ public class PaymentController {
 
         } catch (RuntimeException e) {
 
+            e.printStackTrace();
+
             return ResponseEntity
                     .status(HttpStatus.NOT_FOUND)
-                    .body(Map.of(
-                            "error", e.getMessage()
-                    ));
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage() != null
+                                            ? e.getMessage()
+                                            : "Payment not found for appointment"
+                            )
+                    );
+        }
+    }
+
+    // =====================================================
+    // VERIFY RAZORPAY PAYMENT
+    // =====================================================
+
+    @PostMapping("/verify")
+    public ResponseEntity<?> verifyPayment(
+            @RequestParam Long paymentId,
+            @RequestParam String razorpayPaymentId,
+            @RequestParam String razorpaySignature
+    ) {
+
+        try {
+
+            Payment payment =
+                    paymentService.verifyPayment(
+                            paymentId,
+                            razorpayPaymentId,
+                            razorpaySignature
+                    );
+
+            return ResponseEntity.ok(payment);
+
+        } catch (RuntimeException e) {
+
+            e.printStackTrace();
+
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage() != null
+                                            ? e.getMessage()
+                                            : "Payment verification failed"
+                            )
+                    );
         }
     }
 
@@ -143,11 +212,18 @@ public class PaymentController {
 
         } catch (RuntimeException e) {
 
+            e.printStackTrace();
+
             return ResponseEntity
-                    .status(HttpStatus.NOT_FOUND)
-                    .body(Map.of(
-                            "error", e.getMessage()
-                    ));
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage() != null
+                                            ? e.getMessage()
+                                            : "Unable to mark payment as paid"
+                            )
+                    );
         }
     }
 
@@ -171,11 +247,18 @@ public class PaymentController {
 
         } catch (RuntimeException e) {
 
+            e.printStackTrace();
+
             return ResponseEntity
                     .status(HttpStatus.NOT_FOUND)
-                    .body(Map.of(
-                            "error", e.getMessage()
-                    ));
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage() != null
+                                            ? e.getMessage()
+                                            : "Unable to mark payment as failed"
+                            )
+                    );
         }
     }
 }

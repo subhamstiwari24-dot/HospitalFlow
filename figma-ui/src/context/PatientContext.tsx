@@ -509,14 +509,27 @@ export function PatientProvider({
 
   const updateSelectedDoctor = useCallback(
     (doctor: SelectedDoctor | null) => {
-      setSelectedDoctor(doctor);
-
       if (doctor) {
+        /*
+         * Normalize the consultation fee before storing the doctor.
+         *
+         * This prevents an old/invalid string value or undefined
+         * fee from reaching BookOPDPage and Razorpay.
+         */
+        const normalizedDoctor: SelectedDoctor = {
+          ...doctor,
+          fee: Number(doctor.fee ?? 0),
+        };
+
+        setSelectedDoctor(normalizedDoctor);
+
         writeStorage(
           STORAGE_KEYS.selectedDoctor,
-          doctor
+          normalizedDoctor
         );
       } else {
+        setSelectedDoctor(null);
+
         removeStorage(
           STORAGE_KEYS.selectedDoctor
         );

@@ -22,6 +22,7 @@ type BackendDoctor = {
   experience?: string | number;
   status?: string;
   consultationTime?: string | number;
+  consultationFee?: number;
 
   hospital?: {
     id: number;
@@ -436,7 +437,7 @@ export default function SelectDoctorPage() {
             ? `${doctor.experience} years experience`
             : 'Experience not specified',
 
-        fee: 0,
+        fee: Number(doctor.consultationFee ?? 0),
 
         queueLength:
           waitingAppointments.length,
@@ -843,8 +844,10 @@ export default function SelectDoctorPage() {
                           Consultation fee
                         </p>
 
-                        <p className="font-normal text-[#7b899c] text-[10px]">
-                          Not specified
+                        <p className="font-semibold text-[#155ead] text-[13px]">
+                          {doctor.fee > 0
+                            ? `₹${doctor.fee}`
+                            : 'Not specified'}
                         </p>
 
                       </div>

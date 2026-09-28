@@ -12,6 +12,83 @@ import {
   isTenDigitPhone,
 } from '../../utils/validation';
 
+
+
+/* =========================================================
+ * RAZORPAY TYPES
+ * ========================================================= */
+type RazorpayCheckoutOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  prefill?: {
+    name?: string;
+    contact?: string;
+    email?: string;
+  };
+  theme?: {
+    color?: string;
+  };
+  handler: (response: RazorpayPaymentResponse) => void | Promise<void>;
+  modal?: {
+    ondismiss?: () => void;
+  };
+};
+
+type RazorpayPaymentResponse = {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayCheckout = {
+  open: () => void;
+  on: (event: string, handler: (response: unknown) => void) => void;
+};
+
+type BackendPayment = {
+  id: number;
+  amount: number;
+  currency: string;
+  paymentStatus: string;
+  razorpayOrderId: string;
+};
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayCheckoutOptions) => RazorpayCheckout;
+  }
+}
+
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const existingScript = document.querySelector(
+      'script[src=\"https://checkout.razorpay.com/v1/checkout.js\"]'
+    );
+
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(true), { once: true });
+      existingScript.addEventListener('error', () => resolve(false), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 type BackendSlot = {
   id: string;
   time: string;
@@ -555,77 +632,54 @@ export default function BookOPDPage() {
    * =====================================================
    */
   const handleBook = async () => {
-    if (
-      !selectedSlot ||
-      submitting
-    ) {
+    if (!selectedSlot || submitting) {
       return;
     }
 
     /*
-     * Make sure selected slot still exists
-     * and is marked available by backend.
+     * Final slot availability check before creating the appointment.
      */
-    const selectedSlotData =
-      opdSlots.find(
-        (slot) =>
-          slot.time === selectedSlot
-      );
+    const selectedSlotData = opdSlots.find(
+      (slot) => slot.time === selectedSlot
+    );
 
-    if (
-      !selectedSlotData ||
-      !selectedSlotData.available
-    ) {
+    if (!selectedSlotData || !selectedSlotData.available) {
       setSelectedSlot('');
-
       setError(
         'This time slot is no longer available. Please select another slot.'
       );
-
       return;
     }
 
-    /*
-     * Validate patient name.
-     */
-    if (
-      !hasMinimumLength(
-        patientName,
-        2
-      )
-    ) {
-      setError(
-        'Full name must be at least 2 characters.'
-      );
-
+    /* Patient validation */
+    if (!hasMinimumLength(patientName, 2)) {
+      setError('Full name must be at least 2 characters.');
       return;
     }
 
-    /*
-     * Validate phone.
-     */
-    if (
-      !isTenDigitPhone(
-        patientPhone
-      )
-    ) {
-      setError(
-        'Mobile number must be exactly 10 digits.'
-      );
-
+    if (!isTenDigitPhone(patientPhone)) {
+      setError('Mobile number must be exactly 10 digits.');
       return;
     }
 
-    /*
-     * Validate reason.
-     */
-    if (
-      !reasonForVisit.trim()
-    ) {
-      setError(
-        'Please enter your reason for visit.'
-      );
+    if (!reasonForVisit.trim()) {
+      setError('Please enter your reason for visit.');
+      return;
+    }
 
+    const amount = Number(selectedDoctor.fee);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Invalid consultation fee. Please contact the hospital.');
+      return;
+    }
+
+    const razorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+    if (!razorpayKeyId) {
+      setError(
+        'Razorpay Key ID is missing. Add VITE_RAZORPAY_KEY_ID to the frontend .env file and restart Vite.'
+      );
       return;
     }
 
@@ -633,32 +687,227 @@ export default function BookOPDPage() {
     setError('');
 
     try {
-      console.log(
-        'Creating HospitalFlow appointment...'
+      /*
+       * STEP 1: Create the HospitalFlow appointment.
+       *
+       * The existing confirmBooking() is preserved, so the real
+       * backend slot/queue/token flow continues to work.
+       */
+      console.log('Creating HospitalFlow appointment...');
+
+      const booking = await confirmBooking();
+
+      console.log('Appointment successfully created:', booking);
+
+      if (!booking?.appointmentId) {
+        throw new Error(
+          'Appointment was created but no appointment ID was returned.'
+        );
+      }
+
+      /*
+       * STEP 2: Load Razorpay Checkout.js.
+       */
+      const razorpayLoaded = await loadRazorpayScript();
+
+      if (!razorpayLoaded || !window.Razorpay) {
+        throw new Error(
+          'Unable to load Razorpay Checkout. Please check your internet connection and try again.'
+        );
+      }
+
+      /*
+       * STEP 3: Ask our backend to create a Razorpay Order.
+       *
+       * IMPORTANT: the Razorpay secret is never sent to the browser.
+       */
+      const createPaymentUrl =
+        `http://localhost:8080/api/payments/create?appointmentId=${encodeURIComponent(
+          booking.appointmentId
+        )}&amount=${encodeURIComponent(amount)}`;
+
+      const paymentResponse = await fetch(
+        createPaymentUrl,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
       );
 
-      const booking =
-        await confirmBooking();
+      const paymentData: unknown = await paymentResponse.json();
 
-      console.log(
-        'Appointment successfully created:',
-        booking
-      );
+      if (!paymentResponse.ok) {
+        const backendMessage =
+          paymentData &&
+          typeof paymentData === 'object' &&
+          'error' in paymentData
+            ? String(
+                (paymentData as { error?: unknown }).error ??
+                  'Unable to create payment.'
+              )
+            : 'Unable to create payment.';
 
-      navigate(
-        '/patient/confirmation'
-      );
+        throw new Error(backendMessage);
+      }
+
+      if (!paymentData || typeof paymentData !== 'object') {
+        throw new Error('Invalid payment response from server.');
+      }
+
+      const payment = paymentData as BackendPayment;
+
+      if (!payment.id || !payment.razorpayOrderId) {
+        throw new Error(
+          'Payment was created but Razorpay order information is missing.'
+        );
+      }
+
+      /*
+       * STEP 4: Open Razorpay Checkout.
+       */
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
+
+        const finishResolve = () => {
+          if (settled) return;
+          settled = true;
+          resolve();
+        };
+
+        const finishReject = (message: string) => {
+          if (settled) return;
+          settled = true;
+          reject(new Error(message));
+        };
+
+        const checkout = new window.Razorpay({
+          key: razorpayKeyId,
+          amount: Math.round(amount * 100),
+          currency: payment.currency || 'INR',
+          name: 'HospitalFlow',
+          description: `OPD Consultation - Appointment #${booking.appointmentId}`,
+          order_id: payment.razorpayOrderId,
+
+          method: {
+            card: true,
+            netbanking: true,
+            wallet: true,
+            upi: true,
+          },
+
+          prefill: {
+            name: patientName,
+            contact: patientPhone,
+          },
+          theme: {
+            color: '#155ead',
+          },
+
+          /*
+           * STEP 5: Razorpay returns payment ID + signature.
+           * Send both to our backend for HMAC verification.
+           */
+          handler: async (response) => {
+            try {
+              const verifyUrl =
+                `http://localhost:8080/api/payments/verify?paymentId=${encodeURIComponent(
+                  payment.id
+                )}&razorpayPaymentId=${encodeURIComponent(
+                  response.razorpay_payment_id
+                )}&razorpaySignature=${encodeURIComponent(
+                  response.razorpay_signature
+                )}`;
+
+              const verifyResponse = await fetch(
+                verifyUrl,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+
+              const verifyData: unknown =
+                await verifyResponse.json();
+
+              if (!verifyResponse.ok) {
+                const verifyMessage =
+                  verifyData &&
+                  typeof verifyData === 'object' &&
+                  'error' in verifyData
+                    ? String(
+                        (verifyData as { error?: unknown }).error ??
+                          'Payment verification failed.'
+                      )
+                    : 'Payment verification failed.';
+
+                finishReject(verifyMessage);
+                return;
+              }
+
+              const verifiedPayment =
+                verifyData as Partial<BackendPayment>;
+
+              if (verifiedPayment.paymentStatus !== 'PAID') {
+                finishReject(
+                  'Payment was received but could not be verified.'
+                );
+                return;
+              }
+
+              console.log(
+                'Razorpay payment verified successfully:',
+                verifiedPayment
+              );
+
+              finishResolve();
+            } catch (verificationError) {
+              console.error(
+                'Payment verification error:',
+                verificationError
+              );
+
+              finishReject(
+                verificationError instanceof Error
+                  ? verificationError.message
+                  : 'Payment verification failed.'
+              );
+            }
+          },
+
+          modal: {
+            ondismiss: () => {
+              finishReject(
+                'Payment was cancelled. Your appointment has not been confirmed as paid.'
+              );
+            },
+          },
+        });
+
+        checkout.on('payment.failed', () => {
+          finishReject(
+            'Payment failed. Please try again or choose another payment method.'
+          );
+        });
+
+        checkout.open();
+      });
+
+      /*
+       * Only navigate after backend payment verification succeeds.
+       */
+      navigate('/patient/confirmation');
 
     } catch (err) {
-      console.error(
-        'Booking failed:',
-        err
-      );
+      console.error('Booking/payment failed:', err);
 
       const message =
         err instanceof Error
           ? err.message
-          : 'Unable to create appointment. Please try again.';
+          : 'Unable to complete appointment booking and payment.';
 
       setError(message);
 
@@ -1171,8 +1420,8 @@ export default function BookOPDPage() {
           className="px-[32px] py-[13px] text-[15px]"
         >
           {submitting
-            ? 'Creating Appointment...'
-            : 'Confirm Booking'}
+            ? 'Processing Payment...'
+            : 'Confirm & Pay'}
         </Button>
 
         <div className="text-[#526176] text-[13px]">
