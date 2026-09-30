@@ -1,24 +1,29 @@
 package com.hospitalflow.backend.entity;
 
 import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "payments")
 public class Payment {
 
+    // =====================================================
+    // PRIMARY KEY
+    // =====================================================
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
 
     // =====================================================
     // APPOINTMENT
     // =====================================================
 
-    @OneToOne
-    @JoinColumn(name = "appointment_id", nullable = false, unique = true)
+    @ManyToOne
+    @JoinColumn(name = "appointment_id")
     private Appointment appointment;
+
 
     // =====================================================
     // PATIENT
@@ -27,6 +32,7 @@ public class Payment {
     @ManyToOne
     @JoinColumn(name = "patient_id")
     private Patient patient;
+
 
     // =====================================================
     // PAYMENT DETAILS
@@ -38,42 +44,76 @@ public class Payment {
     @Column(nullable = false)
     private String currency = "INR";
 
-    @Column(name = "payment_status", nullable = false)
+    @Column(nullable = false)
     private String paymentStatus = "PENDING";
+
+    /*
+     * Supported payment methods:
+     *
+     * ONLINE
+     * PAY_AT_HOSPITAL
+     */
+    @Column(
+        name = "payment_method",
+        nullable = false,
+        columnDefinition = "varchar(50) default 'ONLINE'"
+    )
+    private String paymentMethod = "ONLINE";
+
 
     // =====================================================
     // RAZORPAY DETAILS
     // =====================================================
 
-    @Column(name = "razorpay_order_id", unique = true)
     private String razorpayOrderId;
 
-    @Column(name = "razorpay_payment_id", unique = true)
     private String razorpayPaymentId;
 
-    @Column(name = "razorpay_signature")
+    @Column(columnDefinition = "TEXT")
     private String razorpaySignature;
 
+
     // =====================================================
-    // TIMESTAMPS
+    // PAYMENT TIMESTAMPS
     // =====================================================
 
-    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "paid_at")
     private LocalDateTime paidAt;
+
+
+    // =====================================================
+    // REFUND DETAILS
+    // =====================================================
+
+    @Column(name = "refund_status")
+    private String refundStatus = "NOT_REQUESTED";
+
+    @Column(name = "razorpay_refund_id")
+    private String razorpayRefundId;
+
+    @Column(name = "refunded_at")
+    private LocalDateTime refundedAt;
+
 
     // =====================================================
     // CONSTRUCTOR
     // =====================================================
 
     public Payment() {
+
         this.createdAt = LocalDateTime.now();
+
+        this.paymentStatus = "PENDING";
+
+        this.paymentMethod = "ONLINE";
+
+        this.refundStatus = "NOT_REQUESTED";
     }
 
+
     // =====================================================
-    // GETTERS / SETTERS
+    // GETTERS AND SETTERS
     // =====================================================
 
     public Long getId() {
@@ -84,6 +124,11 @@ public class Payment {
         this.id = id;
     }
 
+
+    // =====================================================
+    // APPOINTMENT
+    // =====================================================
+
     public Appointment getAppointment() {
         return appointment;
     }
@@ -91,6 +136,11 @@ public class Payment {
     public void setAppointment(Appointment appointment) {
         this.appointment = appointment;
     }
+
+
+    // =====================================================
+    // PATIENT
+    // =====================================================
 
     public Patient getPatient() {
         return patient;
@@ -100,6 +150,11 @@ public class Payment {
         this.patient = patient;
     }
 
+
+    // =====================================================
+    // AMOUNT
+    // =====================================================
+
     public Double getAmount() {
         return amount;
     }
@@ -107,6 +162,11 @@ public class Payment {
     public void setAmount(Double amount) {
         this.amount = amount;
     }
+
+
+    // =====================================================
+    // CURRENCY
+    // =====================================================
 
     public String getCurrency() {
         return currency;
@@ -116,6 +176,11 @@ public class Payment {
         this.currency = currency;
     }
 
+
+    // =====================================================
+    // PAYMENT STATUS
+    // =====================================================
+
     public String getPaymentStatus() {
         return paymentStatus;
     }
@@ -123,6 +188,24 @@ public class Payment {
     public void setPaymentStatus(String paymentStatus) {
         this.paymentStatus = paymentStatus;
     }
+
+
+    // =====================================================
+    // PAYMENT METHOD
+    // =====================================================
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+
+    // =====================================================
+    // RAZORPAY ORDER ID
+    // =====================================================
 
     public String getRazorpayOrderId() {
         return razorpayOrderId;
@@ -132,6 +215,11 @@ public class Payment {
         this.razorpayOrderId = razorpayOrderId;
     }
 
+
+    // =====================================================
+    // RAZORPAY PAYMENT ID
+    // =====================================================
+
     public String getRazorpayPaymentId() {
         return razorpayPaymentId;
     }
@@ -139,6 +227,11 @@ public class Payment {
     public void setRazorpayPaymentId(String razorpayPaymentId) {
         this.razorpayPaymentId = razorpayPaymentId;
     }
+
+
+    // =====================================================
+    // RAZORPAY SIGNATURE
+    // =====================================================
 
     public String getRazorpaySignature() {
         return razorpaySignature;
@@ -148,6 +241,11 @@ public class Payment {
         this.razorpaySignature = razorpaySignature;
     }
 
+
+    // =====================================================
+    // CREATED AT
+    // =====================================================
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -156,11 +254,55 @@ public class Payment {
         this.createdAt = createdAt;
     }
 
+
+    // =====================================================
+    // PAID AT
+    // =====================================================
+
     public LocalDateTime getPaidAt() {
         return paidAt;
     }
 
     public void setPaidAt(LocalDateTime paidAt) {
         this.paidAt = paidAt;
+    }
+
+
+    // =====================================================
+    // REFUND STATUS
+    // =====================================================
+
+    public String getRefundStatus() {
+        return refundStatus;
+    }
+
+    public void setRefundStatus(String refundStatus) {
+        this.refundStatus = refundStatus;
+    }
+
+
+    // =====================================================
+    // RAZORPAY REFUND ID
+    // =====================================================
+
+    public String getRazorpayRefundId() {
+        return razorpayRefundId;
+    }
+
+    public void setRazorpayRefundId(String razorpayRefundId) {
+        this.razorpayRefundId = razorpayRefundId;
+    }
+
+
+    // =====================================================
+    // REFUNDED AT
+    // =====================================================
+
+    public LocalDateTime getRefundedAt() {
+        return refundedAt;
+    }
+
+    public void setRefundedAt(LocalDateTime refundedAt) {
+        this.refundedAt = refundedAt;
     }
 }

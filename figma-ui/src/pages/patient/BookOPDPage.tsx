@@ -54,7 +54,8 @@ type BackendPayment = {
   amount: number;
   currency: string;
   paymentStatus: string;
-  razorpayOrderId: string;
+  razorpayOrderId?: string;
+  paymentMethod?: string;
 };
 
 declare global {
@@ -153,6 +154,12 @@ export default function BookOPDPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  /*
+   * PAYMENT METHOD
+   */
+  const [paymentMethod, setPaymentMethod] =
+    useState<'ONLINE' | 'PAY_AT_HOSPITAL'>('ONLINE');
 
   /*
    * REAL BACKEND SLOTS
@@ -676,7 +683,10 @@ export default function BookOPDPage() {
 
     const razorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
 
-    if (!razorpayKeyId) {
+    if (
+      paymentMethod === 'ONLINE' &&
+      !razorpayKeyId
+    ) {
       setError(
         'Razorpay Key ID is missing. Add VITE_RAZORPAY_KEY_ID to the frontend .env file and restart Vite.'
       );
@@ -706,25 +716,26 @@ export default function BookOPDPage() {
       }
 
       /*
-       * STEP 2: Load Razorpay Checkout.js.
-       */
-      const razorpayLoaded = await loadRazorpayScript();
-
-      if (!razorpayLoaded || !window.Razorpay) {
-        throw new Error(
-          'Unable to load Razorpay Checkout. Please check your internet connection and try again.'
-        );
-      }
-
-      /*
-       * STEP 3: Ask our backend to create a Razorpay Order.
+       * STEP 2: Create the payment record.
        *
-       * IMPORTANT: the Razorpay secret is never sent to the browser.
+       * ONLINE:
+       * - Backend creates a Razorpay order.
+       * - Razorpay Checkout is opened.
+       * - Backend verifies the Razorpay signature.
+       *
+       * PAY_AT_HOSPITAL:
+       * - Backend creates a PENDING payment record.
+       * - No Razorpay order is created.
+       * - Appointment is confirmed directly.
        */
       const createPaymentUrl =
         `http://localhost:8080/api/payments/create?appointmentId=${encodeURIComponent(
           booking.appointmentId
-        )}&amount=${encodeURIComponent(amount)}`;
+        )}&amount=${encodeURIComponent(
+          amount
+        )}&paymentMethod=${encodeURIComponent(
+          paymentMethod
+        )}`;
 
       const paymentResponse = await fetch(
         createPaymentUrl,
@@ -736,7 +747,8 @@ export default function BookOPDPage() {
         }
       );
 
-      const paymentData: unknown = await paymentResponse.json();
+      const paymentData: unknown =
+        await paymentResponse.json();
 
       if (!paymentResponse.ok) {
         const backendMessage =
@@ -752,15 +764,68 @@ export default function BookOPDPage() {
         throw new Error(backendMessage);
       }
 
-      if (!paymentData || typeof paymentData !== 'object') {
-        throw new Error('Invalid payment response from server.');
+      if (
+        !paymentData ||
+        typeof paymentData !== 'object'
+      ) {
+        throw new Error(
+          'Invalid payment response from server.'
+        );
       }
 
-      const payment = paymentData as BackendPayment;
+      const payment =
+        paymentData as BackendPayment;
 
-      if (!payment.id || !payment.razorpayOrderId) {
+      if (!payment.id) {
+        throw new Error(
+          'Payment record was not created.'
+        );
+      }
+
+      /*
+       * =====================================================
+       * PAY AT HOSPITAL
+       * =====================================================
+       */
+      if (paymentMethod === 'PAY_AT_HOSPITAL') {
+
+        console.log(
+          'Appointment confirmed with Pay at Hospital:',
+          payment
+        );
+
+        /*
+         * No Razorpay verification is required.
+         * Payment intentionally remains PENDING.
+         */
+        navigate('/patient/confirmation');
+        return;
+      }
+
+      /*
+       * =====================================================
+       * ONLINE PAYMENT
+       * =====================================================
+       */
+
+      if (!payment.razorpayOrderId) {
         throw new Error(
           'Payment was created but Razorpay order information is missing.'
+        );
+      }
+
+      /*
+       * STEP 3: Load Razorpay Checkout.js.
+       */
+      const razorpayLoaded =
+        await loadRazorpayScript();
+
+      if (
+        !razorpayLoaded ||
+        !window.Razorpay
+      ) {
+        throw new Error(
+          'Unable to load Razorpay Checkout. Please check your internet connection and try again.'
         );
       }
 
@@ -768,6 +833,7 @@ export default function BookOPDPage() {
        * STEP 4: Open Razorpay Checkout.
        */
       await new Promise<void>((resolve, reject) => {
+
         let settled = false;
 
         const finishResolve = () => {
@@ -776,130 +842,174 @@ export default function BookOPDPage() {
           resolve();
         };
 
-        const finishReject = (message: string) => {
+        const finishReject = (
+          message: string
+        ) => {
           if (settled) return;
           settled = true;
           reject(new Error(message));
         };
 
-        const checkout = new window.Razorpay({
-          key: razorpayKeyId,
-          amount: Math.round(amount * 100),
-          currency: payment.currency || 'INR',
-          name: 'HospitalFlow',
-          description: `OPD Consultation - Appointment #${booking.appointmentId}`,
-          order_id: payment.razorpayOrderId,
+        const checkout =
+          new window.Razorpay({
 
-          method: {
-            card: true,
-            netbanking: true,
-            wallet: true,
-            upi: true,
-          },
+            key: razorpayKeyId as string,
 
-          prefill: {
-            name: patientName,
-            contact: patientPhone,
-          },
-          theme: {
-            color: '#155ead',
-          },
+            amount:
+              Math.round(amount * 100),
 
-          /*
-           * STEP 5: Razorpay returns payment ID + signature.
-           * Send both to our backend for HMAC verification.
-           */
-          handler: async (response) => {
-            try {
-              const verifyUrl =
-                `http://localhost:8080/api/payments/verify?paymentId=${encodeURIComponent(
-                  payment.id
-                )}&razorpayPaymentId=${encodeURIComponent(
-                  response.razorpay_payment_id
-                )}&razorpaySignature=${encodeURIComponent(
-                  response.razorpay_signature
-                )}`;
+            currency:
+              payment.currency || 'INR',
 
-              const verifyResponse = await fetch(
-                verifyUrl,
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                }
-              );
+            name: 'HospitalFlow',
 
-              const verifyData: unknown =
-                await verifyResponse.json();
+            description:
+              `OPD Consultation - Appointment #${booking.appointmentId}`,
 
-              if (!verifyResponse.ok) {
-                const verifyMessage =
-                  verifyData &&
-                  typeof verifyData === 'object' &&
-                  'error' in verifyData
-                    ? String(
-                        (verifyData as { error?: unknown }).error ??
-                          'Payment verification failed.'
-                      )
-                    : 'Payment verification failed.';
+            order_id:
+              payment.razorpayOrderId,
 
-                finishReject(verifyMessage);
-                return;
-              }
-
-              const verifiedPayment =
-                verifyData as Partial<BackendPayment>;
-
-              if (verifiedPayment.paymentStatus !== 'PAID') {
-                finishReject(
-                  'Payment was received but could not be verified.'
-                );
-                return;
-              }
-
-              console.log(
-                'Razorpay payment verified successfully:',
-                verifiedPayment
-              );
-
-              finishResolve();
-            } catch (verificationError) {
-              console.error(
-                'Payment verification error:',
-                verificationError
-              );
-
-              finishReject(
-                verificationError instanceof Error
-                  ? verificationError.message
-                  : 'Payment verification failed.'
-              );
-            }
-          },
-
-          modal: {
-            ondismiss: () => {
-              finishReject(
-                'Payment was cancelled. Your appointment has not been confirmed as paid.'
-              );
+            prefill: {
+              name: patientName,
+              contact: patientPhone,
             },
-          },
-        });
 
-        checkout.on('payment.failed', () => {
-          finishReject(
-            'Payment failed. Please try again or choose another payment method.'
-          );
-        });
+            theme: {
+              color: '#155ead',
+            },
+
+            /*
+             * STEP 5: Razorpay returns payment ID + signature.
+             * Send both to our backend for HMAC verification.
+             */
+            handler: async (
+              response
+            ) => {
+
+              try {
+
+                const verifyUrl =
+                  `http://localhost:8080/api/payments/verify?paymentId=${encodeURIComponent(
+                    payment.id
+                  )}&razorpayPaymentId=${encodeURIComponent(
+                    response.razorpay_payment_id
+                  )}&razorpaySignature=${encodeURIComponent(
+                    response.razorpay_signature
+                  )}`;
+
+                const verifyResponse =
+                  await fetch(
+                    verifyUrl,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type':
+                          'application/json',
+                      },
+                    }
+                  );
+
+                const verifyData: unknown =
+                  await verifyResponse.json();
+
+                if (!verifyResponse.ok) {
+
+                  const verifyMessage =
+                    verifyData &&
+                    typeof verifyData ===
+                      'object' &&
+                    'error' in verifyData
+                      ? String(
+                          (
+                            verifyData as {
+                              error?: unknown;
+                            }
+                          ).error ??
+                            'Payment verification failed.'
+                        )
+                      : 'Payment verification failed.';
+
+                  finishReject(
+                    verifyMessage
+                  );
+
+                  return;
+                }
+
+                const verifiedPayment =
+                  verifyData as Partial<BackendPayment>;
+
+                if (
+                  verifiedPayment.paymentStatus !==
+                  'PAID'
+                ) {
+
+                  finishReject(
+                    'Payment was received but could not be verified.'
+                  );
+
+                  return;
+                }
+
+                console.log(
+                  'Razorpay payment verified successfully:',
+                  verifiedPayment
+                );
+
+                finishResolve();
+
+              } catch (
+                verificationError
+              ) {
+
+                console.error(
+                  'Payment verification error:',
+                  verificationError
+                );
+
+                finishReject(
+                  verificationError instanceof
+                    Error
+                    ? verificationError.message
+                    : 'Payment verification failed.'
+                );
+              }
+            },
+
+            modal: {
+
+              ondismiss: () => {
+
+                finishReject(
+                  'Payment was cancelled. Your appointment has not been confirmed as paid.'
+                );
+
+              },
+
+            },
+
+          });
+
+        checkout.on(
+          'payment.failed',
+          () => {
+
+            finishReject(
+              'Payment failed. Please try again or choose another payment method.'
+            );
+
+          }
+        );
 
         checkout.open();
+
       });
 
       /*
        * Only navigate after backend payment verification succeeds.
        */
       navigate('/patient/confirmation');
+
 
     } catch (err) {
       console.error('Booking/payment failed:', err);
@@ -1282,6 +1392,152 @@ export default function BookOPDPage() {
 
           </div>
 
+
+        {/* =================================================
+            PAYMENT METHOD
+        ================================================= */}
+
+        <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
+
+          <div className="flex items-center gap-[8px] mb-[6px]">
+
+            <div className="bg-[#18865b] h-[20px] rounded-[2px] w-[4px]" />
+
+            <p className="font-bold text-[#142033] text-[15px]">
+              Payment Method
+            </p>
+
+          </div>
+
+          <p className="font-normal text-[#7b899c] text-[12px] mb-[14px]">
+            Choose how you want to pay your consultation fee.
+          </p>
+
+          <div className="flex flex-col gap-[10px]">
+
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentMethod('ONLINE');
+                setError('');
+              }}
+              disabled={submitting}
+              className={`w-full text-left rounded-[12px] border p-[14px] transition-colors ${
+                paymentMethod === 'ONLINE'
+                  ? 'border-[#155ead] bg-[#eef6ff]'
+                  : 'border-[#d8e1ec] bg-white hover:bg-[#f8fafc]'
+              } ${
+                submitting
+                  ? 'opacity-60 cursor-not-allowed'
+                  : 'cursor-pointer'
+              }`}
+            >
+
+              <div className="flex items-start gap-[12px]">
+
+                <div
+                  className={`mt-[2px] h-[18px] w-[18px] rounded-full border flex items-center justify-center shrink-0 ${
+                    paymentMethod === 'ONLINE'
+                      ? 'border-[#155ead]'
+                      : 'border-[#9aa7b8]'
+                  }`}
+                >
+                  {paymentMethod === 'ONLINE' && (
+                    <div className="h-[8px] w-[8px] rounded-full bg-[#155ead]" />
+                  )}
+                </div>
+
+                <div className="min-w-0">
+
+                  <p className="font-bold text-[#142033] text-[13px]">
+                    Pay Online
+                  </p>
+
+                  <p className="font-normal text-[#526176] text-[11px] mt-[3px] leading-relaxed">
+                    Secure payment through Razorpay using UPI, card, net banking or wallet.
+                  </p>
+
+                </div>
+
+              </div>
+
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentMethod('PAY_AT_HOSPITAL');
+                setError('');
+              }}
+              disabled={submitting}
+              className={`w-full text-left rounded-[12px] border p-[14px] transition-colors ${
+                paymentMethod === 'PAY_AT_HOSPITAL'
+                  ? 'border-[#18865b] bg-[#effaf6]'
+                  : 'border-[#d8e1ec] bg-white hover:bg-[#f8fafc]'
+              } ${
+                submitting
+                  ? 'opacity-60 cursor-not-allowed'
+                  : 'cursor-pointer'
+              }`}
+            >
+
+              <div className="flex items-start gap-[12px]">
+
+                <div
+                  className={`mt-[2px] h-[18px] w-[18px] rounded-full border flex items-center justify-center shrink-0 ${
+                    paymentMethod === 'PAY_AT_HOSPITAL'
+                      ? 'border-[#18865b]'
+                      : 'border-[#9aa7b8]'
+                  }`}
+                >
+                  {paymentMethod === 'PAY_AT_HOSPITAL' && (
+                    <div className="h-[8px] w-[8px] rounded-full bg-[#18865b]" />
+                  )}
+                </div>
+
+                <div className="min-w-0">
+
+                  <p className="font-bold text-[#142033] text-[13px]">
+                    Pay at Hospital
+                  </p>
+
+                  <p className="font-normal text-[#526176] text-[11px] mt-[3px] leading-relaxed">
+                    Confirm your appointment now and pay the consultation fee at the hospital.
+                  </p>
+
+                </div>
+
+              </div>
+
+            </button>
+
+          </div>
+
+          <div className="mt-[12px] rounded-[9px] bg-[#f4f7fb] px-[11px] py-[9px]">
+
+            <div className="flex items-center justify-between gap-[12px]">
+
+              <span className="font-normal text-[#7b899c] text-[11px]">
+                Consultation fee
+              </span>
+
+              <span className="font-bold text-[#142033] text-[13px]">
+                ₹{selectedDoctor.fee}
+              </span>
+
+            </div>
+
+            {paymentMethod === 'PAY_AT_HOSPITAL' && (
+              <p className="font-normal text-[#526176] text-[10px] mt-[5px] leading-relaxed">
+                No online payment will be charged now.
+              </p>
+            )}
+
+          </div>
+
+        </div>
+
+
         </div>
 
         {/* ===================================================
@@ -1420,8 +1676,12 @@ export default function BookOPDPage() {
           className="px-[32px] py-[13px] text-[15px]"
         >
           {submitting
-            ? 'Processing Payment...'
-            : 'Confirm & Pay'}
+            ? paymentMethod === 'ONLINE'
+              ? 'Processing Payment...'
+              : 'Confirming Appointment...'
+            : paymentMethod === 'ONLINE'
+            ? 'Confirm & Pay Online'
+            : 'Confirm & Pay at Hospital'}
         </Button>
 
         <div className="text-[#526176] text-[13px]">

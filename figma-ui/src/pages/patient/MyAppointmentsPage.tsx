@@ -24,12 +24,31 @@ interface Appointment {
   } | null;
 }
 
+interface PaymentInfo {
+  paymentStatus?: string;
+  refundStatus?: string;
+  razorpayRefundId?: string;
+  refundedAt?: string;
+}
+
+interface CancelResponse {
+  message?: string;
+  error?: string;
+  appointment?: Appointment;
+  payment?: PaymentInfo | null;
+}
+
 export default function MyAppointmentsPage() {
   const navigate = useNavigate();
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [cancelError, setCancelError] = useState('');
+  const [cancelMessage, setCancelMessage] = useState('');
+  const [payments, setPayments] = useState<Record<number, PaymentInfo>>({});
 
   const storedPatient = sessionStorage.getItem(
     'hospitalflow_patient'
@@ -137,6 +156,159 @@ export default function MyAppointmentsPage() {
       year: 'numeric',
     });
   };
+
+  const canCancelAppointment = (status: string) => {
+    const normalizedStatus = status?.toUpperCase();
+
+    return (
+      normalizedStatus !== 'CANCELLED' &&
+      normalizedStatus !== 'COMPLETED' &&
+      normalizedStatus !== 'IN_PROGRESS' &&
+      normalizedStatus !== 'IN PROGRESS' &&
+      normalizedStatus !== 'SKIPPED'
+    );
+  };
+
+  const handleCancelAppointment = async (appointment: Appointment) => {
+    if (!canCancelAppointment(appointment.status)) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Are you sure you want to cancel this appointment?\n\nIf your payment was completed, the refund will be initiated automatically.'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setCancellingId(appointment.id);
+      setCancelError('');
+      setCancelMessage('');
+
+      const response = await fetch(
+        `/api/appointments/${appointment.id}/cancel`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const data: CancelResponse = await response
+        .json()
+        .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || 'Unable to cancel appointment.'
+        );
+      }
+
+      setAppointments((currentAppointments) =>
+        currentAppointments.map((item) =>
+          item.id === appointment.id
+            ? {
+                ...item,
+                status:
+                  data.appointment?.status ||
+                  'CANCELLED',
+              }
+            : item
+        )
+      );
+
+      if (data.payment) {
+        setPayments((currentPayments) => ({
+          ...currentPayments,
+          [appointment.id]: data.payment || {},
+        }));
+      }
+
+      setCancelMessage(
+        data.message ||
+          'Appointment cancelled successfully.'
+      );
+    } catch (err) {
+      console.error(
+        'Cancellation failed:',
+        err
+      );
+
+      setCancelError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to cancel appointment.'
+      );
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  useEffect(() => {
+    const cancelledPendingAppointments =
+      appointments.filter((appointment) => {
+        const payment = payments[appointment.id];
+
+        return (
+          appointment.status?.toUpperCase() ===
+            'CANCELLED' &&
+          payment?.refundStatus ===
+            'REFUND_PENDING'
+        );
+      });
+
+    if (cancelledPendingAppointments.length === 0) {
+      return;
+    }
+
+    let mounted = true;
+
+    const refreshRefundStatuses = async () => {
+      for (const appointment of cancelledPendingAppointments) {
+        try {
+          const response = await fetch(
+            `/api/payments/appointment/${appointment.id}`
+          );
+
+          if (!response.ok || !mounted) {
+            continue;
+          }
+
+          const payment: PaymentInfo =
+            await response.json();
+
+          if (!mounted) {
+            return;
+          }
+
+          setPayments((currentPayments) => ({
+            ...currentPayments,
+            [appointment.id]: payment,
+          }));
+        } catch (err) {
+          console.error(
+            `Unable to refresh refund status for appointment ${appointment.id}:`,
+            err
+          );
+        }
+      }
+    };
+
+    refreshRefundStatuses();
+
+    const interval = window.setInterval(
+      refreshRefundStatuses,
+      5000
+    );
+
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, [appointments, payments]);
 
   const handleAppointmentClick = (id: number) => {
     navigate(`/patient/appointment?id=${id}`);
@@ -306,6 +478,31 @@ export default function MyAppointmentsPage() {
             </div>
           )}
 
+        {/* Cancellation / Refund Messages */}
+        {cancelMessage && (
+          <div className="bg-[#e8f7f1] border border-[#b9e5d3] rounded-[14px] p-[16px] mb-[16px]">
+            <p className="font-bold text-[#146b4a] text-[13px]">
+              Appointment Cancelled
+            </p>
+
+            <p className="text-[#526176] text-[12px] mt-[4px]">
+              {cancelMessage}
+            </p>
+          </div>
+        )}
+
+        {cancelError && (
+          <div className="bg-[#fff1f1] border border-[#f3c2c2] rounded-[14px] p-[16px] mb-[16px]">
+            <p className="font-bold text-[#b42318] text-[13px]">
+              Unable to cancel appointment
+            </p>
+
+            <p className="text-[#7b4a4a] text-[12px] mt-[4px]">
+              {cancelError}
+            </p>
+          </div>
+        )}
+
         {/* Appointment List */}
         {!loading &&
           !error &&
@@ -397,19 +594,80 @@ export default function MyAppointmentsPage() {
 
                     </div>
 
-                    {/* View */}
-                    <button
-                      onClick={() =>
-                        handleAppointmentClick(
+                    {/* Actions */}
+                    <div className="flex flex-wrap items-center gap-[8px]">
+                      <button
+                        onClick={() =>
+                          handleAppointmentClick(
+                            appointment.id
+                          )
+                        }
+                        className="border border-[#155ead] text-[#155ead] font-semibold text-[12px] px-[16px] py-[9px] rounded-[8px] cursor-pointer hover:bg-[#eaf3ff]"
+                      >
+                        View
+                      </button>
+
+                      {canCancelAppointment(
+                        appointment.status
+                      ) && (
+                        <button
+                          onClick={() =>
+                            handleCancelAppointment(
+                              appointment
+                            )
+                          }
+                          disabled={
+                            cancellingId ===
+                            appointment.id
+                          }
+                          className="border border-[#ef4444] text-[#dc2626] font-semibold text-[12px] px-[16px] py-[9px] rounded-[8px] cursor-pointer hover:bg-[#fff1f2] disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {cancellingId ===
                           appointment.id
-                        )
-                      }
-                      className="border border-[#155ead] text-[#155ead] font-semibold text-[12px] px-[16px] py-[9px] rounded-[8px] cursor-pointer hover:bg-[#eaf3ff]"
-                    >
-                      View
-                    </button>
+                            ? 'Cancelling...'
+                            : 'Cancel'}
+                        </button>
+                      )}
+                    </div>
 
                   </div>
+
+                  {appointment.status?.toUpperCase() ===
+                    'CANCELLED' &&
+                    payments[appointment.id] && (
+                      <div className="mt-[16px] pt-[14px] border-t border-[#e7edf4]">
+                        <div className="bg-[#fff8e7] border border-[#f0d99a] rounded-[12px] p-[12px]">
+                          <p className="font-semibold text-[#8a6200] text-[11px]">
+                            Refund Status
+                          </p>
+
+                          <p className="font-bold text-[#6b4f00] text-[13px] mt-[3px]">
+                            {payments[appointment.id]
+                              .refundStatus
+                              ?.replace(
+                                /_/g,
+                                ' '
+                              ) ||
+                              'Not Available'}
+                          </p>
+
+                          {payments[appointment.id]
+                            .razorpayRefundId && (
+                            <p className="text-[#526176] text-[11px] mt-[4px] break-all">
+                              Refund ID:{' '}
+                              <span className="font-semibold">
+                                {
+                                  payments[
+                                    appointment.id
+                                  ]
+                                    .razorpayRefundId
+                                }
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                 </div>
 

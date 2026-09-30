@@ -25,6 +25,7 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
+
     // =====================================================
     // CREATE PAYMENT + RAZORPAY ORDER
     // =====================================================
@@ -32,15 +33,18 @@ public class PaymentController {
     @PostMapping("/create")
     public ResponseEntity<?> createPayment(
             @RequestParam Long appointmentId,
-            @RequestParam Double amount
+            @RequestParam Double amount,
+            @RequestParam(defaultValue = "ONLINE") String paymentMethod
     ) {
 
         try {
 
-            Payment payment = paymentService.createPayment(
-                    appointmentId,
-                    amount
-            );
+            Payment payment =
+                    paymentService.createPayment(
+                            appointmentId,
+                            amount,
+                            paymentMethod
+                    );
 
             return ResponseEntity
                     .status(HttpStatus.CREATED)
@@ -63,7 +67,6 @@ public class PaymentController {
 
         } catch (RuntimeException e) {
 
-            // Print complete error in backend terminal
             e.printStackTrace();
 
             return ResponseEntity
@@ -78,6 +81,7 @@ public class PaymentController {
                     );
         }
     }
+
 
     // =====================================================
     // GET PAYMENT BY ID
@@ -114,6 +118,7 @@ public class PaymentController {
         }
     }
 
+
     // =====================================================
     // GET PAYMENT BY APPOINTMENT
     // =====================================================
@@ -148,6 +153,7 @@ public class PaymentController {
                     );
         }
     }
+
 
     // =====================================================
     // VERIFY RAZORPAY PAYMENT
@@ -188,6 +194,7 @@ public class PaymentController {
         }
     }
 
+
     // =====================================================
     // MARK PAYMENT AS PAID
     // =====================================================
@@ -227,6 +234,7 @@ public class PaymentController {
         }
     }
 
+
     // =====================================================
     // MARK PAYMENT AS FAILED
     // =====================================================
@@ -257,6 +265,129 @@ public class PaymentController {
                                     e.getMessage() != null
                                             ? e.getMessage()
                                             : "Unable to mark payment as failed"
+                            )
+                    );
+        }
+    }
+
+
+    // =====================================================
+    // INITIATE REFUND
+    // =====================================================
+
+    @PostMapping("/{paymentId}/refund")
+    public ResponseEntity<?> initiateRefund(
+            @PathVariable Long paymentId
+    ) {
+
+        try {
+
+            Payment payment =
+                    paymentService.initiateRefund(
+                            paymentId
+                    );
+
+            return ResponseEntity.ok(payment);
+
+        } catch (IllegalStateException e) {
+
+            e.printStackTrace();
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage() != null
+                                            ? e.getMessage()
+                                            : "Refund cannot be initiated"
+                            )
+                    );
+
+        } catch (RuntimeException e) {
+
+            e.printStackTrace();
+
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage() != null
+                                            ? e.getMessage()
+                                            : "Refund failed"
+                            )
+                    );
+        }
+    }
+
+
+    // =====================================================
+    // MARK REFUND AS COMPLETED
+    // =====================================================
+
+    @PatchMapping("/{paymentId}/refunded")
+    public ResponseEntity<?> markRefunded(
+            @PathVariable Long paymentId
+    ) {
+
+        try {
+
+            Payment payment =
+                    paymentService.markRefunded(
+                            paymentId
+                    );
+
+            return ResponseEntity.ok(payment);
+
+        } catch (RuntimeException e) {
+
+            e.printStackTrace();
+
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage() != null
+                                            ? e.getMessage()
+                                            : "Unable to mark refund as completed"
+                            )
+                    );
+        }
+    }
+
+
+    // =====================================================
+    // MARK REFUND AS FAILED
+    // =====================================================
+
+    @PatchMapping("/{paymentId}/refund-failed")
+    public ResponseEntity<?> markRefundFailed(
+            @PathVariable Long paymentId
+    ) {
+
+        try {
+
+            Payment payment =
+                    paymentService.markRefundFailed(
+                            paymentId
+                    );
+
+            return ResponseEntity.ok(payment);
+
+        } catch (RuntimeException e) {
+
+            e.printStackTrace();
+
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(
+                            Map.of(
+                                    "error",
+                                    e.getMessage() != null
+                                            ? e.getMessage()
+                                            : "Unable to mark refund as failed"
                             )
                     );
         }
