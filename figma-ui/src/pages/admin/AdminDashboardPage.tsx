@@ -8,6 +8,12 @@ import PatientInitials from '../../components/PatientInitials';
 import Button from '../../components/Button';
 import { usePageLoad } from '../../hooks/usePageLoad';
 import { SkAdminDashboard } from '../../components/Skeleton';
+import { getAdminDashboardData } from '../../services/adminApi';
+import type {
+  AdminAppointment,
+  AdminDepartment,
+  AdminDoctor,
+} from '../../types/admin';
 
 const imgUsers = '/assets/b6d92.svg';
 const imgUsers2 = '/assets/014f4.svg';
@@ -21,76 +27,15 @@ type DashboardAppointmentStatus =
   | 'Cancelled'
   | 'Skipped';
 
-interface BackendDoctor {
-  id: number;
-  name: string;
-  specialization: string;
-  qualification?: string | null;
-  experience?: string | null;
-  status: string;
-  consultationTime?: string | null;
-
-  hospital?: {
-    id?: number | null;
-    name?: string | null;
-  } | null;
-
-  department?: {
-    id?: number | null;
-    name?: string | null;
-  } | null;
-}
-
-interface BackendDepartment {
-  id: number;
-  name: string;
-  head?: string | null;
-  rooms?: number | null;
-  status: string;
-
-  hospital?: {
-    id?: number | null;
-    name?: string | null;
-  } | null;
-}
-
-interface BackendAppointment {
-  id: number;
-  patientName: string;
-  patientPhone?: string | null;
-  appointmentDate: string;
-  appointmentTime: string;
-  status: string;
-  tokenNumber: string;
-
-  doctor?: {
-    id?: number | null;
-    name?: string | null;
-    specialization?: string | null;
-
-    department?: {
-      id?: number | null;
-      name?: string | null;
-    } | null;
-  } | null;
-
-  hospital?: {
-    id?: number | null;
-    name?: string | null;
-  } | null;
-
-  priority: string;
-}
-
-interface DashboardDoctor extends BackendDoctor {
+interface DashboardDoctor extends AdminDoctor {
   patients: number;
 }
 
-interface DashboardDepartment extends BackendDepartment {
+interface DashboardDepartment extends AdminDepartment {
   doctors: number;
 }
 
-interface DashboardAppointment extends BackendAppointment {
+interface DashboardAppointment extends AdminAppointment {
   status: DashboardAppointmentStatus;
   initials: string;
 }
@@ -193,71 +138,11 @@ export default function AdminDashboardPage() {
         setDashboardLoading(true);
         setDashboardError(null);
 
-        const [
-          doctorsResponse,
-          departmentsResponse,
-          appointmentsResponse,
-        ] = await Promise.all([
-          fetch('/api/doctors', {
-            signal: controller.signal,
-          }),
-
-          fetch('/api/departments', {
-            signal: controller.signal,
-          }),
-
-          fetch('/api/appointments', {
-            signal: controller.signal,
-          }),
-        ]);
-
-        if (!doctorsResponse.ok) {
-          throw new Error(
-            `Unable to load doctors (${doctorsResponse.status})`
-          );
-        }
-
-        if (!departmentsResponse.ok) {
-          throw new Error(
-            `Unable to load departments (${departmentsResponse.status})`
-          );
-        }
-
-        if (!appointmentsResponse.ok) {
-          throw new Error(
-            `Unable to load appointments (${appointmentsResponse.status})`
-          );
-        }
-
-        const doctorsData: unknown =
-          await doctorsResponse.json();
-
-        const departmentsData: unknown =
-          await departmentsResponse.json();
-
-        const appointmentsData: unknown =
-          await appointmentsResponse.json();
-
-        if (!Array.isArray(doctorsData)) {
-          throw new Error('The doctors response was invalid.');
-        }
-
-        if (!Array.isArray(departmentsData)) {
-          throw new Error('The departments response was invalid.');
-        }
-
-        if (!Array.isArray(appointmentsData)) {
-          throw new Error('The appointments response was invalid.');
-        }
-
-        const backendDoctors =
-          doctorsData as BackendDoctor[];
-
-        const backendDepartments =
-          departmentsData as BackendDepartment[];
-
-        const backendAppointments =
-          appointmentsData as BackendAppointment[];
+        const {
+          doctors: backendDoctors,
+          departments: backendDepartments,
+          appointments: backendAppointments,
+        } = await getAdminDashboardData(controller.signal);
 
         const todayKey = getDateKey(new Date());
 

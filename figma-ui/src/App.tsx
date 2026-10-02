@@ -39,6 +39,8 @@ import DoctorPatientDetailsPage from './pages/doctor/PatientDetailsPage';
 // ==================== ADMIN ====================
 
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import ProtectedAdminRoute from './components/ProtectedAdminRoute';
+import { AdminAuthProvider } from './context/AdminAuthContext';
 
 import DoctorManagementPage from './pages/admin/DoctorManagementPage';
 import AddDoctorPage from './pages/admin/AddDoctorPage';
@@ -49,6 +51,8 @@ import DepartmentDetailsPage from './pages/admin/DepartmentDetailsPage';
 import AddDepartmentPage from './pages/admin/AddDepartmentPage';
 
 import AdminAppointmentsPage from './pages/admin/AdminAppointmentsPage';
+import AdminAppointmentDetailPage from './pages/admin/AdminAppointmentDetailPage';
+import SettingsPage from './pages/admin/SettingsPage';
 
 
 // =====================================================
@@ -228,6 +232,8 @@ function AdminRoutes() {
   return (
     <Routes>
 
+      <Route element={<ProtectedAdminRoute />}>
+
       <Route
         path="dashboard"
         element={<AdminDashboardPage />}
@@ -276,6 +282,18 @@ function AdminRoutes() {
         element={<AdminAppointmentsPage />}
       />
 
+      <Route
+        path="appointments/:appointmentId"
+        element={<AdminAppointmentDetailPage />}
+      />
+
+      <Route
+        path="settings"
+        element={<SettingsPage />}
+      />
+
+      </Route>
+
 
       {/* ==================== UNKNOWN ADMIN ROUTE ==================== */}
 
@@ -311,6 +329,8 @@ export default function App() {
             Doctor Dashboard / Doctor Queue / related pages. */}
 
         <QueueProvider>
+
+          <AdminAuthProvider>
 
           <Routes>
 
@@ -367,6 +387,8 @@ export default function App() {
             />
 
           </Routes>
+
+          </AdminAuthProvider>
 
         </QueueProvider>
 

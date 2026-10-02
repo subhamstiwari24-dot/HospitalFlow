@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import Button from '../../components/Button';
 import type { DoctorStatus } from '../../types';
-import { isTenDigitPhone, isValidEmail } from '../../utils/validation';
+import {
+  isTenDigitPhone,
+  isValidEmail,
+} from '../../utils/validation';
 
 const statusOptions: DoctorStatus[] = [
   'Available',
@@ -56,7 +59,9 @@ function Field({
       <label className="font-semibold text-[#142033] text-[13px]">
         {label}{' '}
         {required && (
-          <span className="text-[#c53a45]">*</span>
+          <span className="text-[#c53a45]">
+            *
+          </span>
         )}
       </label>
 
@@ -99,7 +104,8 @@ export default function AddDoctorPage() {
    * Load real departments from backend.
    */
   useEffect(() => {
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
     async function loadDepartments() {
       try {
@@ -131,10 +137,13 @@ export default function AddDoctorPage() {
         const activeDepartments =
           (data as Department[]).filter(
             (department) =>
-              department.status === 'Active'
+              department.status ===
+              'Active'
           );
 
-        setDepartments(activeDepartments);
+        setDepartments(
+          activeDepartments
+        );
       } catch (error) {
         if (
           error instanceof DOMException &&
@@ -149,7 +158,9 @@ export default function AddDoctorPage() {
             : 'Unable to load departments.'
         );
       } finally {
-        if (!controller.signal.aborted) {
+        if (
+          !controller.signal.aborted
+        ) {
           setLoadingDepartments(false);
         }
       }
@@ -157,17 +168,20 @@ export default function AddDoctorPage() {
 
     void loadDepartments();
 
-    return () => controller.abort();
+    return () =>
+      controller.abort();
   }, []);
 
   const set =
     (field: keyof FormState) =>
     (
       event: React.ChangeEvent<
-        HTMLInputElement | HTMLSelectElement
+        HTMLInputElement |
+          HTMLSelectElement
       >
     ) => {
-      const value = event.target.value;
+      const value =
+        event.target.value;
 
       setForm((current) => ({
         ...current,
@@ -177,7 +191,10 @@ export default function AddDoctorPage() {
       setErrors((current) => ({
         ...current,
         [field]: current[field]
-          ? validateField(field, value)
+          ? validateField(
+              field,
+              value
+            )
           : '',
       }));
     };
@@ -199,12 +216,17 @@ export default function AddDoctorPage() {
       return `${
         field === 'name'
           ? 'Full name'
-          : field.charAt(0).toUpperCase() +
+          : field
+              .charAt(0)
+              .toUpperCase() +
             field.slice(1)
       } is required`;
     }
 
-    if (field === 'password' && value.length < 6) {
+    if (
+      field === 'password' &&
+      value.length < 6
+    ) {
       return 'Password must be at least 6 characters';
     }
 
@@ -228,24 +250,35 @@ export default function AddDoctorPage() {
   };
 
   const validate = (): boolean => {
-    const validationErrors: Record<string, string> = {};
+    const validationErrors: Record<
+      string,
+      string
+    > = {};
 
     (
-      Object.keys(form) as (keyof FormState)[]
+      Object.keys(form) as (
+        keyof FormState
+      )[]
     ).forEach((field) => {
-      const message = validateField(
-        field,
-        form[field]
-      );
+      const message =
+        validateField(
+          field,
+          form[field]
+        );
 
       if (message) {
-        validationErrors[field] = message;
+        validationErrors[field] =
+          message;
       }
     });
 
     setErrors(validationErrors);
 
-    return Object.keys(validationErrors).length === 0;
+    return (
+      Object.keys(
+        validationErrors
+      ).length === 0
+    );
   };
 
   const handleSubmit = async (
@@ -267,8 +300,9 @@ export default function AddDoctorPage() {
       const selectedDepartment =
         departments.find(
           (department) =>
-            String(department.id) ===
-            form.department
+            String(
+              department.id
+            ) === form.department
         );
 
       if (!selectedDepartment) {
@@ -284,43 +318,50 @@ export default function AddDoctorPage() {
       /*
        * Create doctor in backend.
        */
-      const response = await fetch(
-        '/api/doctors',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: form.name.startsWith('Dr.')
-              ? form.name
-              : `Dr. ${form.name}`,
-
-            specialization:
-              form.specialization.trim(),
-
-            qualification: '',
-
-            experience: '',
-
-            status: form.status,
-
-            consultationTime:
-              form.shift.trim(),
-
-            hospital: {
-              id: 1,
+      const response =
+        await fetch(
+          '/api/doctors',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type':
+                'application/json',
             },
+            body: JSON.stringify({
+              name: form.name.startsWith(
+                'Dr.'
+              )
+                ? form.name
+                : `Dr. ${form.name}`,
 
-            department: {
-              id: selectedDepartment.id,
-            },
+              specialization:
+                form.specialization.trim(),
 
-            email: form.email.trim(),
-            passwordHash: form.password,
-          }),
-        }
-      );
+              qualification: '',
+
+              experience: '',
+
+              status: form.status,
+
+              consultationTime:
+                form.shift.trim(),
+
+              hospital: {
+                id: 1,
+              },
+
+              department: {
+                id: selectedDepartment.id,
+              },
+
+              email:
+                form.email.trim(),
+
+              passwordHash:
+                form.password,
+            }),
+          }
+        );
 
       if (!response.ok) {
         const errorText =
@@ -337,7 +378,9 @@ export default function AddDoctorPage() {
       setSubmitted(true);
 
       setTimeout(() => {
-        navigate('/admin/doctors');
+        navigate(
+          '/admin/doctors'
+        );
       }, 1500);
     } catch (error) {
       setSubmitError(
@@ -354,6 +397,7 @@ export default function AddDoctorPage() {
     return (
       <AdminLayout title="Add Doctor">
         <div className="flex flex-col items-center justify-center py-[80px] gap-[16px]">
+
           <div className="bg-[#e8f7f1] size-[64px] rounded-[999px] flex items-center justify-center">
             <span className="text-[#18865b] text-[28px]">
               ✓
@@ -367,6 +411,7 @@ export default function AddDoctorPage() {
           <p className="font-normal text-[#526176] text-[14px]">
             Redirecting to Doctor Management…
           </p>
+
         </div>
       </AdminLayout>
     );
@@ -374,9 +419,12 @@ export default function AddDoctorPage() {
 
   return (
     <AdminLayout title="Add Doctor">
+
       <button
         onClick={() =>
-          navigate('/admin/doctors')
+          navigate(
+            '/admin/doctors'
+          )
         }
         className="flex items-center gap-[8px] text-[#155ead] text-[13px] font-semibold mb-[24px] cursor-pointer hover:opacity-80 transition-opacity"
       >
@@ -384,15 +432,18 @@ export default function AddDoctorPage() {
       </button>
 
       <div className="max-w-[720px]">
+
         <div className="mb-[24px]">
+
           <h1 className="font-bold text-[#142033] text-[24px] leading-tight">
             Add New Doctor
           </h1>
 
           <p className="font-normal text-[#526176] text-[14px] mt-[4px]">
             Fill in the details to register a new
-            doctor at North Campus.
+            doctor.
           </p>
+
         </div>
 
         {departmentError && (
@@ -408,15 +459,19 @@ export default function AddDoctorPage() {
         )}
 
         <form onSubmit={handleSubmit}>
+
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)] p-[28px] flex flex-col gap-[20px]">
 
             {/* Personal Information */}
+
             <div className="flex items-center gap-[10px] pb-[16px] border-b border-[#d8e1ec]">
+
               <div className="bg-[#2475d0] h-[20px] rounded-[2px] shrink-0 w-[4px]" />
 
               <p className="font-bold text-[#142033] text-[15px]">
                 Personal Information
               </p>
+
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-[18px]">
@@ -444,7 +499,9 @@ export default function AddDoctorPage() {
                 required
               >
                 <input
-                  value={form.specialization}
+                  value={
+                    form.specialization
+                  }
                   onChange={set(
                     'specialization'
                   )}
@@ -454,7 +511,9 @@ export default function AddDoctorPage() {
 
                 {errors.specialization && (
                   <p className="text-[#c53a45] text-[12px]">
-                    {errors.specialization}
+                    {
+                      errors.specialization
+                    }
                   </p>
                 )}
               </Field>
@@ -465,13 +524,16 @@ export default function AddDoctorPage() {
                   value={form.phone}
                   onChange={set('phone')}
                   onBlur={() =>
-                    setErrors((current) => ({
-                      ...current,
-                      phone: validateField(
-                        'phone',
-                        form.phone
-                      ),
-                    }))
+                    setErrors(
+                      (current) => ({
+                        ...current,
+                        phone:
+                          validateField(
+                            'phone',
+                            form.phone
+                          ),
+                      })
+                    )
                   }
                   aria-invalid={Boolean(
                     errors.phone
@@ -494,13 +556,16 @@ export default function AddDoctorPage() {
                   value={form.email}
                   onChange={set('email')}
                   onBlur={() =>
-                    setErrors((current) => ({
-                      ...current,
-                      email: validateField(
-                        'email',
-                        form.email
-                      ),
-                    }))
+                    setErrors(
+                      (current) => ({
+                        ...current,
+                        email:
+                          validateField(
+                            'email',
+                            form.email
+                          ),
+                      })
+                    )
                   }
                   aria-invalid={Boolean(
                     errors.email
@@ -516,47 +581,76 @@ export default function AddDoctorPage() {
                 )}
               </Field>
 
-              <Field label="Login Password" required>
+              <Field
+                label="Login Password"
+                required
+              >
                 <input
                   id="add-doctor-password"
                   type="password"
                   value={form.password}
-                  onChange={set('password')}
-                  onBlur={() => setErrors((current) => ({
-                    ...current,
-                    password: validateField('password', form.password),
-                  }))}
-                  aria-invalid={Boolean(errors.password)}
+                  onChange={set(
+                    'password'
+                  )}
+                  onBlur={() =>
+                    setErrors(
+                      (current) => ({
+                        ...current,
+                        password:
+                          validateField(
+                            'password',
+                            form.password
+                          ),
+                      })
+                    )
+                  }
+                  aria-invalid={Boolean(
+                    errors.password
+                  )}
                   placeholder="At least 6 characters"
                   className={inputClass}
                 />
+
                 {errors.password && (
-                  <p className="text-[#c53a45] text-[12px]">{errors.password}</p>
+                  <p className="text-[#c53a45] text-[12px]">
+                    {errors.password}
+                  </p>
                 )}
               </Field>
+
             </div>
 
             {/* Assignment */}
+
             <div className="flex items-center gap-[10px] py-[16px] border-y border-[#d8e1ec]">
+
               <div className="bg-[#18865b] h-[20px] rounded-[2px] shrink-0 w-[4px]" />
 
               <p className="font-bold text-[#142033] text-[15px]">
                 Assignment
               </p>
+
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-[18px]">
 
               {/* Department */}
+
               <Field
                 label="Department"
                 required
               >
                 <select
-                  value={form.department}
-                  onChange={set('department')}
+                  value={
+                    form.department
+                  }
+                  onChange={set(
+                    'department'
+                  )}
                   className={inputClass}
-                  disabled={loadingDepartments}
+                  disabled={
+                    loadingDepartments
+                  }
                 >
                   <option value="">
                     {loadingDepartments
@@ -567,10 +661,16 @@ export default function AddDoctorPage() {
                   {departments.map(
                     (department) => (
                       <option
-                        key={department.id}
-                        value={department.id}
+                        key={
+                          department.id
+                        }
+                        value={
+                          department.id
+                        }
                       >
-                        {department.name}
+                        {
+                          department.name
+                        }
                       </option>
                     )
                   )}
@@ -578,12 +678,15 @@ export default function AddDoctorPage() {
 
                 {errors.department && (
                   <p className="text-[#c53a45] text-[12px]">
-                    {errors.department}
+                    {
+                      errors.department
+                    }
                   </p>
                 )}
               </Field>
 
               {/* Status */}
+
               <Field label="Status">
                 <select
                   value={form.status}
@@ -604,6 +707,7 @@ export default function AddDoctorPage() {
               </Field>
 
               {/* Shift */}
+
               <Field
                 label="Shift Hours"
                 required
@@ -623,6 +727,7 @@ export default function AddDoctorPage() {
               </Field>
 
               {/* Room */}
+
               <Field
                 label="Room"
                 required
@@ -640,10 +745,15 @@ export default function AddDoctorPage() {
                   </p>
                 )}
               </Field>
+
             </div>
+
           </div>
 
+          {/* Buttons */}
+
           <div className="flex gap-[12px] mt-[20px]">
+
             <Button
               variant="primary"
               type="submit"
@@ -663,15 +773,21 @@ export default function AddDoctorPage() {
               variant="ghost"
               type="button"
               onClick={() =>
-                navigate('/admin/doctors')
+                navigate(
+                  '/admin/doctors'
+                )
               }
               disabled={submitting}
             >
               Cancel
             </Button>
+
           </div>
+
         </form>
+
       </div>
+
     </AdminLayout>
   );
 }

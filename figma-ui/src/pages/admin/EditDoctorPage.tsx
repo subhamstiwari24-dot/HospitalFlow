@@ -5,6 +5,7 @@ import AdminLayout from '../../components/AdminLayout';
 import Button from '../../components/Button';
 import StatusBadge from '../../components/StatusBadge';
 import type { DoctorStatus } from '../../types';
+
 import {
   isTenDigitPhone,
   isValidEmail,
@@ -39,7 +40,13 @@ interface BackendDoctor {
   qualification?: string | null;
   experience?: string | null;
   status: DoctorStatus;
+
   consultationTime?: string | null;
+  consultationFee?: number | null;
+
+  opdStartTime?: string | null;
+  opdEndTime?: string | null;
+
   email?: string | null;
 
   hospital?: {
@@ -103,11 +110,19 @@ export default function EditDoctorPage() {
     specialization: '',
     departmentId: '',
     status: 'Available' as DoctorStatus,
-    shift: '',
-    room: '',
+
     phone: '',
     email: '',
     password: '',
+
+    shift: '',
+    room: '',
+
+    consultationFee: '0',
+    consultationDuration: '30',
+
+    opdStartTime: '09:00 AM',
+    opdEndTime: '05:00 PM',
   });
 
   const [errors, setErrors] =
@@ -201,11 +216,9 @@ export default function EditDoctorPage() {
         );
 
         /*
-         * IMPORTANT:
-         *
-         * Use the REAL department.id
-         * from backend.
+         * Populate form from backend
          */
+
         setForm({
           name:
             doctorData.name ?? '',
@@ -224,16 +237,39 @@ export default function EditDoctorPage() {
             doctorData.status ??
             'Available',
 
+          phone: '',
+
+          email:
+            doctorData.email ?? '',
+
+          password: '',
+
           shift:
-            doctorData.consultationTime ??
-            '',
+            doctorData.consultationTime ?? '',
 
           room: '',
 
-          phone: '',
+          consultationFee:
+            doctorData.consultationFee != null
+              ? String(
+                  doctorData.consultationFee
+                )
+              : '0',
 
-          email: doctorData.email ?? '',
-          password: '',
+          consultationDuration:
+            doctorData.consultationTime != null
+              ? String(
+                  doctorData.consultationTime
+                )
+              : '30',
+
+          opdStartTime:
+            doctorData.opdStartTime ??
+            '09:00 AM',
+
+          opdEndTime:
+            doctorData.opdEndTime ??
+            '05:00 PM',
         });
 
       } catch (fetchError) {
@@ -256,7 +292,6 @@ export default function EditDoctorPage() {
         if (!controller.signal.aborted) {
           setLoading(false);
         }
-
       }
     }
 
@@ -276,15 +311,11 @@ export default function EditDoctorPage() {
   if (loading) {
     return (
       <AdminLayout title="Edit Doctor">
-
         <div className="flex items-center justify-center py-[80px]">
-
           <p className="font-normal text-[#526176] text-[14px]">
             Loading doctor...
           </p>
-
         </div>
-
       </AdminLayout>
     );
   }
@@ -298,7 +329,6 @@ export default function EditDoctorPage() {
   if (loadError || !doctor) {
     return (
       <AdminLayout title="Edit Doctor">
-
         <div className="flex flex-col items-center justify-center py-[80px] gap-[12px]">
 
           <p className="font-bold text-[#142033] text-[18px]">
@@ -316,7 +346,6 @@ export default function EditDoctorPage() {
           </Button>
 
         </div>
-
       </AdminLayout>
     );
   }
@@ -403,6 +432,26 @@ export default function EditDoctorPage() {
       return 'Enter a valid email address';
     }
 
+    if (
+      field === 'consultationFee' &&
+      (
+        value.trim() === '' ||
+        Number(value) < 0
+      )
+    ) {
+      return 'Consultation fee cannot be negative';
+    }
+
+    if (
+      field === 'consultationDuration' &&
+      (
+        value.trim() === '' ||
+        Number(value) <= 0
+      )
+    ) {
+      return 'Consultation duration must be greater than 0';
+    }
+
     return '';
   };
 
@@ -428,7 +477,6 @@ export default function EditDoctorPage() {
       if (message) {
         nextErrors[field] = message;
       }
-
     });
 
     setErrors(nextErrors);
@@ -471,6 +519,7 @@ export default function EditDoctorPage() {
             },
 
             body: JSON.stringify({
+
               id: doctor.id,
 
               name:
@@ -488,8 +537,28 @@ export default function EditDoctorPage() {
               status:
                 form.status,
 
+              /*
+               * Consultation duration
+               */
               consultationTime:
-                form.shift.trim(),
+                form.consultationDuration.trim(),
+
+              /*
+               * Consultation fee
+               */
+              consultationFee:
+                Number(
+                  form.consultationFee
+                ),
+
+              /*
+               * OPD working hours
+               */
+              opdStartTime:
+                form.opdStartTime.trim(),
+
+              opdEndTime:
+                form.opdEndTime.trim(),
 
               hospital:
                 doctor.hospital
@@ -508,9 +577,14 @@ export default function EditDoctorPage() {
                 ),
               },
 
-              email: form.email.trim(),
+              email:
+                form.email.trim(),
+
               ...(form.password.trim()
-                ? { passwordHash: form.password }
+                ? {
+                    passwordHash:
+                      form.password,
+                  }
                 : {}),
             }),
           }
@@ -525,6 +599,7 @@ export default function EditDoctorPage() {
       /*
        * Show success screen
        */
+
       setSubmitted(true);
 
       setTimeout(() => {
@@ -540,7 +615,6 @@ export default function EditDoctorPage() {
           ? updateError.message
           : 'Unable to save doctor.'
       );
-
     }
   };
 
@@ -678,7 +752,6 @@ export default function EditDoctorPage() {
                 label="Full Name"
                 required
               >
-
                 <input
                   value={form.name}
                   onChange={set('name')}
@@ -691,7 +764,6 @@ export default function EditDoctorPage() {
                     {errors.name}
                   </p>
                 )}
-
               </Field>
 
               {/* SPECIALIZATION */}
@@ -700,7 +772,6 @@ export default function EditDoctorPage() {
                 label="Specialization"
                 required
               >
-
                 <input
                   value={
                     form.specialization
@@ -719,7 +790,6 @@ export default function EditDoctorPage() {
                     }
                   </p>
                 )}
-
               </Field>
 
               {/* PHONE */}
@@ -793,7 +863,10 @@ export default function EditDoctorPage() {
 
               </Field>
 
+              {/* PASSWORD */}
+
               <Field label="New Login Password">
+
                 <input
                   id="edit-doctor-password"
                   type="password"
@@ -802,6 +875,7 @@ export default function EditDoctorPage() {
                   placeholder="Leave blank to keep current password"
                   className={inputClass}
                 />
+
               </Field>
 
             </div>
@@ -922,6 +996,132 @@ export default function EditDoctorPage() {
                 />
 
               </Field>
+
+            </div>
+
+            {/* =========================
+                OPD & CONSULTATION
+            ========================== */}
+
+            <div className="flex items-center gap-[10px] py-[16px] border-y border-[#d8e1ec]">
+
+              <div className="bg-[#2475d0] h-[20px] rounded-[2px] shrink-0 w-[4px]" />
+
+              <p className="font-bold text-[#142033] text-[15px]">
+                OPD & Consultation
+              </p>
+
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[18px]">
+
+              {/* CONSULTATION FEE */}
+
+              <Field
+                label="Consultation Fee (₹)"
+                required
+              >
+
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={
+                    form.consultationFee
+                  }
+                  onChange={set(
+                    'consultationFee'
+                  )}
+                  className={inputClass}
+                />
+
+                {errors.consultationFee && (
+                  <p className="text-[#c53a45] text-[12px]">
+                    {
+                      errors.consultationFee
+                    }
+                  </p>
+                )}
+
+              </Field>
+
+              {/* CONSULTATION DURATION */}
+
+              <Field
+                label="Consultation Duration (minutes)"
+                required
+              >
+
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={
+                    form.consultationDuration
+                  }
+                  onChange={set(
+                    'consultationDuration'
+                  )}
+                  className={inputClass}
+                />
+
+                {errors.consultationDuration && (
+                  <p className="text-[#c53a45] text-[12px]">
+                    {
+                      errors.consultationDuration
+                    }
+                  </p>
+                )}
+
+              </Field>
+
+              {/* OPD START TIME */}
+
+              <Field
+                label="OPD Start Time"
+                required
+              >
+
+                <input
+                  type="text"
+                  value={
+                    form.opdStartTime
+                  }
+                  onChange={set(
+                    'opdStartTime'
+                  )}
+                  placeholder="09:00 AM"
+                  className={inputClass}
+                />
+
+              </Field>
+
+              {/* OPD END TIME */}
+
+              <Field
+                label="OPD End Time"
+                required
+              >
+
+                <input
+                  type="text"
+                  value={
+                    form.opdEndTime
+                  }
+                  onChange={set(
+                    'opdEndTime'
+                  )}
+                  placeholder="05:00 PM"
+                  className={inputClass}
+                />
+
+              </Field>
+
+            </div>
+
+            <div className="bg-[#f1f7fd] border border-[#d5e7f8] rounded-[10px] px-[14px] py-[12px] text-[13px] text-[#526176]">
+
+              Consultation fee and OPD timing will be shown to patients during doctor selection and appointment booking.
 
             </div>
 

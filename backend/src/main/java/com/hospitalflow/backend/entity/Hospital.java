@@ -19,6 +19,17 @@ public class Hospital {
 
     private String phone;
 
+    private String email;
+
+    private String state;
+
+    private String pincode;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    private boolean emergencyAvailable = false;
+
     private boolean active = true;
 
     public Hospital() {
@@ -67,6 +78,17 @@ public class Hospital {
     public void setPhone(String phone) {
         this.phone = phone;
     }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getState() { return state; }
+    public void setState(String state) { this.state = state; }
+    public String getPincode() { return pincode; }
+    public void setPincode(String pincode) { this.pincode = pincode; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public boolean isEmergencyAvailable() { return emergencyAvailable; }
+    public void setEmergencyAvailable(boolean emergencyAvailable) { this.emergencyAvailable = emergencyAvailable; }
 
     public boolean isActive() {
         return active;

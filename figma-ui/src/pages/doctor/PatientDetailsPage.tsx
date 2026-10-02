@@ -362,6 +362,8 @@ export default function PatientDetailsPage() {
                     />
                   )}
 
+
+
                   {isCurrentlyActive && (
                     <StatusBadge
                       status="In consultation"

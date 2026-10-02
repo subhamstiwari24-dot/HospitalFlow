@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import AdminLayout from '../../components/AdminLayout';
 import { usePageLoad } from '../../hooks/usePageLoad';
 import { SkDoctorAppointments } from '../../components/Skeleton';
@@ -7,229 +8,141 @@ import StatusBadge from '../../components/StatusBadge';
 import Button from '../../components/Button';
 import PatientInitials from '../../components/PatientInitials';
 import EmptyState, { EmptyIcons } from '../../components/EmptyState';
-import type { AppointmentStatus } from '../../types';
+import { AdminApiError, getAdminAppointments, getAdminPayment } from '../../services/adminApi';
+import type { AdminAppointment, AdminPayment } from '../../types/admin';
 
-const imgCalendar1 = '/assets/a41a3.svg';
+type DateFilter = 'TODAY' | 'ALL' | 'CUSTOM';
+type StatusFilter = 'ALL' | 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
-type AdminAppointmentStatus = AppointmentStatus | 'Skipped';
-
-interface BackendAppointment {
-  id: number;
-  patientName: string;
-  patientPhone?: string | null;
-  appointmentDate: string;
-  appointmentTime: string;
-  tokenNumber: string;
-  status: string;
-  priority: string;
-  doctor: Record<string, unknown> | null;
-  hospital: Record<string, unknown> | null;
-}
-
-interface AdminAppointment extends BackendAppointment {
-  status: AdminAppointmentStatus;
-  initials: string;
-}
-
-const statusMap: Record<string, AdminAppointmentStatus> = {
-  WAITING: 'Scheduled',
+const statusLabels: Record<string, string> = {
+  WAITING: 'Waiting',
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
-  SKIPPED: 'Skipped',
 };
 
-function getTodayKey(): string {
+function getTodayKey() {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 }
 
-function getInitials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+function getInitials(name: string) {
+  return name.trim().split(/\s+/).filter(Boolean).map((word) => word[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function getTimeSortValue(value: string): number {
-  const normalized = value.trim().toUpperCase();
-  const match = normalized.match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/);
-  if (!match) return Number.MAX_SAFE_INTEGER;
-
-  let hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (match[3] === 'AM' && hours === 12) hours = 0;
-  if (match[3] === 'PM' && hours !== 12) hours += 12;
-  return hours * 60 + minutes;
+function displayStatus(status: string) {
+  return statusLabels[status.toUpperCase()] ?? status;
 }
 
 export default function AdminAppointmentsPage() {
   const navigate = useNavigate();
-  const pageLoading = usePageLoad(750);
+  const pageLoading = usePageLoad(500);
   const [appointments, setAppointments] = useState<AdminAppointment[]>([]);
-  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+  const [payments, setPayments] = useState<Record<number, AdminPayment | null>>({});
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState<DateFilter>('TODAY');
+  const [customDate, setCustomDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [hospitalFilter, setHospitalFilter] = useState('ALL');
+  const [doctorFilter, setDoctorFilter] = useState('ALL');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
 
-    async function fetchAppointments() {
+    async function load() {
       try {
-        setAppointmentsLoading(true);
+        setLoading(true);
         setError(null);
-        const response = await fetch('/api/appointments', { signal: controller.signal });
-        if (!response.ok) throw new Error(`Unable to load appointments (${response.status})`);
+        const data = await getAdminAppointments(controller.signal);
+        setAppointments(data);
 
-        const data: unknown = await response.json();
-        if (!Array.isArray(data)) throw new Error('The appointments response was invalid.');
-
-        setAppointments((data as BackendAppointment[]).map((appointment) => ({
-          ...appointment,
-          status: statusMap[appointment.status.toUpperCase()] ?? 'Scheduled',
-          initials: getInitials(appointment.patientName),
-        })));
-      } catch (fetchError) {
-        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return;
-        setError(fetchError instanceof Error ? fetchError.message : 'Unable to load appointments.');
+        const paymentEntries = await Promise.all(data.map(async (appointment) => {
+          try {
+            return [appointment.id, await getAdminPayment(appointment.id, controller.signal)] as const;
+          } catch (paymentError) {
+            if (paymentError instanceof AdminApiError && paymentError.status === 404) return [appointment.id, null] as const;
+            throw paymentError;
+          }
+        }));
+        setPayments(Object.fromEntries(paymentEntries));
+      } catch (loadError) {
+        if (loadError instanceof DOMException && loadError.name === 'AbortError') return;
+        if (loadError instanceof AdminApiError && loadError.status === 401) setError('Session expired. Please login again.');
+        else if (loadError instanceof AdminApiError && loadError.status === 403) setError('You are not authorized to view appointments.');
+        else setError('Unable to load appointments.');
       } finally {
-        if (!controller.signal.aborted) setAppointmentsLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
 
-    void fetchAppointments();
+    void load();
     return () => controller.abort();
   }, []);
 
-  const todayKey = getTodayKey();
-  const formattedToday = new Intl.DateTimeFormat('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date());
-  const todaysAppointments = appointments
-    .filter((appointment) => appointment.appointmentDate === todayKey)
-    .sort((first, second) => {
-      const timeDifference = getTimeSortValue(first.appointmentTime) - getTimeSortValue(second.appointmentTime);
-      return timeDifference || first.id - second.id;
-    });
+  const hospitals = useMemo(() => Array.from(new Set(appointments.map((appointment) => appointment.hospital?.name).filter((name): name is string => Boolean(name)))), [appointments]);
+  const doctors = useMemo(() => Array.from(new Set(appointments.map((appointment) => appointment.doctor?.name).filter((name): name is string => Boolean(name)))), [appointments]);
+
+  const filteredAppointments = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    const selectedDate = dateFilter === 'TODAY' ? getTodayKey() : customDate;
+    return appointments
+      .filter((appointment) => dateFilter === 'ALL' || appointment.appointmentDate === selectedDate)
+      .filter((appointment) => statusFilter === 'ALL' || appointment.status.toUpperCase() === statusFilter)
+      .filter((appointment) => hospitalFilter === 'ALL' || appointment.hospital?.name === hospitalFilter)
+      .filter((appointment) => doctorFilter === 'ALL' || appointment.doctor?.name === doctorFilter)
+      .filter((appointment) => !normalizedSearch || appointment.patientName.toLowerCase().includes(normalizedSearch) || appointment.tokenNumber.toLowerCase().includes(normalizedSearch))
+      .sort((first, second) => `${first.appointmentDate}${first.appointmentTime}`.localeCompare(`${second.appointmentDate}${second.appointmentTime}`));
+  }, [appointments, dateFilter, customDate, statusFilter, hospitalFilter, doctorFilter, search]);
 
   const stats = [
-    { label: 'Total', value: todaysAppointments.length, bg: 'bg-[#eaf3fd]', text: 'text-[#155ead]' },
-    { label: 'Completed', value: todaysAppointments.filter((appointment) => appointment.status === 'Completed').length, bg: 'bg-[#e8f7f1]', text: 'text-[#18865b]' },
-    { label: 'In Progress', value: todaysAppointments.filter((appointment) => appointment.status === 'In Progress').length, bg: 'bg-[#e8f7f1]', text: 'text-[#18865b]' },
-    { label: 'Scheduled', value: todaysAppointments.filter((appointment) => appointment.status === 'Scheduled').length, bg: 'bg-[#f4f7fb]', text: 'text-[#526176]' },
+    ['Total', filteredAppointments.length],
+    ['Waiting', filteredAppointments.filter((appointment) => appointment.status === 'WAITING').length],
+    ['In Progress', filteredAppointments.filter((appointment) => appointment.status === 'IN_PROGRESS').length],
+    ['Completed', filteredAppointments.filter((appointment) => appointment.status === 'COMPLETED').length],
   ];
 
-  const renderEmptyState = () => (
-    <EmptyState
-      icon={EmptyIcons.calendar(28)}
-      title="No appointments scheduled for today."
-      description="There are no appointments scheduled for today."
-    />
-  );
+  const selectClass = 'bg-white border border-[#d8e1ec] rounded-[9px] px-[10px] py-[9px] text-[12px] text-[#142033]';
 
-  const renderError = () => (
-    <div className="px-[20px] py-[32px] text-center">
-      <p className="font-semibold text-[#c53a45] text-[14px]">{error}</p>
-    </div>
-  );
-
-  if ((pageLoading || appointmentsLoading) && !error) return <AdminLayout title="Appointments"><SkDoctorAppointments /></AdminLayout>;
+  if ((pageLoading || loading) && !error) return <AdminLayout title="Appointments"><SkDoctorAppointments /></AdminLayout>;
 
   return (
     <AdminLayout title="Appointments">
-      <div className="flex flex-wrap items-start gap-[12px] justify-between mb-[24px]">
-        <div>
-          <h1 className="font-bold text-[#142033] text-[24px] leading-tight">Appointments</h1>
-          <p className="font-normal text-[#526176] text-[14px] mt-[4px]">
-            Today's scheduled appointments
-          </p>
-        </div>
-        <div className="bg-white border border-[#d8e1ec] flex gap-[8px] items-center px-[14px] py-[9px] rounded-[8px] shrink-0">
-          <div className="relative shrink-0 size-[15px]">
-            <img alt="" className="absolute block inset-0 size-full" src={imgCalendar1} />
-          </div>
-          <p className="font-semibold text-[#142033] text-[12px] whitespace-nowrap">
-            {formattedToday}
-          </p>
-        </div>
+      <div className="flex flex-wrap items-start justify-between gap-[12px] mb-[20px]">
+        <div><h1 className="font-bold text-[#142033] text-[24px] leading-tight">Appointments</h1><p className="text-[#526176] text-[14px] mt-[4px]">Live appointment records from HospitalFlow.</p></div>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-[10px] mb-[24px]">
-        {stats.map((stat) => (
-          <div key={stat.label} className={`${stat.bg} flex-1 flex flex-col items-center py-[16px] rounded-[14px]`}>
-            <p className={`font-bold text-[24px] ${stat.text}`}>{stat.value}</p>
-            <p className="font-normal text-[#526176] text-[12px]">{stat.label}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-[10px] mb-[20px]">
+        {stats.map(([label, value]) => <div key={label} className="bg-white border border-[#d8e1ec] rounded-[12px] px-[14px] py-[13px]"><p className="font-bold text-[#155ead] text-[22px]">{value}</p><p className="text-[#526176] text-[12px]">{label}</p></div>)}
       </div>
 
-      {/* Appointments — mobile card list */}
-      <div className="sm:hidden bg-white border border-[#d8e1ec] rounded-[14px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)] overflow-hidden divide-y divide-[#d8e1ec]">
-        {error ? renderError() : appointmentsLoading ? (
-          <div className="px-[20px] py-[32px] text-center text-[#7b899c] text-[14px]">Loading appointments...</div>
-        ) : todaysAppointments.length === 0 ? renderEmptyState() : todaysAppointments.map((appointment) => (
-          <div key={appointment.id} className="p-[16px]">
-            <div className="flex items-center gap-[10px] mb-[10px]">
-              <div className="bg-[#eaf3fd] flex h-[30px] items-center justify-center rounded-[8px] w-[54px] shrink-0">
-                <p className="font-bold text-[#155ead] text-[12px]">{appointment.tokenNumber}</p>
-              </div>
-              <div className="flex items-center gap-[8px] flex-1 min-w-0">
-                <PatientInitials initials={appointment.initials} size="sm" />
-                <div className="min-w-0">
-                  <p className="font-semibold text-[#142033] text-[14px] truncate">{appointment.patientName}</p>
-                  <p className="font-normal text-[#7b899c] text-[11px]">OPD Patient</p>
-                </div>
-              </div>
-              <StatusBadge status={appointment.status} />
-            </div>
-            <div className="flex items-center justify-between gap-[10px]">
-              <p className="font-normal text-[#526176] text-[12px] truncate">{appointment.appointmentTime} · OPD Consultation</p>
-              <Button variant="secondary" onClick={() => navigate(`/admin/appointments/${appointment.id}`)}>View</Button>
-            </div>
-          </div>
-        ))}
+      <div className="flex flex-wrap items-center gap-[10px] mb-[20px]">
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search patient or token" className={`${selectClass} w-full sm:w-[220px] outline-none focus:border-[#155ead]`} />
+        <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value as DateFilter)} className={selectClass}><option value="TODAY">Today</option><option value="ALL">All dates</option><option value="CUSTOM">Custom date</option></select>
+        {dateFilter === 'CUSTOM' && <input type="date" value={customDate} onChange={(event) => setCustomDate(event.target.value)} className={selectClass} />}
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} className={selectClass}><option value="ALL">All statuses</option><option value="WAITING">Waiting</option><option value="IN_PROGRESS">In Progress</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option></select>
+        <select value={hospitalFilter} onChange={(event) => setHospitalFilter(event.target.value)} className={selectClass}><option value="ALL">All hospitals</option>{hospitals.map((hospital) => <option key={hospital} value={hospital}>{hospital}</option>)}</select>
+        <select value={doctorFilter} onChange={(event) => setDoctorFilter(event.target.value)} className={selectClass}><option value="ALL">All doctors</option>{doctors.map((doctor) => <option key={doctor} value={doctor}>{doctor}</option>)}</select>
       </div>
 
-      {/* Appointments — desktop table (sm+) */}
-      <div className="hidden sm:block overflow-x-auto">
-        <div className="bg-white border border-[#d8e1ec] rounded-[14px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)] overflow-hidden">
-          <div className="grid grid-cols-[80px_1fr_130px_130px_120px_100px] gap-[16px] px-[20px] py-[12px] bg-[#f4f7fb] border-b border-[#d8e1ec]">
-            {['Token', 'Patient', 'Time', 'Type', 'Status', 'Action'].map((heading) => (
-              <p key={heading} className="font-semibold text-[#7b899c] text-[11px] uppercase">{heading}</p>
-            ))}
-          </div>
-          {error ? renderError() : appointmentsLoading ? (
-            <div className="px-[20px] py-[32px] text-center text-[#7b899c] text-[14px]">Loading appointments...</div>
-          ) : todaysAppointments.length === 0 ? renderEmptyState() : todaysAppointments.map((appointment) => (
-            <div
-              key={appointment.id}
-              className="grid grid-cols-[80px_1fr_130px_130px_120px_100px] gap-[16px] items-center px-[20px] py-[14px] border-b border-[#d8e1ec] last:border-0 hover:bg-[#f4f7fb] transition-colors"
-            >
-              <div className="bg-[#eaf3fd] flex h-[30px] items-center justify-center rounded-[8px] w-[54px]">
-                <p className="font-bold text-[#155ead] text-[12px]">{appointment.tokenNumber}</p>
-              </div>
-              <div className="flex gap-[10px] items-center min-w-0">
-                <PatientInitials initials={appointment.initials} size="sm" />
-                <div className="min-w-0">
-                  <p className="font-semibold text-[#142033] text-[14px] truncate">{appointment.patientName}</p>
-                  <p className="font-normal text-[#7b899c] text-[11px]">OPD Patient</p>
-                </div>
-              </div>
-              <p className="font-semibold text-[#142033] text-[13px]">{appointment.appointmentTime}</p>
-              <p className="font-normal text-[#526176] text-[13px] truncate">OPD Consultation</p>
-              <StatusBadge status={appointment.status} />
-              <Button variant="secondary" onClick={() => navigate(`/admin/appointments/${appointment.id}`)}>View</Button>
-            </div>
-          ))}
+      {error ? <div className="bg-[#fff1f2] border border-[#fecdd3] rounded-[10px] px-[16px] py-[14px] text-[#c53a45] text-[13px]">{error}</div> : filteredAppointments.length === 0 ? <EmptyState icon={EmptyIcons.calendar(28)} title="No appointments found." description="Try changing the date, status, or search filters." /> : (
+        <div className="bg-white border border-[#d8e1ec] rounded-[14px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)] overflow-x-auto">
+          <table className="w-full min-w-[1120px] text-left"><thead className="bg-[#f4f7fb] border-b border-[#d8e1ec]"><tr>{['Token', 'Patient', 'Doctor', 'Hospital', 'Date / Time', 'Priority', 'Status', 'Payment', 'Action'].map((heading) => <th key={heading} className="px-[14px] py-[12px] text-[#7b899c] text-[10px] uppercase font-semibold">{heading}</th>)}</tr></thead>
+            <tbody>{filteredAppointments.map((appointment) => <tr key={appointment.id} className="border-b border-[#d8e1ec] last:border-0 hover:bg-[#f8fbfe]">
+              <td className="px-[14px] py-[13px] font-bold text-[#155ead] text-[12px]">{appointment.tokenNumber}</td>
+              <td className="px-[14px] py-[13px]"><div className="flex items-center gap-2"><PatientInitials initials={getInitials(appointment.patientName)} size="sm" /><div><p className="font-semibold text-[#142033] text-[12px]">{appointment.patientName}</p><p className="text-[#7b899c] text-[11px]">{appointment.patientAge ?? 'Age not provided'} · {appointment.patientPhone ?? 'No phone'}</p></div></div></td>
+              <td className="px-[14px] py-[13px] text-[#526176] text-[12px]">{appointment.doctor?.name ?? 'Not assigned'}</td>
+              <td className="px-[14px] py-[13px] text-[#526176] text-[12px]">{appointment.hospital?.name ?? 'Not assigned'}</td>
+              <td className="px-[14px] py-[13px] text-[#526176] text-[12px] whitespace-nowrap">{appointment.appointmentDate}<br />{appointment.appointmentTime}</td>
+              <td className="px-[14px] py-[13px]"><StatusBadge status={appointment.priority} /></td>
+              <td className="px-[14px] py-[13px]"><StatusBadge status={displayStatus(appointment.status)} /></td>
+              <td className="px-[14px] py-[13px] text-[#526176] text-[12px]">{payments[appointment.id]?.paymentStatus ?? 'Not recorded'}</td>
+              <td className="px-[14px] py-[13px]"><Button variant="secondary" onClick={() => navigate(`/admin/appointments/${appointment.id}`)}>View</Button></td>
+            </tr>)}</tbody>
+          </table>
         </div>
-      </div>
+      )}
     </AdminLayout>
   );
 }

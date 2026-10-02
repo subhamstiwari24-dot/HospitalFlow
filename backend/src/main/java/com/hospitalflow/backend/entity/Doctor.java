@@ -36,9 +36,17 @@ public class Doctor {
 
     private String opdEndTime;
 
+    // Doctor phone number
+    private String phone;
+
+    // Consultation room
+    private String room;
+
+    // Doctor login email
     @Column(unique = true)
     private String email;
 
+    // Doctor login password
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "password_hash")
     private String passwordHash;
@@ -50,6 +58,11 @@ public class Doctor {
     @ManyToOne
     @JoinColumn(name = "department_id")
     private Department department;
+
+
+    // =========================
+    // CONSTRUCTORS
+    // =========================
 
     public Doctor() {
     }
@@ -74,6 +87,11 @@ public class Doctor {
         this.department = department;
     }
 
+
+    // =========================
+    // GETTERS & SETTERS
+    // =========================
+
     public Long getId() {
         return id;
     }
@@ -81,6 +99,7 @@ public class Doctor {
     public void setId(Long id) {
         this.id = id;
     }
+
 
     public String getName() {
         return name;
@@ -90,6 +109,7 @@ public class Doctor {
         this.name = name;
     }
 
+
     public String getSpecialization() {
         return specialization;
     }
@@ -97,6 +117,7 @@ public class Doctor {
     public void setSpecialization(String specialization) {
         this.specialization = specialization;
     }
+
 
     public String getQualification() {
         return qualification;
@@ -106,6 +127,7 @@ public class Doctor {
         this.qualification = qualification;
     }
 
+
     public String getExperience() {
         return experience;
     }
@@ -113,6 +135,7 @@ public class Doctor {
     public void setExperience(String experience) {
         this.experience = experience;
     }
+
 
     public String getStatus() {
         return status;
@@ -122,6 +145,7 @@ public class Doctor {
         this.status = status;
     }
 
+
     public String getConsultationTime() {
         return consultationTime;
     }
@@ -129,6 +153,7 @@ public class Doctor {
     public void setConsultationTime(String consultationTime) {
         this.consultationTime = consultationTime;
     }
+
 
     public Double getConsultationFee() {
         return consultationFee;
@@ -138,6 +163,7 @@ public class Doctor {
         this.consultationFee = consultationFee;
     }
 
+
     public String getOpdStartTime() {
         return opdStartTime;
     }
@@ -145,6 +171,7 @@ public class Doctor {
     public void setOpdStartTime(String opdStartTime) {
         this.opdStartTime = opdStartTime;
     }
+
 
     public String getOpdEndTime() {
         return opdEndTime;
@@ -154,6 +181,25 @@ public class Doctor {
         this.opdEndTime = opdEndTime;
     }
 
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+
+    public String getRoom() {
+        return room;
+    }
+
+    public void setRoom(String room) {
+        this.room = room;
+    }
+
+
     public String getEmail() {
         return email;
     }
@@ -161,6 +207,7 @@ public class Doctor {
     public void setEmail(String email) {
         this.email = email;
     }
+
 
     public String getPasswordHash() {
         return passwordHash;
@@ -170,6 +217,7 @@ public class Doctor {
         this.passwordHash = passwordHash;
     }
 
+
     public Hospital getHospital() {
         return hospital;
     }
@@ -177,6 +225,7 @@ public class Doctor {
     public void setHospital(Hospital hospital) {
         this.hospital = hospital;
     }
+
 
     public Department getDepartment() {
         return department;

@@ -169,7 +169,9 @@ export default function MyAppointmentsPage() {
     );
   };
 
-  const handleCancelAppointment = async (appointment: Appointment) => {
+  const handleCancelAppointment = async (
+    appointment: Appointment
+  ) => {
     if (!canCancelAppointment(appointment.status)) {
       return;
     }
@@ -247,27 +249,36 @@ export default function MyAppointmentsPage() {
     }
   };
 
+  /*
+   * =====================================================
+   * REFUND / PAYMENT STATUS REFRESH
+   * =====================================================
+   *
+   * For every cancelled appointment:
+   * - Fetch payment status immediately.
+   * - This makes already-REFUNDED appointments show
+   *   their refund status when the page loads.
+   *
+   * If any cancelled appointment has REFUND_PENDING,
+   * keep polling every 5 seconds.
+   */
+
   useEffect(() => {
-    const cancelledPendingAppointments =
-      appointments.filter((appointment) => {
-        const payment = payments[appointment.id];
-
-        return (
+    const cancelledAppointments =
+      appointments.filter(
+        (appointment) =>
           appointment.status?.toUpperCase() ===
-            'CANCELLED' &&
-          payment?.refundStatus ===
-            'REFUND_PENDING'
-        );
-      });
+          'CANCELLED'
+      );
 
-    if (cancelledPendingAppointments.length === 0) {
+    if (cancelledAppointments.length === 0) {
       return;
     }
 
     let mounted = true;
 
     const refreshRefundStatuses = async () => {
-      for (const appointment of cancelledPendingAppointments) {
+      for (const appointment of cancelledAppointments) {
         try {
           const response = await fetch(
             `/api/payments/appointment/${appointment.id}`
@@ -290,14 +301,30 @@ export default function MyAppointmentsPage() {
           }));
         } catch (err) {
           console.error(
-            `Unable to refresh refund status for appointment ${appointment.id}:`,
+            `Unable to refresh payment/refund status for appointment ${appointment.id}:`,
             err
           );
         }
       }
     };
 
+    // Fetch immediately.
     refreshRefundStatuses();
+
+    /*
+     * Continue polling only if at least one cancelled
+     * appointment currently has a pending refund.
+     */
+    const hasPendingRefund =
+      cancelledAppointments.some(
+        (appointment) =>
+          payments[appointment.id]?.refundStatus ===
+          'REFUND_PENDING'
+      );
+
+    if (!hasPendingRefund) {
+      return;
+    }
 
     const interval = window.setInterval(
       refreshRefundStatuses,
@@ -329,7 +356,9 @@ export default function MyAppointmentsPage() {
           </p>
 
           <button
-            onClick={() => navigate('/patient/login')}
+            onClick={() =>
+              navigate('/patient/login')
+            }
             className="bg-[#155ead] text-white font-semibold text-[13px] px-[20px] py-[11px] rounded-[9px] mt-[20px] cursor-pointer"
           >
             Patient Login →
@@ -350,7 +379,9 @@ export default function MyAppointmentsPage() {
         <div className="max-w-[1100px] mx-auto px-[24px] h-[64px] flex items-center justify-between">
 
           <button
-            onClick={() => navigate('/patient/dashboard')}
+            onClick={() =>
+              navigate('/patient/dashboard')
+            }
             className="cursor-pointer"
           >
             <img
@@ -402,7 +433,9 @@ export default function MyAppointmentsPage() {
           <div>
 
             <button
-              onClick={() => navigate('/patient/dashboard')}
+              onClick={() =>
+                navigate('/patient/dashboard')
+              }
               className="text-[#155ead] text-[12px] font-semibold mb-[10px] cursor-pointer"
             >
               ← Back to Dashboard
@@ -419,7 +452,9 @@ export default function MyAppointmentsPage() {
           </div>
 
           <button
-            onClick={() => navigate('/patient/hospital')}
+            onClick={() =>
+              navigate('/patient/hospital')
+            }
             className="bg-[#155ead] text-white font-semibold text-[13px] px-[18px] py-[11px] rounded-[9px] cursor-pointer hover:opacity-90"
           >
             + Book New OPD
@@ -469,7 +504,9 @@ export default function MyAppointmentsPage() {
               </p>
 
               <button
-                onClick={() => navigate('/patient/hospital')}
+                onClick={() =>
+                  navigate('/patient/hospital')
+                }
                 className="bg-[#155ead] text-white font-semibold text-[13px] px-[20px] py-[11px] rounded-[9px] mt-[20px] cursor-pointer"
               >
                 Book Your First OPD →
@@ -481,6 +518,7 @@ export default function MyAppointmentsPage() {
         {/* Cancellation / Refund Messages */}
         {cancelMessage && (
           <div className="bg-[#e8f7f1] border border-[#b9e5d3] rounded-[14px] p-[16px] mb-[16px]">
+
             <p className="font-bold text-[#146b4a] text-[13px]">
               Appointment Cancelled
             </p>
@@ -488,11 +526,13 @@ export default function MyAppointmentsPage() {
             <p className="text-[#526176] text-[12px] mt-[4px]">
               {cancelMessage}
             </p>
+
           </div>
         )}
 
         {cancelError && (
           <div className="bg-[#fff1f1] border border-[#f3c2c2] rounded-[14px] p-[16px] mb-[16px]">
+
             <p className="font-bold text-[#b42318] text-[13px]">
               Unable to cancel appointment
             </p>
@@ -500,6 +540,7 @@ export default function MyAppointmentsPage() {
             <p className="text-[#7b4a4a] text-[12px] mt-[4px]">
               {cancelError}
             </p>
+
           </div>
         )}
 
@@ -596,6 +637,7 @@ export default function MyAppointmentsPage() {
 
                     {/* Actions */}
                     <div className="flex flex-wrap items-center gap-[8px]">
+
                       <button
                         onClick={() =>
                           handleAppointmentClick(
@@ -628,15 +670,19 @@ export default function MyAppointmentsPage() {
                             : 'Cancel'}
                         </button>
                       )}
+
                     </div>
 
                   </div>
 
+                  {/* Refund Status */}
                   {appointment.status?.toUpperCase() ===
                     'CANCELLED' &&
                     payments[appointment.id] && (
                       <div className="mt-[16px] pt-[14px] border-t border-[#e7edf4]">
+
                         <div className="bg-[#fff8e7] border border-[#f0d99a] rounded-[12px] p-[12px]">
+
                           <p className="font-semibold text-[#8a6200] text-[11px]">
                             Refund Status
                           </p>
@@ -654,7 +700,9 @@ export default function MyAppointmentsPage() {
                           {payments[appointment.id]
                             .razorpayRefundId && (
                             <p className="text-[#526176] text-[11px] mt-[4px] break-all">
+
                               Refund ID:{' '}
+
                               <span className="font-semibold">
                                 {
                                   payments[
@@ -663,9 +711,12 @@ export default function MyAppointmentsPage() {
                                     .razorpayRefundId
                                 }
                               </span>
+
                             </p>
                           )}
+
                         </div>
+
                       </div>
                     )}
 

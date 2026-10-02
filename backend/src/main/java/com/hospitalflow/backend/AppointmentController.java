@@ -3,6 +3,7 @@ package com.hospitalflow.backend;
 import com.hospitalflow.backend.entity.Appointment;
 import com.hospitalflow.backend.entity.Payment;
 import com.hospitalflow.backend.repository.AppointmentRepository;
+import com.hospitalflow.backend.repository.HospitalSettingsRepository;
 import com.hospitalflow.backend.service.AppointmentService;
 import com.hospitalflow.backend.service.PaymentService;
 
@@ -25,15 +26,18 @@ public class AppointmentController {
     private final AppointmentService appointmentService;
     private final AppointmentRepository appointmentRepository;
     private final PaymentService paymentService;
+        private final HospitalSettingsRepository hospitalSettingsRepository;
 
     public AppointmentController(
             AppointmentService appointmentService,
             AppointmentRepository appointmentRepository,
-            PaymentService paymentService
+            PaymentService paymentService,
+            HospitalSettingsRepository hospitalSettingsRepository
     ) {
         this.appointmentService = appointmentService;
         this.appointmentRepository = appointmentRepository;
         this.paymentService = paymentService;
+        this.hospitalSettingsRepository = hospitalSettingsRepository;
     }
 
 
@@ -240,6 +244,15 @@ public class AppointmentController {
                                                     + id
                                     )
                             );
+
+                        if (appointment.getHospital() != null) {
+                                boolean cancellationEnabled = hospitalSettingsRepository.findByHospital_Id(appointment.getHospital().getId())
+                                                .map(settings -> Boolean.TRUE.equals(settings.getCancellationEnabled()))
+                                                .orElse(true);
+                                if (!cancellationEnabled) {
+                                        return ResponseEntity.badRequest().body(Map.of("error", "Appointment cancellation is currently disabled."));
+                                }
+                        }
 
 
             // =================================================

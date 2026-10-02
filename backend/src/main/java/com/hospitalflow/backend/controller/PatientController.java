@@ -4,6 +4,7 @@ import com.hospitalflow.backend.entity.Patient;
 import com.hospitalflow.backend.entity.OtpVerification;
 import com.hospitalflow.backend.service.OtpService;
 import com.hospitalflow.backend.service.PatientService;
+import com.hospitalflow.backend.security.JwtTokenService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,13 +24,16 @@ public class PatientController {
 
     private final PatientService patientService;
     private final OtpService otpService;
+        private final JwtTokenService jwtTokenService;
 
     public PatientController(
             PatientService patientService,
-            OtpService otpService
+                        OtpService otpService,
+                        JwtTokenService jwtTokenService
     ) {
         this.patientService = patientService;
         this.otpService = otpService;
+                this.jwtTokenService = jwtTokenService;
     }
 
     /* ============================================================
@@ -634,6 +638,8 @@ public class PatientController {
                 "message",
                 "Login successful"
         );
+
+        response.put("token", jwtTokenService.issueToken(patient.getPhone(), "PATIENT"));
 
         response.put(
                 "patientId",

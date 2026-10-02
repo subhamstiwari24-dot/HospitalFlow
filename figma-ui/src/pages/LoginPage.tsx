@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import { useAdminAuth } from '../context/AdminAuthContext';
+import { AdminApiError } from '../services/adminApi';
 
 type Role = 'Doctor' | 'Admin';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { login: loginAdmin } = useAdminAuth();
 
   const [role, setRole] = useState<Role>('Doctor');
   const [employeeId, setEmployeeId] = useState('');
@@ -80,15 +83,25 @@ export default function LoginPage() {
 
         navigate('/doctor/dashboard');
       } else {
-        setErrors({
-          general:
-            'Admin authentication is not configured in the current backend.',
-        });
+        await loginAdmin(employeeId.trim(), password);
+        navigate('/admin/dashboard');
       }
-    } catch {
-      setErrors({
-        general: 'Unable to connect to the server.',
-      });
+    } catch (error) {
+      let message = 'Unable to connect to the server.';
+
+      if (error instanceof AdminApiError) {
+        if (error.status === 400) {
+          message = 'Invalid login request.';
+        } else if (error.status === 401) {
+          message = 'Invalid employee ID or password.';
+        } else if (error.status === 403) {
+          message = 'You are not authorized to access the admin panel.';
+        } else if (error.status >= 500) {
+          message = 'Server error. Please try again later.';
+        }
+      }
+
+      setErrors({ general: message });
     } finally {
       setIsLoading(false);
     }

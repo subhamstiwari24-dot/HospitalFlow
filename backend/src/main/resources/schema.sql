@@ -61,3 +61,20 @@ CREATE TABLE IF NOT EXISTS pending_registrations (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_pending_registration_email ON pending_registrations(email);
 CREATE UNIQUE INDEX IF NOT EXISTS ux_pending_registration_phone ON pending_registrations(phone);
+
+CREATE TABLE IF NOT EXISTS admins (
+    id BIGSERIAL PRIMARY KEY,
+    admin_id VARCHAR(64) NOT NULL UNIQUE,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(320) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role_name VARCHAR(32) NOT NULL DEFAULT 'ADMIN',
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS email VARCHAR(320);
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS state VARCHAR(120);
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS pincode VARCHAR(20);
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS emergency_available BOOLEAN NOT NULL DEFAULT FALSE;

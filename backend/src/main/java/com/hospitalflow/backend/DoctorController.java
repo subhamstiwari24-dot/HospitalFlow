@@ -2,6 +2,7 @@ package com.hospitalflow.backend;
 
 import com.hospitalflow.backend.entity.Doctor;
 import com.hospitalflow.backend.service.DoctorService;
+import com.hospitalflow.backend.security.JwtTokenService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,9 +18,11 @@ import java.util.Map;
 public class DoctorController {
 
     private final DoctorService doctorService;
+    private final JwtTokenService jwtTokenService;
 
-    public DoctorController(DoctorService doctorService) {
+    public DoctorController(DoctorService doctorService, JwtTokenService jwtTokenService) {
         this.doctorService = doctorService;
+        this.jwtTokenService = jwtTokenService;
     }
 
     @GetMapping
@@ -36,6 +39,7 @@ public class DoctorController {
         return doctorService.authenticate(request.identifier(), request.password())
                 .map(doctor -> ResponseEntity.ok(Map.of(
                         "message", "Login successful",
+                        "token", jwtTokenService.issueToken(String.valueOf(doctor.getId()), "DOCTOR"),
                         "role", "DOCTOR",
                         "doctorId", doctor.getId(),
                         "name", doctor.getName(),

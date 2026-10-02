@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+
 import AdminLayout from '../../components/AdminLayout';
 import StatusBadge from '../../components/StatusBadge';
 import Button from '../../components/Button';
@@ -54,10 +55,20 @@ function getTodayKey(): string {
 }
 
 export default function DepartmentDetailsPage() {
-  const { id } = useParams<{ id: string }>();
+  /*
+   * IMPORTANT:
+   * App.tsx route is:
+   * departments/:departmentId
+   *
+   * Therefore we must read "departmentId",
+   * not "id".
+   */
+  const { departmentId: departmentIdParam } =
+    useParams<{ departmentId: string }>();
+
   const navigate = useNavigate();
 
-  const departmentId = Number(id);
+  const departmentId = Number(departmentIdParam);
 
   const [department, setDepartment] =
     useState<BackendDepartment | null>(null);
@@ -86,6 +97,12 @@ export default function DepartmentDetailsPage() {
     status: 'Active' as DepartmentStatus,
   });
 
+  /*
+   * ==========================================
+   * LOAD DEPARTMENT DETAILS
+   * ==========================================
+   */
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -94,7 +111,14 @@ export default function DepartmentDetailsPage() {
         setLoading(true);
         setError(null);
 
-        if (!id || Number.isNaN(departmentId)) {
+        /*
+         * FIX:
+         * Route parameter is "departmentId"
+         */
+        if (
+          !departmentIdParam ||
+          Number.isNaN(departmentId)
+        ) {
           throw new Error('Invalid department ID.');
         }
 
@@ -172,6 +196,12 @@ export default function DepartmentDetailsPage() {
           status: backendDepartment.status,
         });
 
+        /*
+         * ======================================
+         * TODAY'S PATIENT COUNT
+         * ======================================
+         */
+
         const todayKey = getTodayKey();
 
         const patientCountsByDoctor =
@@ -192,9 +222,11 @@ export default function DepartmentDetailsPage() {
         });
 
         /*
-         * Doctors are now selected using the real
-         * department.id relationship.
+         * ======================================
+         * GET DOCTORS BELONGING TO DEPARTMENT
+         * ======================================
          */
+
         const selectedDoctors =
           doctors.filter(
             (doctor) =>
@@ -238,7 +270,13 @@ export default function DepartmentDetailsPage() {
     void fetchDepartmentDetails();
 
     return () => controller.abort();
-  }, [id, departmentId]);
+  }, [departmentIdParam, departmentId]);
+
+  /*
+   * ==========================================
+   * START EDIT
+   * ==========================================
+   */
 
   const startEdit = () => {
     if (!department) {
@@ -255,6 +293,12 @@ export default function DepartmentDetailsPage() {
     setEditing(true);
   };
 
+  /*
+   * ==========================================
+   * SAVE DEPARTMENT
+   * ==========================================
+   */
+
   const handleSave = async () => {
     if (!department) {
       return;
@@ -268,14 +312,17 @@ export default function DepartmentDetailsPage() {
         `/api/departments/${department.id}`,
         {
           method: 'PUT',
+
           headers: {
             'Content-Type': 'application/json',
           },
+
           body: JSON.stringify({
             name: form.name.trim(),
             head: form.head.trim(),
             rooms: Number(form.rooms),
             status: form.status,
+
             hospital: {
               id: department.hospital?.id ?? 1,
             },
@@ -318,6 +365,12 @@ export default function DepartmentDetailsPage() {
     }
   };
 
+  /*
+   * ==========================================
+   * FORM INPUT HANDLER
+   * ==========================================
+   */
+
   const set =
     (
       field: keyof typeof form
@@ -329,12 +382,19 @@ export default function DepartmentDetailsPage() {
     ) => {
       setForm((current) => ({
         ...current,
+
         [field]:
           field === 'rooms'
             ? Number(event.target.value)
             : event.target.value,
       }));
     };
+
+  /*
+   * ==========================================
+   * LOADING
+   * ==========================================
+   */
 
   if (loading) {
     return (
@@ -345,6 +405,12 @@ export default function DepartmentDetailsPage() {
       </AdminLayout>
     );
   }
+
+  /*
+   * ==========================================
+   * ERROR
+   * ==========================================
+   */
 
   if (error || !department) {
     return (
@@ -367,6 +433,12 @@ export default function DepartmentDetailsPage() {
     );
   }
 
+  /*
+   * ==========================================
+   * DEPARTMENT STATS
+   * ==========================================
+   */
+
   const totalPatients =
     departmentDoctors.reduce(
       (total, doctor) =>
@@ -379,23 +451,39 @@ export default function DepartmentDetailsPage() {
       (doctor) => doctor.status !== 'Offline'
     ).length;
 
+  /*
+   * ==========================================
+   * PAGE
+   * ==========================================
+   */
+
   return (
     <AdminLayout title="Department Details">
-      {/* Success toast */}
+
+      {/* =========================
+          SUCCESS TOAST
+      ========================== */}
+
       {saved && (
         <div className="fixed top-[20px] right-[20px] z-50 bg-[#18865b] text-white px-[18px] py-[12px] rounded-[10px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.2)] font-semibold text-[13px]">
           Department updated successfully.
         </div>
       )}
 
-      {/* Error */}
+      {/* =========================
+          ERROR
+      ========================== */}
+
       {error && (
         <div className="mb-[20px] bg-[#fef3f2] border border-[#f4c7cb] text-[#c53a45] px-[16px] py-[12px] rounded-[10px] text-[13px] font-semibold">
           {error}
         </div>
       )}
 
-      {/* Back */}
+      {/* =========================
+          BACK
+      ========================== */}
+
       <button
         onClick={() =>
           navigate('/admin/departments')
@@ -406,26 +494,43 @@ export default function DepartmentDetailsPage() {
       </button>
 
       <div className="flex flex-col lg:flex-row gap-[14px] lg:gap-[18px]">
-        {/* Main content */}
+
+        {/* =========================
+            MAIN CONTENT
+        ========================== */}
+
         <div className="flex-1 min-w-0 flex flex-col gap-[18px]">
 
-          {/* Header card */}
+          {/* =========================
+              HEADER CARD
+          ========================== */}
+
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)] p-[24px]">
 
             {editing ? (
+
               <div className="flex flex-col gap-[16px]">
 
+                {/* TITLE */}
+
                 <div className="flex items-center gap-[10px] pb-[14px] border-b border-[#d8e1ec]">
+
                   <div className="bg-[#2475d0] h-[20px] rounded-[2px] shrink-0 w-[4px]" />
 
                   <p className="font-bold text-[#142033] text-[15px]">
                     Edit Department
                   </p>
+
                 </div>
+
+                {/* FORM */}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-[16px]">
 
+                  {/* DEPARTMENT NAME */}
+
                   <div className="flex flex-col gap-[6px]">
+
                     <label className="font-semibold text-[#142033] text-[13px]">
                       Department Name
                     </label>
@@ -435,9 +540,13 @@ export default function DepartmentDetailsPage() {
                       onChange={set('name')}
                       className={inputClass}
                     />
+
                   </div>
 
+                  {/* DEPARTMENT HEAD */}
+
                   <div className="flex flex-col gap-[6px]">
+
                     <label className="font-semibold text-[#142033] text-[13px]">
                       Department Head
                     </label>
@@ -447,9 +556,13 @@ export default function DepartmentDetailsPage() {
                       onChange={set('head')}
                       className={inputClass}
                     />
+
                   </div>
 
+                  {/* ROOMS */}
+
                   <div className="flex flex-col gap-[6px]">
+
                     <label className="font-semibold text-[#142033] text-[13px]">
                       Rooms
                     </label>
@@ -461,9 +574,13 @@ export default function DepartmentDetailsPage() {
                       onChange={set('rooms')}
                       className={inputClass}
                     />
+
                   </div>
 
+                  {/* STATUS */}
+
                   <div className="flex flex-col gap-[6px]">
+
                     <label className="font-semibold text-[#142033] text-[13px]">
                       Status
                     </label>
@@ -473,6 +590,7 @@ export default function DepartmentDetailsPage() {
                       onChange={set('status')}
                       className={inputClass}
                     >
+
                       <option value="Active">
                         Active
                       </option>
@@ -480,11 +598,17 @@ export default function DepartmentDetailsPage() {
                       <option value="Inactive">
                         Inactive
                       </option>
+
                     </select>
+
                   </div>
+
                 </div>
 
+                {/* BUTTONS */}
+
                 <div className="flex gap-[10px] pt-[4px]">
+
                   <Button
                     variant="primary"
                     onClick={handleSave}
@@ -503,26 +627,37 @@ export default function DepartmentDetailsPage() {
                   >
                     Cancel
                   </Button>
+
                 </div>
+
               </div>
+
             ) : (
+
               <div>
+
+                {/* HEADER */}
 
                 <div className="flex items-start gap-[18px]">
 
                   <div className="bg-[#eaf3fd] flex items-center justify-center rounded-[14px] size-[56px] shrink-0">
+
                     <p className="font-bold text-[#155ead] text-[18px]">
+
                       {department.name
                         .split(' ')
                         .map((word) => word[0])
                         .join('')
                         .slice(0, 2)}
+
                     </p>
+
                   </div>
 
                   <div className="flex-1 min-w-0">
 
                     <div className="flex items-center gap-[12px] flex-wrap mb-[4px]">
+
                       <h1 className="font-bold text-[#142033] text-[22px]">
                         {department.name}
                       </h1>
@@ -530,13 +665,18 @@ export default function DepartmentDetailsPage() {
                       <StatusBadge
                         status={department.status}
                       />
+
                     </div>
 
                     <p className="font-normal text-[#526176] text-[13px]">
+
                       Head:{' '}
+
                       {department.head ||
                         'Not assigned'}
+
                     </p>
+
                   </div>
 
                   <Button
@@ -545,34 +685,44 @@ export default function DepartmentDetailsPage() {
                   >
                     Edit Department
                   </Button>
+
                 </div>
+
+                {/* METRICS */}
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-[14px] mt-[20px] pt-[18px] border-t border-[#d8e1ec]">
 
                   {[
                     {
                       label: 'Doctors',
-                      value: departmentDoctors.length,
+                      value:
+                        departmentDoctors.length,
                       bg: 'bg-[#eaf3fd]',
                       text: 'text-[#155ead]',
                     },
+
                     {
                       label: 'Active Patients',
                       value: totalPatients,
                       bg: 'bg-[#e8f7f1]',
                       text: 'text-[#18865b]',
                     },
+
                     {
                       label: 'Rooms',
-                      value: department.rooms ?? 0,
+                      value:
+                        department.rooms ?? 0,
                       bg: 'bg-[#f4f7fb]',
                       text: 'text-[#526176]',
                     },
+
                   ].map((metric) => (
+
                     <div
                       key={metric.label}
                       className={`${metric.bg} rounded-[14px] p-[18px] flex flex-col items-center`}
                     >
+
                       <p
                         className={`font-bold text-[32px] ${metric.text}`}
                       >
@@ -582,68 +732,101 @@ export default function DepartmentDetailsPage() {
                       <p className="font-normal text-[#526176] text-[12px] mt-[4px]">
                         {metric.label}
                       </p>
+
                     </div>
+
                   ))}
+
                 </div>
+
               </div>
+
             )}
+
           </div>
 
-          {/* Doctors */}
+          {/* =========================
+              DOCTORS
+          ========================== */}
+
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)] overflow-hidden">
 
             <div className="overflow-x-auto">
 
               <div className="px-[20px] py-[16px] border-b border-[#d8e1ec]">
+
                 <p className="font-bold text-[#142033] text-[16px]">
                   Doctors in {department.name}
                 </p>
 
                 <p className="font-normal text-[#7b899c] text-[11px] mt-[2px]">
+
                   {departmentDoctors.length}{' '}
+
                   doctor
                   {departmentDoctors.length !== 1
                     ? 's'
                     : ''}{' '}
+
                   assigned
+
                 </p>
+
               </div>
 
               {departmentDoctors.length === 0 ? (
+
                 <div className="px-[20px] py-[32px] text-center">
+
                   <p className="font-normal text-[#7b899c] text-[14px]">
                     No doctors currently assigned
                     to this department.
                   </p>
+
                 </div>
+
               ) : (
+
                 <>
+
+                  {/* TABLE HEADER */}
+
                   <div className="grid grid-cols-[1fr_130px_100px_80px] gap-[16px] px-[20px] py-[10px] bg-[#f4f7fb] border-b border-[#d8e1ec]">
+
                     {[
                       'Name',
                       'Specialization',
                       'Status',
                       'Patients',
                     ].map((heading) => (
+
                       <p
                         key={heading}
                         className="font-semibold text-[#7b899c] text-[11px] uppercase"
                       >
                         {heading}
                       </p>
+
                     ))}
+
                   </div>
+
+                  {/* DOCTOR ROWS */}
 
                   {departmentDoctors.map(
                     (doctor) => (
+
                       <div
                         key={doctor.id}
                         className="grid grid-cols-[1fr_130px_100px_80px] gap-[16px] items-center px-[20px] py-[13px] border-b border-[#d8e1ec] last:border-0 hover:bg-[#f4f7fb] transition-colors"
                       >
+
                         <div className="flex gap-[10px] items-center min-w-0">
 
                           <div className="bg-[#eaf3fd] flex items-center justify-center rounded-[999px] size-[32px] shrink-0">
+
                             <p className="font-bold text-[#155ead] text-[11px]">
+
                               {doctor.name
                                 .replace(
                                   'Dr. ',
@@ -656,19 +839,26 @@ export default function DepartmentDetailsPage() {
                                 )
                                 .join('')
                                 .slice(0, 2)}
+
                             </p>
+
                           </div>
 
                           <div className="min-w-0">
+
                             <p className="font-semibold text-[#142033] text-[13px] truncate">
                               {doctor.name}
                             </p>
 
                             <p className="font-normal text-[#7b899c] text-[11px]">
+
                               {doctor.room} ·{' '}
                               {doctor.shift}
+
                             </p>
+
                           </div>
+
                         </div>
 
                         <p className="font-normal text-[#526176] text-[13px] truncate">
@@ -682,19 +872,30 @@ export default function DepartmentDetailsPage() {
                         <p className="font-bold text-[#142033] text-[14px]">
                           {doctor.patients}
                         </p>
+
                       </div>
+
                     )
                   )}
+
                 </>
+
               )}
+
             </div>
+
           </div>
+
         </div>
 
-        {/* Right panel */}
+        {/* =========================
+            RIGHT PANEL
+        ========================== */}
+
         <div className="w-full lg:w-[260px] lg:shrink-0 flex flex-col gap-[14px]">
 
-          {/* Quick Info */}
+          {/* QUICK INFO */}
+
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[18px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)]">
 
             <p className="font-bold text-[#142033] text-[15px] mb-[14px]">
@@ -710,23 +911,28 @@ export default function DepartmentDetailsPage() {
                     department.head ||
                     'Not assigned',
                 },
+
                 {
                   label: 'Status',
                   value: department.status,
                 },
+
                 {
                   label: 'Total Rooms',
                   value: String(
                     department.rooms ?? 0
                   ),
                 },
+
                 {
                   label: 'Active Doctors',
                   value: String(
                     activeDoctors
                   ),
                 },
+
               ].map((row) => (
+
                 <div key={row.label}>
 
                   <p className="font-semibold text-[#7b899c] text-[10px] uppercase mb-[2px]">
@@ -734,20 +940,29 @@ export default function DepartmentDetailsPage() {
                   </p>
 
                   {row.label === 'Status' ? (
+
                     <StatusBadge
                       status={row.value}
                     />
+
                   ) : (
+
                     <p className="font-normal text-[#142033] text-[13px]">
                       {row.value}
                     </p>
+
                   )}
+
                 </div>
+
               ))}
+
             </div>
+
           </div>
 
-          {/* Doctor Status */}
+          {/* DOCTOR STATUS */}
+
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[18px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)]">
 
             <p className="font-bold text-[#142033] text-[15px] mb-[14px]">
@@ -770,19 +985,27 @@ export default function DepartmentDetailsPage() {
                 ).length;
 
               return (
+
                 <div
                   key={status}
                   className="flex items-center justify-between py-[6px] border-b border-[#f4f7fb] last:border-0"
                 >
+
                   <StatusBadge status={status} />
 
                   <p className="font-bold text-[#142033] text-[14px]">
                     {count}
                   </p>
+
                 </div>
+
               );
+
             })}
+
           </div>
+
+          {/* BACK BUTTON */}
 
           <Button
             variant="ghost"
@@ -793,8 +1016,11 @@ export default function DepartmentDetailsPage() {
           >
             Back to Departments
           </Button>
+
         </div>
+
       </div>
+
     </AdminLayout>
   );
 }

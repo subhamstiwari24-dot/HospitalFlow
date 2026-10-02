@@ -33,8 +33,13 @@ function Field({
     <div className="flex flex-col gap-[6px]">
       <label className="font-semibold text-[#142033] text-[13px]">
         {label}
-        {required && <span className="text-[#c53a45] ml-[2px]">*</span>}
+        {required && (
+          <span className="text-[#c53a45] ml-[2px]">
+            *
+          </span>
+        )}
       </label>
+
       {children}
     </div>
   );
@@ -43,23 +48,42 @@ function Field({
 export default function AddDepartmentPage() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [errors, setErrors] = useState<Partial<FormState>>({});
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [apiError, setApiError] = useState('');
+  const [form, setForm] =
+    useState<FormState>(emptyForm);
+
+  const [errors, setErrors] =
+    useState<Partial<FormState>>({});
+
+  const [submitted, setSubmitted] =
+    useState(false);
+
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  const [apiError, setApiError] =
+    useState('');
 
   const set =
     (field: keyof FormState) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    (
+      e: React.ChangeEvent<
+        HTMLInputElement | HTMLSelectElement
+      >
+    ) => {
       const value = e.target.value;
 
-      setForm((f) => ({ ...f, [field]: value }));
+      setForm((f) => ({
+        ...f,
+        [field]: value,
+      }));
+
       setApiError('');
 
       setErrors((err) => ({
         ...err,
-        [field]: err[field] ? validateField(field, value) : '',
+        [field]: err[field]
+          ? validateField(field, value)
+          : '',
       }));
     };
 
@@ -67,19 +91,27 @@ export default function AddDepartmentPage() {
     field: keyof FormState,
     value: string
   ): string => {
-    if (field === 'name' && !value.trim()) {
+    if (
+      field === 'name' &&
+      !value.trim()
+    ) {
       return 'Department name is required';
     }
 
-    if (field === 'head' && !value.trim()) {
+    if (
+      field === 'head' &&
+      !value.trim()
+    ) {
       return 'Department head is required';
     }
 
     if (
       field === 'rooms' &&
-      (!value.trim() ||
+      (
+        !value.trim() ||
         isNaN(Number(value)) ||
-        Number(value) < 0)
+        Number(value) < 0
+      )
     ) {
       return 'Enter a valid number of rooms';
     }
@@ -90,8 +122,13 @@ export default function AddDepartmentPage() {
   const validate = (): boolean => {
     const e: Partial<FormState> = {};
 
-    (['name', 'head', 'rooms'] as const).forEach((field) => {
-      const message = validateField(field, form[field]);
+    (
+      ['name', 'head', 'rooms'] as const
+    ).forEach((field) => {
+      const message = validateField(
+        field,
+        form[field]
+      );
 
       if (message) {
         e[field] = message;
@@ -103,7 +140,9 @@ export default function AddDepartmentPage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
 
     if (!validate()) {
@@ -114,32 +153,39 @@ export default function AddDepartmentPage() {
     setApiError('');
 
     try {
-      const response = await fetch('/api/departments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          head: form.head.trim(),
-          rooms: Number(form.rooms),
-          status: form.status,
-
-          // Existing HospitalFlow test hospital
-          hospital: {
-            id: 1,
+      const response = await fetch(
+        '/api/departments',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/json',
           },
-        }),
-      });
+          body: JSON.stringify({
+            name: form.name.trim(),
+            head: form.head.trim(),
+            rooms: Number(form.rooms),
+            status: form.status,
+
+            // Existing HospitalFlow test hospital
+            hospital: {
+              id: 1,
+            },
+          }),
+        }
+      );
 
       if (!response.ok) {
-        let message = `Unable to add department (${response.status})`;
+        let message =
+          `Unable to add department (${response.status})`;
 
         try {
-          const errorData = await response.json();
+          const errorData =
+            await response.json();
 
           if (errorData?.message) {
-            message = errorData.message;
+            message =
+              errorData.message;
           }
         } catch {
           // Keep the default error message.
@@ -148,17 +194,26 @@ export default function AddDepartmentPage() {
         throw new Error(message);
       }
 
-      const createdDepartment = await response.json();
+      const createdDepartment =
+        await response.json();
 
-      console.log('Department created successfully:', createdDepartment);
+      console.log(
+        'Department created successfully:',
+        createdDepartment
+      );
 
       setSubmitted(true);
 
       setTimeout(() => {
-        navigate('/admin/departments');
+        navigate(
+          '/admin/departments'
+        );
       }, 1500);
     } catch (error) {
-      console.error('Error creating department:', error);
+      console.error(
+        'Error creating department:',
+        error
+      );
 
       setApiError(
         error instanceof Error
@@ -174,6 +229,7 @@ export default function AddDepartmentPage() {
     return (
       <AdminLayout title="Add Department">
         <div className="flex flex-col items-center justify-center py-[80px] gap-[16px]">
+
           <div className="bg-[#e8f7f1] size-[64px] rounded-[999px] flex items-center justify-center">
             <span className="text-[#18865b] text-[28px]">
               ✓
@@ -187,6 +243,7 @@ export default function AddDepartmentPage() {
           <p className="font-normal text-[#526176] text-[14px]">
             Redirecting to Department Management…
           </p>
+
         </div>
       </AdminLayout>
     );
@@ -194,22 +251,28 @@ export default function AddDepartmentPage() {
 
   return (
     <AdminLayout title="Add Department">
+
       <button
-        onClick={() => navigate('/admin/departments')}
+        onClick={() =>
+          navigate('/admin/departments')
+        }
         className="flex items-center gap-[8px] text-[#155ead] text-[13px] font-semibold mb-[24px] cursor-pointer hover:opacity-80 transition-opacity"
       >
         ← Back to Department Management
       </button>
 
       <div className="max-w-[600px]">
+
         <div className="mb-[24px]">
+
           <h1 className="font-bold text-[#142033] text-[24px] leading-tight">
             Add New Department
           </h1>
 
           <p className="font-normal text-[#526176] text-[14px] mt-[4px]">
-            Register a new department at North Campus.
+            Register a new department.
           </p>
+
         </div>
 
         {apiError && (
@@ -219,17 +282,27 @@ export default function AddDepartmentPage() {
         )}
 
         <form onSubmit={handleSubmit}>
+
           <div className="bg-white border border-[#d8e1ec] rounded-[14px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)] p-[28px] flex flex-col gap-[20px]">
 
+            {/* Department Information */}
+
             <div className="flex items-center gap-[10px] pb-[16px] border-b border-[#d8e1ec]">
+
               <div className="bg-[#2475d0] h-[20px] rounded-[2px] shrink-0 w-[4px]" />
 
               <p className="font-bold text-[#142033] text-[15px]">
                 Department Information
               </p>
+
             </div>
 
-            <Field label="Department Name" required>
+            {/* Department Name */}
+
+            <Field
+              label="Department Name"
+              required
+            >
               <input
                 id="add-department-name"
                 value={form.name}
@@ -237,10 +310,15 @@ export default function AddDepartmentPage() {
                 onBlur={() =>
                   setErrors((err) => ({
                     ...err,
-                    name: validateField('name', form.name),
+                    name: validateField(
+                      'name',
+                      form.name
+                    ),
                   }))
                 }
-                aria-invalid={Boolean(errors.name)}
+                aria-invalid={Boolean(
+                  errors.name
+                )}
                 aria-describedby={
                   errors.name
                     ? 'add-department-name-error'
@@ -260,7 +338,12 @@ export default function AddDepartmentPage() {
               )}
             </Field>
 
-            <Field label="Department Head" required>
+            {/* Department Head */}
+
+            <Field
+              label="Department Head"
+              required
+            >
               <input
                 id="add-department-head"
                 value={form.head}
@@ -268,10 +351,15 @@ export default function AddDepartmentPage() {
                 onBlur={() =>
                   setErrors((err) => ({
                     ...err,
-                    head: validateField('head', form.head),
+                    head: validateField(
+                      'head',
+                      form.head
+                    ),
                   }))
                 }
-                aria-invalid={Boolean(errors.head)}
+                aria-invalid={Boolean(
+                  errors.head
+                )}
                 aria-describedby={
                   errors.head
                     ? 'add-department-head-error'
@@ -291,8 +379,14 @@ export default function AddDepartmentPage() {
               )}
             </Field>
 
+            {/* Rooms + Status */}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-[18px]">
-              <Field label="Number of Rooms" required>
+
+              <Field
+                label="Number of Rooms"
+                required
+              >
                 <input
                   id="add-department-rooms"
                   type="number"
@@ -302,10 +396,15 @@ export default function AddDepartmentPage() {
                   onBlur={() =>
                     setErrors((err) => ({
                       ...err,
-                      rooms: validateField('rooms', form.rooms),
+                      rooms: validateField(
+                        'rooms',
+                        form.rooms
+                      ),
                     }))
                   }
-                  aria-invalid={Boolean(errors.rooms)}
+                  aria-invalid={Boolean(
+                    errors.rooms
+                  )}
                   aria-describedby={
                     errors.rooms
                       ? 'add-department-rooms-error'
@@ -326,39 +425,61 @@ export default function AddDepartmentPage() {
               </Field>
 
               <Field label="Status">
+
                 <select
                   value={form.status}
                   onChange={set('status')}
                   className={inputClass}
                 >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
+                  <option value="Active">
+                    Active
+                  </option>
+
+                  <option value="Inactive">
+                    Inactive
+                  </option>
                 </select>
+
               </Field>
+
             </div>
+
           </div>
 
+          {/* Buttons */}
+
           <div className="flex gap-[12px] mt-[20px]">
+
             <Button
               variant="primary"
               type="submit"
               className="px-[28px]"
               disabled={submitting}
             >
-              {submitting ? 'Adding Department...' : 'Add Department'}
+              {submitting
+                ? 'Adding Department...'
+                : 'Add Department'}
             </Button>
 
             <Button
               variant="ghost"
               type="button"
-              onClick={() => navigate('/admin/departments')}
+              onClick={() =>
+                navigate(
+                  '/admin/departments'
+                )
+              }
               disabled={submitting}
             >
               Cancel
             </Button>
+
           </div>
+
         </form>
+
       </div>
+
     </AdminLayout>
   );
 }

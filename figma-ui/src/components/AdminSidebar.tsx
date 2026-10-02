@@ -1,4 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
+import { useAdminAuth } from '../context/AdminAuthContext';
 
 const imgLayoutDashboard = '/assets/13e03.svg';
 const imgUsers2 = '/assets/014f4.svg';
@@ -21,6 +23,13 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ onClose }: AdminSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { admin, logout } = useAdminAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+    onClose?.();
+  };
 
   return (
     <div className="bg-[#13243a] flex flex-col gap-[18px] h-full items-start pb-[20px] pt-[16px] px-[16px] shrink-0 w-[248px]">
@@ -71,8 +80,16 @@ export default function AdminSidebar({ onClose }: AdminSidebarProps) {
       {/* Role summary */}
       <div className="mt-auto bg-[#1b3049] flex flex-col gap-[8px] items-start p-[14px] rounded-[12px] w-full">
         <p className="font-bold text-[#afc0d3] text-[10px] uppercase leading-none">Role</p>
-        <p className="font-normal text-[15px] text-white leading-none">Administrator</p>
-        <p className="font-normal text-[#afc0d3] text-[11px] leading-none">North Campus</p>
+        <p className="font-normal text-[15px] text-white leading-none truncate max-w-full">{admin?.fullName || 'Administrator'}</p>
+        <p className="font-normal text-[#afc0d3] text-[11px] leading-none truncate max-w-full">{admin?.email || 'Admin account'}</p>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="mt-2 flex w-full items-center gap-2 rounded-[8px] px-2 py-2 text-left text-[12px] font-semibold text-[#d0dce8] transition-colors hover:bg-[#263d58] hover:text-white"
+        >
+          <LogOut size={15} aria-hidden="true" />
+          Log out
+        </button>
       </div>
     </div>
   );

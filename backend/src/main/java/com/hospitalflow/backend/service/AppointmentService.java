@@ -4,6 +4,8 @@ import com.hospitalflow.backend.dto.QueuePositionResponse;
 import com.hospitalflow.backend.dto.WaitingTimeResponse;
 import com.hospitalflow.backend.entity.Appointment;
 import com.hospitalflow.backend.repository.AppointmentRepository;
+import com.hospitalflow.backend.repository.HospitalSettingsRepository;
+import com.hospitalflow.backend.entity.HospitalSettings;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
@@ -20,6 +22,7 @@ public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final SimpMessagingTemplate messagingTemplate;
+        private final HospitalSettingsRepository settingsRepository;
 
     // Python AI Service
     private final RestClient aiClient =
@@ -27,10 +30,12 @@ public class AppointmentService {
 
     public AppointmentService(
             AppointmentRepository appointmentRepository,
-            SimpMessagingTemplate messagingTemplate) {
+            SimpMessagingTemplate messagingTemplate,
+            HospitalSettingsRepository settingsRepository) {
 
         this.appointmentRepository = appointmentRepository;
         this.messagingTemplate = messagingTemplate;
+        this.settingsRepository = settingsRepository;
     }
 
     // =========================================================
@@ -76,6 +81,13 @@ public class AppointmentService {
             );
         }
 
+                Long hospitalId = appointment.getHospital() != null ? appointment.getHospital().getId()
+                                : appointment.getDoctor().getHospital() == null ? null : appointment.getDoctor().getHospital().getId();
+                HospitalSettings settings = hospitalId == null ? null : settingsRepository.findByHospital_Id(hospitalId).orElse(null);
+                if (settings != null && !Boolean.TRUE.equals(settings.getBookingEnabled())) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Appointment booking is currently disabled.");
+                }
+
         if (appointment.getAppointmentDate() == null ||
                 appointment.getAppointmentDate().isBlank()) {
 
@@ -84,6 +96,11 @@ public class AppointmentService {
                     "Appointment date is required."
             );
         }
+
+                if (settings != null && !Boolean.TRUE.equals(settings.getSameDayBookingEnabled())
+                                && java.time.LocalDate.now().toString().equals(appointment.getAppointmentDate())) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Same-day booking is currently disabled.");
+                }
 
         if (appointment.getAppointmentTime() == null ||
                 appointment.getAppointmentTime().isBlank()) {
