@@ -22,28 +22,78 @@ public class SecurityConfig {
     ) throws Exception {
 
         http
-                // REST APIs ke liye CSRF temporarily disable
+                // REST APIs ke liye CSRF disable
                 .csrf(AbstractHttpConfigurer::disable)
 
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // JWT based authentication
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
 
+                // JWT filter
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenService),
                         UsernamePasswordAuthenticationFilter.class
                 )
 
+                // Unauthorized request -> 401
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                        .authenticationEntryPoint(
+                                new HttpStatusEntryPoint(
+                                        HttpStatus.UNAUTHORIZED
+                                )
+                        )
                 )
 
                 .authorizeHttpRequests(auth -> auth
+
+                        // ==========================================
+                        // EXISTING ADMIN AUTH
+                        // ==========================================
+
                         .requestMatchers(
                                 "/api/admin/auth/login",
                                 "/api/admin/auth/logout"
                         ).permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/**").permitAll()
-                        .anyRequest().permitAll()
+
+                        // Existing Admin APIs
+                        .requestMatchers("/api/admin/**")
+                        .hasRole("ADMIN")
+
+
+                        // ==========================================
+                        // HOSPITAL ADMIN AUTH
+                        // ==========================================
+
+                        // First login password setup
+                        .requestMatchers(
+                                "/api/hospital-admin/auth/setup-password"
+                        ).permitAll()
+
+                        // Hospital Admin login
+                        .requestMatchers(
+                                "/api/hospital-admin/auth/login"
+                        ).permitAll()
+
+                        // Future Hospital Admin protected APIs
+                        .requestMatchers("/api/hospital-admin/**")
+                        .hasRole("HOSPITAL_ADMIN")
+
+
+                        // ==========================================
+                        // CURRENT APPLICATION APIs
+                        // ==========================================
+
+                        // Keep existing APIs working for now.
+                        // We will secure them gradually after
+                        // hospitalId isolation is implemented.
+                        .requestMatchers("/api/**")
+                        .permitAll()
+
+                        .anyRequest()
+                        .permitAll()
                 );
 
         return http.build();
