@@ -47,25 +47,25 @@ export default function LandingPage() {
             {/* Hospital */}
             <button
               type="button"
-              onClick={() => navigate('/login')}
-              className="group bg-white border border-[#d8e1ec] rounded-[18px] p-[32px] text-left shadow-[0px_4px_18px_0px_rgba(19,36,58,0.05)] hover:border-[#155ead] hover:shadow-[0px_8px_24px_0px_rgba(21,94,173,0.10)] transition-all cursor-pointer"
+              onClick={() => navigate('/hospital-portal')}
+              className="group bg-white border border-[#d8e1ec] rounded-[18px] p-[34px] text-left shadow-[0px_5px_20px_0px_rgba(19,36,58,0.06)] hover:border-[#155ead] hover:shadow-[0px_8px_26px_0px_rgba(21,94,173,0.12)] transition-all cursor-pointer"
             >
 
-              <div className="w-[58px] h-[58px] rounded-[14px] bg-[#eaf3ff] flex items-center justify-center text-[28px] mb-[22px]">
+              <div className="w-[64px] h-[64px] rounded-[16px] bg-[#eaf3ff] flex items-center justify-center text-[32px] mb-[24px]">
                 🏥
               </div>
 
-              <h2 className="text-[#142033] font-bold text-[21px]">
-                Hospital / Staff
+              <h2 className="font-bold text-[#142033] text-[21px]">
+                Hospital
               </h2>
 
-              <p className="text-[#526176] text-[14px] leading-[1.6] mt-[8px]">
-                Login as a doctor or administrator to manage
-                HospitalFlow operations.
+              <p className="text-[#66758a] text-[14px] leading-[1.6] mt-[9px]">
+                Access hospital staff, hospital admin and
+                hospital registration services.
               </p>
 
-              <div className="mt-[24px] text-[#155ead] font-semibold text-[14px]">
-                Continue to Staff Login →
+              <div className="mt-[26px] text-[#155ead] font-semibold text-[14px] group-hover:translate-x-[3px] transition-transform">
+                Continue as Hospital →
               </div>
 
             </button>
@@ -74,23 +74,23 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => navigate('/patient/login')}
-              className="group bg-white border border-[#d8e1ec] rounded-[18px] p-[32px] text-left shadow-[0px_4px_18px_0px_rgba(19,36,58,0.05)] hover:border-[#159570] hover:shadow-[0px_8px_24px_0px_rgba(21,149,112,0.10)] transition-all cursor-pointer"
+              className="group bg-white border border-[#d8e1ec] rounded-[18px] p-[34px] text-left shadow-[0px_5px_20px_0px_rgba(19,36,58,0.06)] hover:border-[#159570] hover:shadow-[0px_8px_26px_0px_rgba(21,149,112,0.12)] transition-all cursor-pointer"
             >
 
-              <div className="w-[58px] h-[58px] rounded-[14px] bg-[#e9f8f2] flex items-center justify-center text-[28px] mb-[22px]">
+              <div className="w-[64px] h-[64px] rounded-[16px] bg-[#e9f8f2] flex items-center justify-center text-[32px] mb-[24px]">
                 👤
               </div>
 
-              <h2 className="text-[#142033] font-bold text-[21px]">
+              <h2 className="font-bold text-[#142033] text-[21px]">
                 Patient
               </h2>
 
-              <p className="text-[#526176] text-[14px] leading-[1.6] mt-[8px]">
-                Login or create your patient account to manage
-                appointments, tokens, and OPD history.
+              <p className="text-[#66758a] text-[14px] leading-[1.6] mt-[9px]">
+                Login or create your patient account to book
+                appointments, get tokens and track your OPD queue.
               </p>
 
-              <div className="mt-[24px] text-[#159570] font-semibold text-[14px]">
+              <div className="mt-[26px] text-[#159570] font-semibold text-[14px] group-hover:translate-x-[3px] transition-transform">
                 Continue as Patient →
               </div>
 

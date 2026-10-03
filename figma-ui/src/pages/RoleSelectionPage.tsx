@@ -20,7 +20,7 @@ export default function RoleSelectionPage() {
       {/* Main */}
       <main className="flex-1 flex items-center justify-center px-[24px] py-[60px]">
 
-        <div className="w-full max-w-[850px]">
+        <div className="w-full max-w-[1100px]">
 
           {/* Heading */}
           <div className="text-center mb-[44px]">
@@ -44,9 +44,9 @@ export default function RoleSelectionPage() {
           </div>
 
           {/* Options */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-[24px]">
 
-            {/* Hospital */}
+            {/* Hospital Staff */}
             <button
               type="button"
               onClick={() => navigate('/login')}
@@ -58,7 +58,7 @@ export default function RoleSelectionPage() {
               </div>
 
               <h2 className="font-bold text-[#142033] text-[21px]">
-                Hospital
+                Hospital Staff
               </h2>
 
               <p className="text-[#66758a] text-[14px] leading-[1.6] mt-[9px]">
@@ -67,7 +67,35 @@ export default function RoleSelectionPage() {
               </p>
 
               <div className="mt-[26px] text-[#155ead] font-semibold text-[14px] group-hover:translate-x-[3px] transition-transform">
-                Continue as Hospital →
+                Continue as Hospital Staff →
+              </div>
+
+            </button>
+
+            {/* Hospital Admin */}
+            <button
+              type="button"
+              onClick={() =>
+                navigate('/hospital-admin/login')
+              }
+              className="group bg-white border border-[#d8e1ec] rounded-[18px] p-[34px] text-left shadow-[0px_5px_20px_0px_rgba(19,36,58,0.06)] hover:border-[#159570] hover:shadow-[0px_8px_26px_0px_rgba(21,149,112,0.12)] transition-all cursor-pointer"
+            >
+
+              <div className="w-[64px] h-[64px] rounded-[16px] bg-[#e8f8f2] flex items-center justify-center text-[32px] mb-[24px]">
+                👨‍💼
+              </div>
+
+              <h2 className="font-bold text-[#142033] text-[21px]">
+                Hospital Admin
+              </h2>
+
+              <p className="text-[#66758a] text-[14px] leading-[1.6] mt-[9px]">
+                Login to manage your hospital's departments,
+                doctors, appointments and daily operations.
+              </p>
+
+              <div className="mt-[26px] text-[#159570] font-semibold text-[14px] group-hover:translate-x-[3px] transition-transform">
+                Continue as Hospital Admin →
               </div>
 
             </button>
@@ -79,7 +107,7 @@ export default function RoleSelectionPage() {
               className="group bg-white border border-[#d8e1ec] rounded-[18px] p-[34px] text-left shadow-[0px_5px_20px_0px_rgba(19,36,58,0.06)] hover:border-[#159570] hover:shadow-[0px_8px_26px_0px_rgba(21,149,112,0.12)] transition-all cursor-pointer"
             >
 
-              <div className="w-[64px] h-[64px] rounded-[16px] bg-[#e8f8f2] flex items-center justify-center text-[32px] mb-[24px]">
+              <div className="w-[64px] h-[64px] rounded-[16px] bg-[#f1eaff] flex items-center justify-center text-[32px] mb-[24px]">
                 👤
               </div>
 
@@ -92,7 +120,7 @@ export default function RoleSelectionPage() {
                 appointments, get tokens and track your OPD queue.
               </p>
 
-              <div className="mt-[26px] text-[#159570] font-semibold text-[14px] group-hover:translate-x-[3px] transition-transform">
+              <div className="mt-[26px] text-[#7b42c8] font-semibold text-[14px] group-hover:translate-x-[3px] transition-transform">
                 Continue as Patient →
               </div>
 

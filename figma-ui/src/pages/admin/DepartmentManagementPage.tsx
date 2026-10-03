@@ -21,23 +21,6 @@ interface BackendDepartment {
   } | null;
 }
 
-interface BackendDoctor {
-  id: number;
-  name: string;
-  specialization: string;
-  status: 'Available' | 'Busy' | 'On Break' | 'Offline';
-  department?: {
-    id?: number | null;
-  } | null;
-}
-
-interface BackendAppointment {
-  appointmentDate: string;
-  doctor?: {
-    id?: number | null;
-  } | null;
-}
-
 interface Department {
   id: number;
   name: string;
@@ -48,144 +31,102 @@ interface Department {
   status: DepartmentStatus;
 }
 
-function getTodayKey(): string {
-  const today = new Date();
+const HOSPITAL_ADMIN_TOKEN_KEY =
+  'hospitalflow_hospital_admin_token';
 
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
-    2,
-    '0'
-  )}-${String(today.getDate()).padStart(2, '0')}`;
+async function getHospitalAdminDepartments(
+  signal?: AbortSignal,
+): Promise<BackendDepartment[]> {
+  const token = sessionStorage.getItem(
+    HOSPITAL_ADMIN_TOKEN_KEY,
+  );
+
+  const response = await fetch(
+    '/api/hospital-admin/departments',
+    {
+      method: 'GET',
+      signal,
+      credentials: 'include',
+      headers: token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {},
+    },
+  );
+
+  if (!response.ok) {
+    let message =
+      `Unable to load departments (${response.status})`;
+
+    try {
+      const body = (await response.json()) as {
+        message?: string;
+      };
+
+      if (body.message) {
+        message = body.message;
+      }
+    } catch {
+      // Keep status-based error message.
+    }
+
+    throw new Error(message);
+  }
+
+  const data: unknown = await response.json();
+
+  if (!Array.isArray(data)) {
+    throw new Error(
+      'The departments response was invalid.',
+    );
+  }
+
+  return data as BackendDepartment[];
 }
 
 export default function DepartmentManagementPage() {
   const navigate = useNavigate();
 
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [loadingDepartments, setLoadingDepartments] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [departments, setDepartments] =
+    useState<Department[]>([]);
+
+  const [loadingDepartments, setLoadingDepartments] =
+    useState(true);
+
+  const [error, setError] =
+    useState<string | null>(null);
 
   const loading = usePageLoad(850);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    async function fetchDepartmentData() {
+    async function fetchDepartments() {
       try {
         setLoadingDepartments(true);
         setError(null);
 
-        const [
-          departmentResponse,
-          doctorResponse,
-          appointmentResponse,
-        ] = await Promise.all([
-          fetch('/api/departments', {
-            signal: controller.signal,
-          }),
-          fetch('/api/doctors', {
-            signal: controller.signal,
-          }),
-          fetch('/api/appointments', {
-            signal: controller.signal,
-          }),
-        ]);
-
-        if (!departmentResponse.ok) {
-          throw new Error(
-            `Unable to load departments (${departmentResponse.status})`
-          );
-        }
-
-        if (!doctorResponse.ok) {
-          throw new Error(
-            `Unable to load doctors (${doctorResponse.status})`
-          );
-        }
-
-        if (!appointmentResponse.ok) {
-          throw new Error(
-            `Unable to load appointments (${appointmentResponse.status})`
-          );
-        }
-
-        const departmentData: unknown =
-          await departmentResponse.json();
-
-        const doctorData: unknown =
-          await doctorResponse.json();
-
-        const appointmentData: unknown =
-          await appointmentResponse.json();
-
-        if (
-          !Array.isArray(departmentData) ||
-          !Array.isArray(doctorData) ||
-          !Array.isArray(appointmentData)
-        ) {
-          throw new Error(
-            'The department data response was invalid.'
-          );
-        }
-
         const backendDepartments =
-          departmentData as BackendDepartment[];
+          await getHospitalAdminDepartments(
+            controller.signal,
+          );
 
-        const doctors =
-          doctorData as BackendDoctor[];
-
-        const appointments =
-          appointmentData as BackendAppointment[];
-
-        const todayKey = getTodayKey();
-
-        /*
-         * Count today's patients for each doctor.
-         */
-        const patientCountsByDoctor = new Map<number, number>();
-
-        appointments.forEach((appointment) => {
-          const doctorId = appointment.doctor?.id;
-
-          if (
-            doctorId &&
-            appointment.appointmentDate === todayKey
-          ) {
-            patientCountsByDoctor.set(
-              doctorId,
-              (patientCountsByDoctor.get(doctorId) ?? 0) + 1
-            );
-          }
-        });
-
-        /*
-         * Build department statistics using
-         * the real department_id relationship.
-         */
         const departmentList: Department[] =
-          backendDepartments.map((department) => {
-            const departmentDoctors = doctors.filter(
-              (doctor) =>
-                doctor.department?.id === department.id
-            );
-
-            const patientCount =
-              departmentDoctors.reduce(
-                (total, doctor) =>
-                  total +
-                  (patientCountsByDoctor.get(doctor.id) ?? 0),
-                0
-              );
-
-            return {
+          backendDepartments.map(
+            (department) => ({
               id: department.id,
               name: department.name,
-              head: department.head || 'Not assigned',
-              doctors: departmentDoctors.length,
-              patients: patientCount,
-              rooms: department.rooms ?? 0,
+              head:
+                department.head ||
+                'Not assigned',
+              doctors: 0,
+              patients: 0,
+              rooms:
+                department.rooms ?? 0,
               status: department.status,
-            };
-          });
+            }),
+          );
 
         setDepartments(departmentList);
       } catch (fetchError) {
@@ -199,7 +140,7 @@ export default function DepartmentManagementPage() {
         setError(
           fetchError instanceof Error
             ? fetchError.message
-            : 'Unable to load departments.'
+            : 'Unable to load departments.',
         );
       } finally {
         if (!controller.signal.aborted) {
@@ -208,25 +149,31 @@ export default function DepartmentManagementPage() {
       }
     }
 
-    void fetchDepartmentData();
+    void fetchDepartments();
 
     return () => controller.abort();
   }, []);
 
-  const totalDoctors = departments.reduce(
-    (sum, department) => sum + department.doctors,
-    0
-  );
+  const totalDoctors =
+    departments.reduce(
+      (sum, department) =>
+        sum + department.doctors,
+      0,
+    );
 
-  const totalPatients = departments.reduce(
-    (sum, department) => sum + department.patients,
-    0
-  );
+  const totalPatients =
+    departments.reduce(
+      (sum, department) =>
+        sum + department.patients,
+      0,
+    );
 
-  const totalRooms = departments.reduce(
-    (sum, department) => sum + department.rooms,
-    0
-  );
+  const totalRooms =
+    departments.reduce(
+      (sum, department) =>
+        sum + department.rooms,
+      0,
+    );
 
   const handleRowClick = (id: number) => {
     navigate(`/admin/departments/${id}`);
@@ -234,7 +181,7 @@ export default function DepartmentManagementPage() {
 
   const handleEdit = (
     event: React.MouseEvent,
-    id: number
+    id: number,
   ) => {
     event.stopPropagation();
     navigate(`/admin/departments/${id}`);
@@ -257,7 +204,7 @@ export default function DepartmentManagementPage() {
           </h1>
 
           <p className="font-normal text-[#526176] text-[14px] mt-[4px]">
-            {departments.length} departments · North Campus
+            {departments.length} departments
           </p>
         </div>
 
@@ -271,7 +218,12 @@ export default function DepartmentManagementPage() {
         </Button>
       </div>
 
-      {/* Summary stats */}
+      {error && (
+        <div className="mb-[20px] bg-[#fef3f2] border border-[#f4c7cb] text-[#c53a45] px-[16px] py-[12px] rounded-[10px] text-[13px] font-semibold">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-[14px] mb-[24px]">
         {[
           {
@@ -316,13 +268,6 @@ export default function DepartmentManagementPage() {
         ))}
       </div>
 
-      {error && (
-        <div className="mb-[20px] bg-[#fef3f2] border border-[#f4c7cb] text-[#c53a45] px-[16px] py-[12px] rounded-[10px] text-[13px] font-semibold">
-          {error}
-        </div>
-      )}
-
-      {/* Department table */}
       <div className="bg-white border border-[#d8e1ec] rounded-[14px] shadow-[0px_4px_16px_0px_rgba(19,36,58,0.05)] overflow-hidden">
         <div className="overflow-x-auto">
           <div className="grid grid-cols-[1fr_150px_80px_80px_60px_100px_100px] gap-[12px] px-[20px] py-[10px] bg-[#f4f7fb] border-b border-[#d8e1ec]">
@@ -359,7 +304,9 @@ export default function DepartmentManagementPage() {
                 action={
                   <button
                     onClick={() =>
-                      navigate('/admin/departments/add')
+                      navigate(
+                        '/admin/departments/add',
+                      )
                     }
                     className="bg-[#155ead] text-white font-bold text-[13px] px-[16px] py-[10px] rounded-[10px] hover:bg-[#1250a0] transition-colors cursor-pointer"
                   >
@@ -383,7 +330,9 @@ export default function DepartmentManagementPage() {
                     <p className="font-bold text-[#155ead] text-[11px]">
                       {department.name
                         .split(' ')
-                        .map((word) => word[0])
+                        .map(
+                          (word) => word[0],
+                        )
                         .join('')
                         .slice(0, 2)}
                     </p>
@@ -410,7 +359,9 @@ export default function DepartmentManagementPage() {
                   {department.rooms}
                 </p>
 
-                <StatusBadge status={department.status} />
+                <StatusBadge
+                  status={department.status}
+                />
 
                 <div
                   className="flex gap-[6px]"
@@ -421,7 +372,10 @@ export default function DepartmentManagementPage() {
                   <Button
                     variant="secondary"
                     onClick={(event) =>
-                      handleEdit(event, department.id)
+                      handleEdit(
+                        event,
+                        department.id,
+                      )
                     }
                   >
                     Details

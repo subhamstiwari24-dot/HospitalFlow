@@ -3,6 +3,11 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 
+import HospitalPortalPage from './pages/HospitalPortalPage';
+import HospitalAdminLoginPage from './pages/HospitalAdminLoginPage';
+import HospitalAdminDashboardPage from './pages/HospitalAdminDashboardPage';
+import HospitalRegistrationPage from './pages/HospitalRegistrationPage';
+
 // ==================== PATIENT ====================
 
 import PatientEntryPage from './pages/patient/PatientEntryPage';
@@ -54,7 +59,6 @@ import AdminAppointmentsPage from './pages/admin/AdminAppointmentsPage';
 import AdminAppointmentDetailPage from './pages/admin/AdminAppointmentDetailPage';
 import SettingsPage from './pages/admin/SettingsPage';
 
-
 // =====================================================
 // PATIENT ROUTES
 // =====================================================
@@ -81,7 +85,6 @@ function PatientRoutes() {
           element={<ForgotPasswordPage />}
         />
 
-
         {/* ==================== PATIENT MAIN ==================== */}
 
         <Route
@@ -106,14 +109,12 @@ function PatientRoutes() {
           element={<PatientProfilePage />}
         />
 
-
         {/* ==================== GUEST / PATIENT ENTRY ==================== */}
 
         <Route
           path=""
           element={<PatientEntryPage />}
         />
-
 
         {/* ==================== BOOK OPD FLOW ==================== */}
 
@@ -157,7 +158,6 @@ function PatientRoutes() {
           element={<AppointmentDetailsPage />}
         />
 
-
         {/* ==================== UNKNOWN PATIENT ROUTE ==================== */}
 
         <Route
@@ -169,7 +169,6 @@ function PatientRoutes() {
     </PatientProvider>
   );
 }
-
 
 // =====================================================
 // DOCTOR ROUTES
@@ -223,7 +222,6 @@ function DoctorRoutes() {
   );
 }
 
-
 // =====================================================
 // ADMIN ROUTES
 // =====================================================
@@ -234,66 +232,63 @@ function AdminRoutes() {
 
       <Route element={<ProtectedAdminRoute />}>
 
-      <Route
-        path="dashboard"
-        element={<AdminDashboardPage />}
-      />
+        <Route
+          path="dashboard"
+          element={<AdminDashboardPage />}
+        />
 
-      {/* ==================== DOCTORS ==================== */}
+        {/* ==================== DOCTORS ==================== */}
 
-      <Route
-        path="doctors"
-        element={<DoctorManagementPage />}
-      />
+        <Route
+          path="doctors"
+          element={<DoctorManagementPage />}
+        />
 
-      <Route
-        path="doctors/add"
-        element={<AddDoctorPage />}
-      />
+        <Route
+          path="doctors/add"
+          element={<AddDoctorPage />}
+        />
 
-      <Route
-        path="doctors/:doctorId/edit"
-        element={<EditDoctorPage />}
-      />
+        <Route
+          path="doctors/:doctorId/edit"
+          element={<EditDoctorPage />}
+        />
 
+        {/* ==================== DEPARTMENTS ==================== */}
 
-      {/* ==================== DEPARTMENTS ==================== */}
+        <Route
+          path="departments"
+          element={<DepartmentManagementPage />}
+        />
 
-      <Route
-        path="departments"
-        element={<DepartmentManagementPage />}
-      />
+        <Route
+          path="departments/add"
+          element={<AddDepartmentPage />}
+        />
 
-      <Route
-        path="departments/add"
-        element={<AddDepartmentPage />}
-      />
+        <Route
+          path="departments/:departmentId"
+          element={<DepartmentDetailsPage />}
+        />
 
-      <Route
-        path="departments/:departmentId"
-        element={<DepartmentDetailsPage />}
-      />
+        {/* ==================== APPOINTMENTS ==================== */}
 
+        <Route
+          path="appointments"
+          element={<AdminAppointmentsPage />}
+        />
 
-      {/* ==================== APPOINTMENTS ==================== */}
+        <Route
+          path="appointments/:appointmentId"
+          element={<AdminAppointmentDetailPage />}
+        />
 
-      <Route
-        path="appointments"
-        element={<AdminAppointmentsPage />}
-      />
-
-      <Route
-        path="appointments/:appointmentId"
-        element={<AdminAppointmentDetailPage />}
-      />
-
-      <Route
-        path="settings"
-        element={<SettingsPage />}
-      />
+        <Route
+          path="settings"
+          element={<SettingsPage />}
+        />
 
       </Route>
-
 
       {/* ==================== UNKNOWN ADMIN ROUTE ==================== */}
 
@@ -310,7 +305,6 @@ function AdminRoutes() {
     </Routes>
   );
 }
-
 
 // =====================================================
 // MAIN APP
@@ -332,61 +326,82 @@ export default function App() {
 
           <AdminAuthProvider>
 
-          <Routes>
+            <Routes>
 
-            {/* ==================== LANDING ==================== */}
+              {/* ==================== LANDING ==================== */}
 
-            <Route
-              path="/"
-              element={<LandingPage />}
-            />
+              <Route
+                path="/"
+                element={<LandingPage />}
+              />
 
+              {/* ==================== HOSPITAL PORTAL ==================== */}
 
-            {/* ==================== STAFF LOGIN ==================== */}
+              <Route
+                path="/hospital-portal"
+                element={<HospitalPortalPage />}
+              />
 
-            <Route
-              path="/login"
-              element={<LoginPage />}
-            />
+              {/* ==================== STAFF LOGIN ==================== */}
 
+              <Route
+                path="/login"
+                element={<LoginPage />}
+              />
 
-            {/* ==================== DOCTOR ==================== */}
+              {/* ==================== HOSPITAL ADMIN ==================== */}
 
-            <Route
-              path="/doctor/*"
-              element={<DoctorRoutes />}
-            />
+              <Route
+                path="/hospital-admin/login"
+                element={<HospitalAdminLoginPage />}
+              />
 
+              <Route
+                path="/hospital-admin/dashboard"
+                element={<HospitalAdminDashboardPage />}
+              />
 
-            {/* ==================== ADMIN ==================== */}
+              {/* ==================== HOSPITAL REGISTRATION ==================== */}
 
-            <Route
-              path="/admin/*"
-              element={<AdminRoutes />}
-            />
+              <Route
+                path="/hospital/register"
+                element={<HospitalRegistrationPage />}
+              />
 
+              {/* ==================== DOCTOR ==================== */}
 
-            {/* ==================== PATIENT ==================== */}
+              <Route
+                path="/doctor/*"
+                element={<DoctorRoutes />}
+              />
 
-            <Route
-              path="/patient/*"
-              element={<PatientRoutes />}
-            />
+              {/* ==================== ADMIN ==================== */}
 
+              <Route
+                path="/admin/*"
+                element={<AdminRoutes />}
+              />
 
-            {/* ==================== UNKNOWN ==================== */}
+              {/* ==================== PATIENT ==================== */}
 
-            <Route
-              path="*"
-              element={
-                <Navigate
-                  to="/"
-                  replace
-                />
-              }
-            />
+              <Route
+                path="/patient/*"
+                element={<PatientRoutes />}
+              />
 
-          </Routes>
+              {/* ==================== UNKNOWN ==================== */}
+
+              <Route
+                path="*"
+                element={
+                  <Navigate
+                    to="/"
+                    replace
+                  />
+                }
+              />
+
+            </Routes>
 
           </AdminAuthProvider>
 
