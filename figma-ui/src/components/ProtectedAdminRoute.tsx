@@ -13,8 +13,18 @@ export default function ProtectedAdminRoute() {
     );
   }
 
-  if (!isAuthenticated || admin?.role !== 'ADMIN') {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  // Allow both normal ADMIN and SUPER_ADMIN
+  if (
+    !isAuthenticated ||
+    (admin?.role !== 'ADMIN' && admin?.role !== 'SUPER_ADMIN')
+  ) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location.pathname }}
+      />
+    );
   }
 
   return <Outlet />;

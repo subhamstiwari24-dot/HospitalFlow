@@ -1,5 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
+// ==================== COMMON ====================
+
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 
@@ -8,12 +10,15 @@ import HospitalAdminLoginPage from './pages/HospitalAdminLoginPage';
 import HospitalAdminDashboardPage from './pages/HospitalAdminDashboardPage';
 import HospitalRegistrationPage from './pages/HospitalRegistrationPage';
 
+import SuperAdminDashboardPage from './pages/SuperAdminDashboardPage';
+
 // ==================== PATIENT ====================
 
 import PatientEntryPage from './pages/patient/PatientEntryPage';
 import PatientLoginPage from './pages/patient/PatientLoginPage';
 import PatientRegisterPage from './pages/patient/PatientRegisterPage';
 import ForgotPasswordPage from './pages/patient/ForgotPasswordPage';
+
 import PatientDashboardPage from './pages/patient/PatientDashboardPage';
 import MyAppointmentsPage from './pages/patient/MyAppointmentsPage';
 import OPDHistoryPage from './pages/patient/OPDHistoryPage';
@@ -232,6 +237,8 @@ function AdminRoutes() {
 
       <Route element={<ProtectedAdminRoute />}>
 
+        {/* ==================== NORMAL ADMIN DASHBOARD ==================== */}
+
         <Route
           path="dashboard"
           element={<AdminDashboardPage />}
@@ -283,6 +290,8 @@ function AdminRoutes() {
           element={<AdminAppointmentDetailPage />}
         />
 
+        {/* ==================== SETTINGS ==================== */}
+
         <Route
           path="settings"
           element={<SettingsPage />}
@@ -314,13 +323,17 @@ export default function App() {
   return (
     <BrowserRouter>
 
-      {/* SharedQueueProvider must be outside QueueProvider
-          because QueueProvider uses useSharedQueue(). */}
+      {/*
+        SharedQueueProvider must be outside QueueProvider
+        because QueueProvider uses useSharedQueue().
+      */}
 
       <SharedQueueProvider>
 
-        {/* QueueProvider provides useQueue() to
-            Doctor Dashboard / Doctor Queue / related pages. */}
+        {/*
+          QueueProvider provides useQueue() to
+          Doctor Dashboard / Doctor Queue / related pages.
+        */}
 
         <QueueProvider>
 
@@ -366,6 +379,13 @@ export default function App() {
               <Route
                 path="/hospital/register"
                 element={<HospitalRegistrationPage />}
+              />
+
+              {/* ==================== SUPER ADMIN ==================== */}
+
+              <Route
+                path="/super-admin/dashboard"
+                element={<SuperAdminDashboardPage />}
               />
 
               {/* ==================== DOCTOR ==================== */}

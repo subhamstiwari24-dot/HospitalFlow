@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
+
 import {
   getAdminProfile,
   loginAdmin,
@@ -11,14 +18,24 @@ interface AdminAuthContextValue {
   admin: AdminProfile | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (employeeId: string, password: string) => Promise<void>;
+  login: (
+    employeeId: string,
+    password: string
+  ) => Promise<AdminProfile>;
   logout: () => Promise<void>;
 }
 
-const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
+const AdminAuthContext =
+  createContext<AdminAuthContextValue | null>(null);
 
-export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const [admin, setAdmin] = useState<AdminProfile | null>(null);
+export function AdminAuthProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [admin, setAdmin] =
+    useState<AdminProfile | null>(null);
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,10 +53,23 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, []);
 
-  const login = async (employeeId: string, password: string) => {
-    const response = await loginAdmin(employeeId, password);
-    sessionStorage.setItem(ADMIN_TOKEN_KEY, response.token);
+  const login = async (
+    employeeId: string,
+    password: string
+  ): Promise<AdminProfile> => {
+    const response = await loginAdmin(
+      employeeId,
+      password
+    );
+
+    sessionStorage.setItem(
+      ADMIN_TOKEN_KEY,
+      response.token
+    );
+
     setAdmin(response);
+
+    return response;
   };
 
   const logout = async () => {
@@ -68,8 +98,12 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
 export function useAdminAuth() {
   const context = useContext(AdminAuthContext);
+
   if (!context) {
-    throw new Error('useAdminAuth must be used inside AdminAuthProvider');
+    throw new Error(
+      'useAdminAuth must be used inside AdminAuthProvider'
+    );
   }
+
   return context;
 }
