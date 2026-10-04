@@ -24,7 +24,10 @@ public class AdminAuthController {
     private final AdminService adminService;
     private final JwtTokenService jwtTokenService;
 
-    public AdminAuthController(AdminService adminService, JwtTokenService jwtTokenService) {
+    public AdminAuthController(
+            AdminService adminService,
+            JwtTokenService jwtTokenService
+    ) {
         this.adminService = adminService;
         this.jwtTokenService = jwtTokenService;
     }
@@ -34,19 +37,50 @@ public class AdminAuthController {
             @RequestBody LoginRequest request,
             Authentication ignored
     ) {
-        if (request == null || request.employeeId() == null || request.employeeId().isBlank()
-                || request.password() == null || request.password().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Employee ID and password are required."));
+        if (request == null
+                || request.employeeId() == null
+                || request.employeeId().isBlank()
+                || request.password() == null
+                || request.password().isBlank()) {
+
+            return ResponseEntity.badRequest()
+                    .body(Map.of(
+                            "message",
+                            "Employee ID and password are required."
+                    ));
         }
 
-        return adminService.authenticate(request.employeeId(), request.password())
+        return adminService.authenticate(
+                        request.employeeId(),
+                        request.password()
+                )
                 .map(admin -> {
+
                     Map<String, Object> response = profile(admin);
-                    response.put("token", jwtTokenService.issueToken(admin.getEmployeeId(), "ADMIN"));
+
+                    // JWT role is now taken from the Admin account.
+                    // ADMIN       -> ADMIN
+                    // SUPER_ADMIN -> SUPER_ADMIN
+                    response.put(
+                            "token",
+                            jwtTokenService.issueToken(
+                                    admin.getEmployeeId(),
+                                    admin.getRole()
+                            )
+                    );
+
                     return ResponseEntity.ok(response);
                 })
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("message", "Invalid email or password.")));
+                .orElseGet(() ->
+                        ResponseEntity
+                                .status(HttpStatus.UNAUTHORIZED)
+                                .body(
+                                        Map.of(
+                                                "message",
+                                                "Invalid email or password."
+                                        )
+                                )
+                );
     }
 
     @PostMapping("/logout")
@@ -55,27 +89,67 @@ public class AdminAuthController {
     }
 
     @GetMapping("/profile")
-    public ResponseEntity<?> profile(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    public ResponseEntity<?> profile(
+            Authentication authentication
+    ) {
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .build();
         }
 
-        return adminService.findByEmployeeId(authentication.getName())
-                .filter(admin -> Boolean.TRUE.equals(admin.getActive()))
-                .map(admin -> ResponseEntity.ok(profile(admin)))
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        return adminService
+                .findByEmployeeId(authentication.getName())
+                .filter(admin ->
+                        Boolean.TRUE.equals(admin.getActive())
+                )
+                .map(admin ->
+                        ResponseEntity.ok(profile(admin))
+                )
+                .orElseGet(() ->
+                        ResponseEntity
+                                .status(HttpStatus.UNAUTHORIZED)
+                                .build()
+                );
     }
 
     private static Map<String, Object> profile(Admin admin) {
+
         Map<String, Object> response = new HashMap<>();
-        response.put("employeeId", admin.getEmployeeId());
-        response.put("fullName", admin.getFullName());
-        response.put("email", admin.getEmail());
-        response.put("role", admin.getRole());
-        response.put("active", admin.getActive());
+
+        response.put(
+                "employeeId",
+                admin.getEmployeeId()
+        );
+
+        response.put(
+                "fullName",
+                admin.getFullName()
+        );
+
+        response.put(
+                "email",
+                admin.getEmail()
+        );
+
+        response.put(
+                "role",
+                admin.getRole()
+        );
+
+        response.put(
+                "active",
+                admin.getActive()
+        );
+
         return response;
     }
 
-    public record LoginRequest(String employeeId, String password) {
+    public record LoginRequest(
+            String employeeId,
+            String password
+    ) {
     }
 }

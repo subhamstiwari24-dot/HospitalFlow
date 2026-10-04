@@ -8,9 +8,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -22,62 +22,98 @@ public class SecurityConfig {
     ) throws Exception {
 
         http
-                // REST APIs ke liye CSRF disable
+
+                // ==========================================
+                // CSRF
+                // ==========================================
+                // REST APIs + JWT authentication
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // JWT based authentication
+
+                // ==========================================
+                // SESSION
+                // ==========================================
+                // JWT based authentication, no server session
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
                 )
 
-                // JWT filter
+
+                // ==========================================
+                // JWT FILTER
+                // ==========================================
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenService),
                         UsernamePasswordAuthenticationFilter.class
                 )
 
-                // Unauthorized request -> 401
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(
+
+                // ==========================================
+                // UNAUTHORIZED HANDLING
+                // ==========================================
+                .exceptionHandling(exception ->
+                        exception.authenticationEntryPoint(
                                 new HttpStatusEntryPoint(
                                         HttpStatus.UNAUTHORIZED
                                 )
                         )
                 )
 
+
+                // ==========================================
+                // AUTHORIZATION
+                // ==========================================
                 .authorizeHttpRequests(auth -> auth
 
+
                         // ==========================================
-                        // EXISTING ADMIN AUTH
+                        // ADMIN / SUPER ADMIN AUTH
                         // ==========================================
 
+                        // Login and logout must remain public
                         .requestMatchers(
                                 "/api/admin/auth/login",
                                 "/api/admin/auth/logout"
-                        ).permitAll()
+                        )
+                        .permitAll()
+
 
                         // Existing Admin APIs
+                        //
+                        // ADMIN       -> allowed
+                        // SUPER_ADMIN -> allowed
+                        //
+                        // This keeps the existing Admin dashboard
+                        // working while also allowing Super Admin
+                        // to use platform-level Admin APIs.
                         .requestMatchers("/api/admin/**")
-                        .hasRole("ADMIN")
+                        .hasAnyRole(
+                                "ADMIN",
+                                "SUPER_ADMIN"
+                        )
 
 
                         // ==========================================
                         // HOSPITAL ADMIN AUTH
                         // ==========================================
 
-                        // First login password setup
+                        // First-login password setup
                         .requestMatchers(
                                 "/api/hospital-admin/auth/setup-password"
-                        ).permitAll()
+                        )
+                        .permitAll()
+
 
                         // Hospital Admin login
                         .requestMatchers(
                                 "/api/hospital-admin/auth/login"
-                        ).permitAll()
+                        )
+                        .permitAll()
 
-                        // Future Hospital Admin protected APIs
+
+                        // Hospital Admin protected APIs
                         .requestMatchers("/api/hospital-admin/**")
                         .hasRole("HOSPITAL_ADMIN")
 
@@ -86,11 +122,15 @@ public class SecurityConfig {
                         // CURRENT APPLICATION APIs
                         // ==========================================
 
-                        // Keep existing APIs working for now.
-                        // We will secure them gradually after
-                        // hospitalId isolation is implemented.
+                        // Existing APIs are kept working for now.
+                        // We will secure sensitive APIs separately.
                         .requestMatchers("/api/**")
                         .permitAll()
+
+
+                        // ==========================================
+                        // OTHER REQUESTS
+                        // ==========================================
 
                         .anyRequest()
                         .permitAll()
