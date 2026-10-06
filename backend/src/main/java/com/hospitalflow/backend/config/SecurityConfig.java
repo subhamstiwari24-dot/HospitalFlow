@@ -2,12 +2,16 @@ package com.hospitalflow.backend.config;
 
 import com.hospitalflow.backend.security.JwtAuthenticationFilter;
 import com.hospitalflow.backend.security.JwtTokenService;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -116,6 +120,41 @@ public class SecurityConfig {
                         // Hospital Admin protected APIs
                         .requestMatchers("/api/hospital-admin/**")
                         .hasRole("HOSPITAL_ADMIN")
+
+
+                        // ==========================================
+                        // HOSPITAL REGISTRATION
+                        // ==========================================
+
+                        // Anyone can submit a new hospital
+                        // registration.
+                        //
+                        // Example:
+                        // Hospital Registration Page
+                        // -> POST /api/hospital-registrations
+                        //
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/hospital-registrations"
+                        )
+                        .permitAll()
+
+
+                        // All other hospital registration APIs
+                        // are SUPER_ADMIN only.
+                        //
+                        // Includes:
+                        // GET registrations
+                        // GET registration by ID
+                        // GET registrations by status
+                        // POST approve
+                        // PATCH status
+                        // DELETE registration
+                        //
+                        .requestMatchers(
+                                "/api/hospital-registrations/**"
+                        )
+                        .hasRole("SUPER_ADMIN")
 
 
                         // ==========================================

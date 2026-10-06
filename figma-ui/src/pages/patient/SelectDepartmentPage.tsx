@@ -1,43 +1,29 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import PatientLayout from '../../components/PatientLayout';
-import Button from '../../components/Button';
 import { usePatient } from '../../context/PatientContext';
 import { usePageLoad } from '../../hooks/usePageLoad';
 import { SkDeptSelect } from '../../components/Skeleton';
-import EmptyState, { EmptyIcons, ErrorState } from '../../components/EmptyState';
+import { ErrorState } from '../../components/EmptyState';
 
 type BackendDoctor = {
   id: number;
   name: string;
   specialization: string;
   qualification?: string;
-  experience?: string;
+  experience?: number;
   status?: string;
-  consultationTime?: string;
-
+  consultationTime?: number;
   hospital?: {
     id: number;
     name: string;
   };
-
-  department?: {
-    id: number;
-    name: string;
-  } | null;
 };
 
-type BackendDepartment = {
-  id: number;
-  name: string;
-  head?: string | null;
-  rooms?: number | null;
-  status?: string;
-  hospital?: {
-    id: number;
-    name: string;
-  } | null;
-};
+/* =====================================================
+   DEPARTMENT ICONS
+===================================================== */
 
 const deptIcons: Record<string, string> = {
   'General Medicine': '🩺',
@@ -56,10 +42,14 @@ const deptIcons: Record<string, string> = {
   Oncology: '🔬',
   Urology: '💊',
   Nephrology: '💉',
-  Gastroenterology: '🔬',
+  Gastroenterology: '🧬',
   Endocrinology: '⚗️',
   Psychiatry: '🧘',
 };
+
+/* =====================================================
+   DEPARTMENT DESCRIPTIONS
+===================================================== */
 
 const deptDesc: Record<string, string> = {
   'General Medicine':
@@ -100,7 +90,29 @@ const deptDesc: Record<string, string> = {
 
   Dental:
     'Teeth, gums & oral health',
+
+  Oncology:
+    'Cancer diagnosis, treatment & specialist care',
+
+  Urology:
+    'Urinary tract & kidney-related conditions',
+
+  Nephrology:
+    'Kidney health, dialysis & related conditions',
+
+  Gastroenterology:
+    'Digestive system, liver & gastrointestinal care',
+
+  Endocrinology:
+    'Hormones, diabetes & metabolic conditions',
+
+  Psychiatry:
+    'Mental health, emotional & behavioural care',
 };
+
+/* =====================================================
+   PAGE
+===================================================== */
 
 export default function SelectDepartmentPage() {
   const navigate = useNavigate();
@@ -109,15 +121,12 @@ export default function SelectDepartmentPage() {
     selectedHospital,
     selectedDepartment,
     setSelectedDepartment,
-    setSelectedDepartmentId,
     setSelectedDoctor,
     setSelectedSlot,
   } = usePatient();
 
-  const [departments, setDepartments] = useState<BackendDepartment[]>([]);
   const [doctors, setDoctors] = useState<BackendDoctor[]>([]);
-
-  const [loading, setLoading] = useState(true);
+  const [loadingDoctors, setLoadingDoctors] = useState(true);
   const [error, setError] = useState('');
   const [retryKey, setRetryKey] = useState(0);
 
@@ -125,332 +134,537 @@ export default function SelectDepartmentPage() {
 
   const API_URL = '/api';
 
-  /*
-   * If patient reaches this page without
-   * selecting a hospital, send them back.
-   */
+  /* =====================================================
+     PROTECT ROUTE
+  ===================================================== */
+
   useEffect(() => {
     if (!selectedHospital) {
-      navigate('/patient/hospital', { replace: true });
+      navigate('/patient/hospital', {
+        replace: true,
+      });
     }
   }, [selectedHospital, navigate]);
 
-  /*
-   * Load REAL departments and doctors from backend.
-   *
-   * Departments are now loaded directly from:
-   * /api/departments/hospital/{hospitalId}
-   *
-   * Doctors are loaded separately so we can
-   * calculate doctor availability/count.
-   */
+  /* =====================================================
+     LOAD DOCTORS
+  ===================================================== */
+
   useEffect(() => {
     if (!selectedHospital) return;
 
-    const loadData = async () => {
+    const loadDoctors = async () => {
       try {
-        setLoading(true);
+        setLoadingDoctors(true);
         setError('');
 
-        const [departmentResponse, doctorResponse] =
-          await Promise.all([
-            fetch(
-              `${API_URL}/departments/hospital/${selectedHospital.id}`
-            ),
-            fetch(`${API_URL}/doctors`),
-          ]);
+        const response = await fetch(`${API_URL}/doctors`);
 
-        if (!departmentResponse.ok) {
-          throw new Error('Unable to load departments');
-        }
-
-        if (!doctorResponse.ok) {
+        if (!response.ok) {
           throw new Error('Unable to load doctors');
         }
 
-        const departmentData: BackendDepartment[] =
-          await departmentResponse.json();
-
-        const doctorData: BackendDoctor[] =
-          await doctorResponse.json();
+        const data: BackendDoctor[] = await response.json();
 
         /*
-         * Keep only doctors belonging to
-         * the currently selected hospital.
+         * Only doctors belonging to
+         * selected hospital.
          */
-        const hospitalDoctors = doctorData.filter(
+        const hospitalDoctors = data.filter(
           (doctor) =>
-            Number(doctor.hospital?.id) === Number(selectedHospital.id)
+            doctor.hospital?.id === selectedHospital.id
         );
 
-        /*
-         * Keep only active departments for patient booking.
-         */
-        const activeDepartments = departmentData.filter(
-          (department) =>
-            department.status?.toLowerCase() !== 'inactive'
-        );
-
-        setDepartments(activeDepartments);
         setDoctors(hospitalDoctors);
       } catch (err) {
-        console.error('Department loading error:', err);
+        console.error('Doctor loading error:', err);
 
         setError(
           'Unable to load departments from HospitalFlow backend.'
         );
 
-        setDepartments([]);
         setDoctors([]);
       } finally {
-        setLoading(false);
+        setLoadingDoctors(false);
       }
     };
 
-    loadData();
+    loadDoctors();
   }, [selectedHospital, retryKey]);
 
-  /*
-   * Calculate doctor count and available doctor count
-   * for every REAL department.
-   */
-  const departmentStats = useMemo(() => {
-    const stats = new Map<
-      number,
+  /* =====================================================
+     BUILD DEPARTMENTS FROM SPECIALIZATIONS
+  ===================================================== */
+
+  const departments = useMemo(() => {
+    const departmentMap = new Map<
+      string,
       {
+        name: string;
         doctors: BackendDoctor[];
-        available: number;
       }
     >();
 
-    departments.forEach((department) => {
-      stats.set(department.id, {
-        doctors: [],
-        available: 0,
-      });
-    });
-
     doctors.forEach((doctor) => {
-      const departmentId = doctor.department?.id;
+      const specialization =
+        doctor.specialization?.trim();
 
-      if (!departmentId) {
-        return;
+      if (!specialization) return;
+
+      if (!departmentMap.has(specialization)) {
+        departmentMap.set(specialization, {
+          name: specialization,
+          doctors: [],
+        });
       }
 
-      const departmentStat = stats.get(departmentId);
-
-      if (!departmentStat) {
-        return;
-      }
-
-      departmentStat.doctors.push(doctor);
-
-      if (doctor.status?.toLowerCase() === 'available') {
-        departmentStat.available += 1;
-      }
+      departmentMap
+        .get(specialization)!
+        .doctors.push(doctor);
     });
 
-    return stats;
-  }, [departments, doctors]);
+    return Array.from(departmentMap.values());
+  }, [doctors]);
 
-  /*
-   * Select department.
-   */
-  const handleSelect = (department: BackendDepartment) => {
-    setSelectedDepartment(department.name);
-    setSelectedDepartmentId(department.id);
+  /* =====================================================
+     SELECT DEPARTMENT
+  ===================================================== */
+
+  const handleSelect = (department: string) => {
+    setSelectedDepartment(department);
 
     /*
-     * Reset doctor and slot whenever
-     * department changes.
+     * Changing department means previous
+     * doctor and slot are no longer valid.
      */
     setSelectedDoctor(null);
     setSelectedSlot(null);
   };
 
+  /* =====================================================
+     NO HOSPITAL
+  ===================================================== */
+
   if (!selectedHospital) {
     return null;
   }
+
+  /* =====================================================
+     PAGE LOADING
+  ===================================================== */
 
   if (pageLoading) {
     return (
       <PatientLayout
         step={1}
         backTo="/patient/hospital"
-        title=""
-        maxWidth="max-w-[860px]"
+        showBack={true}
+        maxWidth="max-w-[1050px]"
       >
         <SkDeptSelect />
       </PatientLayout>
     );
   }
 
+  /* =====================================================
+     MAIN UI
+  ===================================================== */
+
   return (
     <PatientLayout
       step={1}
       backTo="/patient/hospital"
-      title=""
-      maxWidth="max-w-[860px]"
+      showBack={true}
+      maxWidth="max-w-[1050px]"
     >
-      {/* HEADER */}
-      <div className="mb-[24px]">
-        <div className="flex items-center gap-[8px] mb-[6px]">
-          <p className="font-normal text-[#7b899c] text-[13px]">
-            {selectedHospital.name}
-          </p>
+      {/* =================================================
+          HEADER
+      ================================================= */}
 
-          <span className="text-[#d8e1ec]">›</span>
+      <div className="relative mb-8 sm:mb-10">
+        {/* Glow */}
 
-          <p className="font-semibold text-[#142033] text-[13px]">
-            Select Department
+        <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-cyan-400/10 blur-[80px]" />
+
+        <div className="relative">
+          {/* Breadcrumb */}
+
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-medium text-slate-500">
+              {selectedHospital.name}
+            </span>
+
+            <span className="text-slate-700">
+              /
+            </span>
+
+            <span className="text-[11px] font-semibold text-[#8ef8ff]">
+              Department
+            </span>
+          </div>
+
+          {/* Badge */}
+
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#16d9e3] shadow-[0_0_8px_#16d9e3]" />
+
+            <span className="text-[11px] font-semibold tracking-wide text-[#8ef8ff]">
+              STEP 2 OF 5
+            </span>
+          </div>
+
+          {/* Heading */}
+
+          <h1 className="text-[30px] sm:text-[36px] font-bold leading-tight tracking-[-0.5px] text-white">
+            Choose a Department
+          </h1>
+
+          <p className="mt-2 max-w-[650px] text-[13px] sm:text-[14px] text-slate-400">
+            Select the medical department you need
+            consultation from at{' '}
+            <span className="font-semibold text-slate-300">
+              {selectedHospital.name}
+            </span>
+            .
           </p>
         </div>
-
-        <h1 className="font-bold text-[#142033] text-[24px]">
-          Choose a Department
-        </h1>
-
-        <p className="font-normal text-[#526176] text-[14px] mt-[4px]">
-          {departments.length} department
-          {departments.length !== 1 ? 's' : ''} available at{' '}
-          {selectedHospital.name}
-        </p>
       </div>
 
-      {/* ERROR */}
-      {error && !loading && (
-        <ErrorState
-          description={error}
-          onRetry={() => setRetryKey((key) => key + 1)}
-        />
+      {/* =================================================
+          ERROR
+      ================================================= */}
+
+      {error && !loadingDoctors && (
+        <div className="mb-6">
+          <ErrorState
+            description={error}
+            onRetry={() =>
+              setRetryKey((key) => key + 1)
+            }
+          />
+        </div>
       )}
 
-      {/* LOADING */}
-      {loading && (
-        <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[24px] text-center mb-[28px]">
-          <p className="text-[#526176] text-[14px]">
-            Loading departments...
+      {/* =================================================
+          LOADING
+      ================================================= */}
+
+      {loadingDoctors && (
+        <div className="rounded-[22px] border border-white/[0.08] bg-[#071b31]/90 p-10 text-center">
+          <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-2 border-white/10 border-t-[#16d9e3]" />
+
+          <p className="text-[13px] text-slate-400">
+            Loading departments from HospitalFlow...
           </p>
         </div>
       )}
 
-      {/* DEPARTMENTS */}
-      {!loading && !error && (
-        <>
-          {departments.length === 0 ? (
-            <EmptyState
-              icon={EmptyIcons.grid(28)}
-              title="No departments available"
-              description="No active departments are currently listed for this hospital."
-            />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px] mb-[28px]">
-              {departments.map((department) => {
-                const stats = departmentStats.get(department.id);
+      {/* =================================================
+          DEPARTMENTS
+      ================================================= */}
 
-                const doctorCount = stats?.doctors.length ?? 0;
-                const available = stats?.available ?? 0;
+      {!loadingDoctors && !error && (
+        <>
+          {/* Result information */}
+
+          <div className="mb-4 flex items-end justify-between">
+            <div>
+              <p className="text-[11px] font-medium tracking-wide text-slate-500">
+                AVAILABLE DEPARTMENTS
+              </p>
+
+              <p className="mt-1 text-[14px] font-semibold text-white">
+                {departments.length}{' '}
+                {departments.length === 1
+                  ? 'department'
+                  : 'departments'}{' '}
+                available
+              </p>
+            </div>
+
+            {selectedDepartment && (
+              <div className="hidden items-center gap-2 text-[11px] font-medium text-[#8ef8ff] sm:flex">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#16d9e3] shadow-[0_0_8px_#16d9e3]" />
+
+                Department selected
+              </div>
+            )}
+          </div>
+
+          {departments.length === 0 ? (
+            /* =================================================
+               EMPTY STATE
+            ================================================= */
+
+            <div className="rounded-[22px] border border-white/[0.08] bg-[#071b31]/90 px-6 py-14 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[16px] border border-white/[0.08] bg-white/[0.03] text-2xl">
+                🏥
+              </div>
+
+              <h3 className="text-[16px] font-bold text-white">
+                No departments available
+              </h3>
+
+              <p className="mx-auto mt-2 max-w-[420px] text-[12px] leading-relaxed text-slate-500">
+                No doctors or departments are currently
+                listed for this hospital.
+              </p>
+            </div>
+          ) : (
+            /* =================================================
+               DEPARTMENT CARDS
+            ================================================= */
+
+            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {departments.map((department) => {
+                const doctorCount =
+                  department.doctors.length;
+
+                const availableCount =
+                  department.doctors.filter(
+                    (doctor) => {
+                      const status =
+                        doctor.status?.toLowerCase();
+
+                      return (
+                        status === 'available' ||
+                        status === 'online' ||
+                        status === 'active'
+                      );
+                    }
+                  ).length;
 
                 const isSelected =
-                  selectedDepartment === department.name;
+                  selectedDepartment ===
+                  department.name;
+
+                const icon =
+                  deptIcons[department.name] ?? '🏥';
+
+                const description =
+                  deptDesc[department.name] ??
+                  'Specialist consultations available';
 
                 return (
                   <div
-                    key={department.id}
-                    onClick={() => handleSelect(department)}
+                    key={department.name}
+                    onClick={() =>
+                      handleSelect(
+                        department.name
+                      )
+                    }
                     onKeyDown={(event) => {
                       if (
                         event.key === 'Enter' ||
                         event.key === ' '
                       ) {
                         event.preventDefault();
-                        handleSelect(department);
+
+                        handleSelect(
+                          department.name
+                        );
                       }
                     }}
                     role="button"
                     tabIndex={0}
-                    className={`bg-white border rounded-[14px] p-[18px] cursor-pointer transition-[border-color,box-shadow,transform] focus-visible:outline-2 focus-visible:outline-[#2475d0] focus-visible:outline-offset-2 active:translate-y-px ${
+                    className={
                       isSelected
-                        ? 'border-[#155ead] shadow-[0px_0px_0px_3px_rgba(21,94,173,0.12)]'
-                        : 'border-[#d8e1ec] hover:border-[#afc0d3] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]'
-                    }`}
+                        ? `
+                          group
+                          relative
+                          overflow-hidden
+                          cursor-pointer
+                          rounded-[22px]
+                          border
+                          border-[#16d9e3]/70
+                          bg-[#0a243d]
+                          p-5
+                          sm:p-6
+                          shadow-[0_0_0_1px_rgba(22,217,227,0.12),0_15px_45px_rgba(0,0,0,0.22),0_0_35px_rgba(22,217,227,0.07)]
+                          transition-all
+                          duration-300
+                          focus-visible:outline-none
+                        `
+                        : `
+                          group
+                          relative
+                          overflow-hidden
+                          cursor-pointer
+                          rounded-[22px]
+                          border
+                          border-white/[0.08]
+                          bg-[#071b31]/90
+                          p-5
+                          sm:p-6
+                          shadow-[0_15px_40px_rgba(0,0,0,0.12)]
+                          transition-all
+                          duration-300
+                          hover:-translate-y-[2px]
+                          hover:border-[#16d9e3]/30
+                          hover:bg-[#092039]
+                          hover:shadow-[0_15px_40px_rgba(0,0,0,0.2)]
+                          focus-visible:outline-none
+                        `
+                    }
                   >
-                    <div className="flex items-start gap-[14px]">
-                      {/* ICON */}
-                      <div
-                        className={`size-[44px] rounded-[12px] flex items-center justify-center shrink-0 text-[20px] ${
-                          isSelected
-                            ? 'bg-[#eaf3fd]'
-                            : 'bg-[#f4f7fb]'
-                        }`}
-                      >
-                        {deptIcons[department.name] ?? '🏥'}
-                      </div>
+                    {/* Selected glow */}
 
-                      {/* CONTENT */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-[8px] mb-[4px]">
-                          <p
-                            className={`font-bold text-[14px] ${
-                              isSelected
-                                ? 'text-[#155ead]'
-                                : 'text-[#142033]'
-                            }`}
-                          >
-                            {department.name}
-                          </p>
+                    {isSelected && (
+                      <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-[#16d9e3]/10 blur-[55px]" />
+                    )}
 
+                    {/* Card content */}
+
+                    <div className="relative">
+                      {/* Top row */}
+
+                      <div className="flex items-start justify-between gap-4">
+                        {/* Icon */}
+
+                        <div
+                          className={
+                            isSelected
+                              ? 'flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-[17px] border border-[#16d9e3]/30 bg-[#16d9e3]/10 text-[24px] shadow-[0_0_22px_rgba(22,217,227,0.10)]'
+                              : 'flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-[17px] border border-white/[0.07] bg-[#0b2742] text-[24px] transition-all group-hover:border-[#16d9e3]/20'
+                          }
+                        >
+                          {icon}
+                        </div>
+
+                        {/* Selection */}
+
+                        <div
+                          className={
+                            isSelected
+                              ? 'flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border border-[#16d9e3] bg-[#16d9e3] shadow-[0_0_16px_rgba(22,217,227,0.35)]'
+                              : 'flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/[0.02] group-hover:border-[#16d9e3]/40'
+                          }
+                        >
                           {isSelected && (
-                            <div className="size-[18px] rounded-[999px] bg-[#155ead] flex items-center justify-center shrink-0">
-                              <span className="text-white text-[10px] font-bold">
-                                ✓
-                              </span>
-                            </div>
+                            <span className="text-[12px] font-black text-[#031326]">
+                              ✓
+                            </span>
                           )}
                         </div>
+                      </div>
 
-                        <p className="font-normal text-[#7b899c] text-[11px] leading-tight mb-[10px]">
-                          {deptDesc[department.name] ??
-                            'Specialist consultations available'}
+                      {/* Department name */}
+
+                      <div className="mt-5">
+                        <h2
+                          className={
+                            isSelected
+                              ? 'text-[17px] font-bold text-[#8ef8ff]'
+                              : 'text-[17px] font-bold text-white'
+                          }
+                        >
+                          {department.name}
+                        </h2>
+
+                        <p className="mt-2 min-h-[36px] text-[12px] leading-relaxed text-slate-500">
+                          {description}
                         </p>
+                      </div>
 
-                        <div className="flex items-center gap-[10px]">
-                          <span
-                            className={`text-[11px] font-semibold px-[8px] py-[3px] rounded-[999px] ${
-                              available > 0
-                                ? 'bg-[#e8f7f1] text-[#18865b]'
-                                : 'bg-[#f4f7fb] text-[#7b899c]'
-                            }`}
-                          >
-                            {available > 0
-                              ? `${available} available`
-                              : 'No doctor available'}
-                          </span>
+                      {/* Divider */}
 
-                          <p className="font-normal text-[#7b899c] text-[11px]">
-                            {doctorCount} doctor
-                            {doctorCount !== 1 ? 's' : ''}
+                      <div className="my-5 h-px bg-white/[0.06]" />
+
+                      {/* Stats */}
+
+                      <div className="flex items-center justify-between gap-3">
+                        {/* Doctors */}
+
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wide text-slate-600">
+                            Specialists
+                          </p>
+
+                          <p className="mt-1 text-[13px] font-semibold text-slate-300">
+                            {doctorCount}{' '}
+                            {doctorCount === 1
+                              ? 'Doctor'
+                              : 'Doctors'}
                           </p>
                         </div>
+
+                        {/* Availability */}
+
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase tracking-wide text-slate-600">
+                            Availability
+                          </p>
+
+                          {availableCount > 0 ? (
+                            <p className="mt-1 flex items-center justify-end gap-1.5 text-[12px] font-semibold text-emerald-300">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                              {availableCount} Available
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-[12px] font-medium text-slate-500">
+                              Check doctors
+                            </p>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Selected footer */}
+
+                      {isSelected && (
+                        <div className="mt-5 flex items-center justify-between rounded-[10px] border border-[#16d9e3]/10 bg-[#16d9e3]/[0.04] px-3 py-2.5">
+                          <span className="text-[10px] font-semibold text-[#8ef8ff]">
+                            ✓ Department selected
+                          </span>
+
+                          <span className="text-[10px] text-slate-500">
+                            Continue below
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
           )}
+
+          {/* =================================================
+              BOTTOM CTA
+          ================================================= */}
+
+          {departments.length > 0 && (
+            <div className="sticky bottom-4 z-10 rounded-[18px] border border-white/[0.08] bg-[#06182b]/95 p-3 sm:p-3.5 shadow-[0_15px_40px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                {/* Selected department */}
+
+                <div className="hidden min-w-0 sm:block">
+                  <p className="text-[10px] text-slate-500">
+                    Selected department
+                  </p>
+
+                  <p className="mt-0.5 max-w-[320px] truncate text-[12px] font-semibold text-white">
+                    {selectedDepartment ??
+                      'Please select a department'}
+                  </p>
+                </div>
+
+                {/* Continue */}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate('/patient/doctor')
+                  }
+                  disabled={!selectedDepartment}
+                  className="ml-auto rounded-[12px] bg-[#16d9e3] px-6 py-3 text-[12px] font-bold text-[#031326] shadow-[0_0_20px_rgba(22,217,227,0.16)] transition-all hover:bg-[#5deaf0] hover:shadow-[0_0_28px_rgba(22,217,227,0.25)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none sm:px-7 sm:text-[13px]"
+                >
+                  Continue to Doctor →
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
-
-      {/* CTA */}
-      <Button
-        variant="primary"
-        onClick={() => navigate('/patient/doctor')}
-        disabled={!selectedDepartment}
-        className="px-[28px] py-[12px] text-[14px]"
-      >
-        Select Doctor →
-      </Button>
     </PatientLayout>
   );
 }

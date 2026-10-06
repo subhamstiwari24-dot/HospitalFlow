@@ -28,8 +28,14 @@ export default function HospitalRegistrationPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // ---------------------------------------
+  // HANDLE INPUT
+  // ---------------------------------------
+
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement
+    >,
   ) => {
     const { name, value } = e.target;
 
@@ -38,6 +44,10 @@ export default function HospitalRegistrationPage() {
       [name]: value,
     }));
   };
+
+  // ---------------------------------------
+  // SUBMIT
+  // ---------------------------------------
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -54,16 +64,18 @@ export default function HospitalRegistrationPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(formData),
-        }
+        },
       );
 
-      const data = await response.json().catch(() => null);
+      const data = await response
+        .json()
+        .catch(() => null);
 
       if (!response.ok) {
         throw new Error(
           data?.message ||
             data?.error ||
-            'Unable to submit hospital registration.'
+            'Unable to submit hospital registration.',
         );
       }
 
@@ -72,139 +84,734 @@ export default function HospitalRegistrationPage() {
       setError(
         err instanceof Error
           ? err.message
-          : 'Unable to submit hospital registration.'
+          : 'Unable to submit hospital registration.',
       );
     } finally {
       setLoading(false);
     }
   };
 
+  // =======================================
+  // SUCCESS SCREEN
+  // =======================================
+
   if (success) {
     return (
-      <div className="min-h-screen bg-[#f4f7fb] flex flex-col">
-        <header className="bg-white border-b border-[#d8e1ec]">
-          <div className="max-w-[1100px] mx-auto px-[24px] h-[68px] flex items-center justify-center">
-            <img
-              src="/assets/logo.png"
-              alt="HospitalFlow"
-              className="h-[38px] w-auto object-contain"
-            />
-          </div>
-        </header>
+      <div className="min-h-screen bg-[#031326] text-white relative overflow-hidden">
 
-        <main className="flex-1 flex items-center justify-center px-[24px] py-[60px]">
-          <div className="w-full max-w-[650px] bg-white border border-[#d8e1ec] rounded-[20px] p-[40px] text-center shadow-[0px_5px_20px_0px_rgba(19,36,58,0.06)]">
+        {/* Background */}
 
-            <div className="mx-auto w-[72px] h-[72px] rounded-full bg-[#e8f8f2] flex items-center justify-center text-[34px]">
-              ✓
-            </div>
+        <div className="absolute inset-0 pointer-events-none">
 
-            <h1 className="mt-[24px] text-[#142033] font-bold text-[28px]">
-              Registration Submitted
-            </h1>
+          <div
+            className="
+              absolute
+              top-[-180px]
+              left-[-150px]
+              w-[450px]
+              h-[450px]
+              rounded-full
+              bg-cyan-400/10
+              blur-[120px]
+            "
+          />
 
-            <p className="mt-[12px] text-[#526176] text-[15px] leading-[1.7]">
-              Your hospital registration has been submitted successfully.
-              Our Super Admin team will review your application.
-            </p>
+          <div
+            className="
+              absolute
+              right-[-180px]
+              bottom-[-180px]
+              w-[500px]
+              h-[500px]
+              rounded-full
+              bg-blue-500/10
+              blur-[120px]
+            "
+          />
 
-            <div className="mt-[24px] rounded-[12px] bg-[#fff8e8] border border-[#f1d89a] p-[16px] text-left">
-              <p className="text-[#7a5a13] text-[14px] leading-[1.6]">
-                <strong>Status:</strong> Pending Review
-              </p>
+          <div
+            className="absolute inset-0 opacity-[0.035]"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+              backgroundSize: '45px 45px',
+            }}
+          />
 
-              <p className="text-[#7a5a13] text-[14px] leading-[1.6] mt-[5px]">
-                You will be able to access the Hospital Admin portal after
-                your hospital is approved.
-              </p>
-            </div>
+        </div>
+
+        {/* Header */}
+
+        <header
+          className="
+            relative
+            z-10
+            h-[76px]
+            border-b
+            border-white/10
+            bg-[#031326]/75
+            backdrop-blur-xl
+          "
+        >
+          <div
+            className="
+              max-w-[1180px]
+              mx-auto
+              h-full
+              px-5
+              sm:px-8
+              flex
+              items-center
+              justify-between
+            "
+          >
 
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="mt-[28px] bg-[#155ead] text-white px-[28px] py-[12px] rounded-[10px] font-semibold text-[14px] hover:bg-[#104d91] transition"
+              className="flex items-center gap-3"
             >
-              Back to HospitalFlow
+
+              <div
+                className="
+                  w-[42px]
+                  h-[42px]
+                  rounded-[12px]
+                  bg-white/[0.07]
+                  border
+                  border-white/10
+                  flex
+                  items-center
+                  justify-center
+                  overflow-hidden
+                "
+              >
+                <img
+                  src="/assets/logo.png"
+                  alt="HospitalFlow"
+                  className="w-[34px]"
+                />
+              </div>
+
+              <div className="text-left">
+
+                <div className="font-bold text-[17px]">
+                  Hospital
+                  <span className="text-[#16d9e3]">
+                    Flow
+                  </span>
+                </div>
+
+                <div
+                  className="
+                    text-[9px]
+                    text-slate-500
+                    uppercase
+                    tracking-[0.12em]
+                  "
+                >
+                  Smart OPD Platform
+                </div>
+
+              </div>
+
             </button>
 
           </div>
+        </header>
+
+        {/* Success */}
+
+        <main
+          className="
+            relative
+            z-10
+            min-h-[calc(100vh-76px)]
+            flex
+            items-center
+            justify-center
+            px-5
+            py-12
+          "
+        >
+
+          <div
+            className="
+              relative
+              w-full
+              max-w-[650px]
+              rounded-[24px]
+              p-[1px]
+              bg-gradient-to-br
+              from-[#16d9e3]/40
+              via-white/10
+              to-transparent
+            "
+          >
+
+            <div
+              className="
+                rounded-[23px]
+                bg-[#071b31]/95
+                border
+                border-white/[0.07]
+                p-8
+                sm:p-10
+                text-center
+                backdrop-blur-xl
+              "
+            >
+
+              {/* Success icon */}
+
+              <div
+                className="
+                  mx-auto
+                  w-[76px]
+                  h-[76px]
+                  rounded-full
+                  bg-[#16d9e3]/10
+                  border
+                  border-[#16d9e3]/20
+                  flex
+                  items-center
+                  justify-center
+                  shadow-[0_0_35px_rgba(22,217,227,0.12)]
+                "
+              >
+                <span
+                  className="
+                    text-[#16d9e3]
+                    text-[32px]
+                    font-bold
+                  "
+                >
+                  ✓
+                </span>
+              </div>
+
+              <h1
+                className="
+                  mt-6
+                  text-[28px]
+                  sm:text-[32px]
+                  font-bold
+                "
+              >
+                Registration Submitted
+              </h1>
+
+              <p
+                className="
+                  mt-3
+                  text-slate-400
+                  text-[14px]
+                  sm:text-[15px]
+                  leading-[1.7]
+                "
+              >
+                Your hospital registration has been
+                submitted successfully.
+                Our Super Admin team will review
+                your application.
+              </p>
+
+              {/* Status */}
+
+              <div
+                className="
+                  mt-6
+                  rounded-[14px]
+                  bg-[#16d9e3]/[0.06]
+                  border
+                  border-[#16d9e3]/15
+                  p-5
+                  text-left
+                "
+              >
+
+                <div className="flex items-center gap-3">
+
+                  <div
+                    className="
+                      w-9
+                      h-9
+                      rounded-[10px]
+                      bg-[#16d9e3]/10
+                      flex
+                      items-center
+                      justify-center
+                      text-[#16d9e3]
+                    "
+                  >
+                    01
+                  </div>
+
+                  <div>
+
+                    <p
+                      className="
+                        text-[12px]
+                        text-slate-500
+                        uppercase
+                        tracking-wide
+                      "
+                    >
+                      Application Status
+                    </p>
+
+                    <p
+                      className="
+                        text-[#8ef8ff]
+                        font-bold
+                        text-[15px]
+                        mt-0.5
+                      "
+                    >
+                      Pending Review
+                    </p>
+
+                  </div>
+
+                </div>
+
+                <p
+                  className="
+                    text-slate-400
+                    text-[12px]
+                    leading-[1.6]
+                    mt-4
+                  "
+                >
+                  You will be able to access the
+                  Hospital Admin portal after your
+                  hospital is approved.
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="
+                  mt-7
+                  w-full
+                  bg-[#16d9e3]
+                  hover:bg-[#5deaf0]
+                  text-[#031326]
+                  rounded-[12px]
+                  py-3
+                  font-bold
+                  text-[14px]
+                  transition-all
+                  shadow-[0_8px_25px_rgba(22,217,227,0.14)]
+                "
+              >
+                Back to HospitalFlow
+              </button>
+
+            </div>
+
+          </div>
+
         </main>
+
       </div>
     );
   }
 
+  // =======================================
+  // REGISTRATION PAGE
+  // =======================================
+
   return (
-    <div className="min-h-screen bg-[#f4f7fb] flex flex-col">
+    <div
+      className="
+        min-h-screen
+        bg-[#031326]
+        text-white
+        relative
+        overflow-hidden
+      "
+    >
 
-      {/* Header */}
-      <header className="bg-white border-b border-[#d8e1ec]">
-        <div className="max-w-[1100px] mx-auto px-[24px] h-[68px] flex items-center justify-between">
+      {/* =====================================
+          BACKGROUND
+      ===================================== */}
 
-          <img
-            src="/assets/logo.png"
-            alt="HospitalFlow"
-            className="h-[38px] w-auto object-contain"
-          />
+      <div
+        className="
+          fixed
+          inset-0
+          pointer-events-none
+          overflow-hidden
+        "
+      >
+
+        <div
+          className="
+            absolute
+            top-[-180px]
+            left-[-160px]
+            w-[500px]
+            h-[500px]
+            rounded-full
+            bg-cyan-400/10
+            blur-[130px]
+          "
+        />
+
+        <div
+          className="
+            absolute
+            top-[35%]
+            right-[-220px]
+            w-[550px]
+            h-[550px]
+            rounded-full
+            bg-blue-500/10
+            blur-[130px]
+          "
+        />
+
+        <div
+          className="
+            absolute
+            bottom-[-250px]
+            left-[25%]
+            w-[600px]
+            h-[450px]
+            rounded-full
+            bg-cyan-400/5
+            blur-[130px]
+          "
+        />
+
+        {/* Grid */}
+
+        <div
+          className="absolute inset-0 opacity-[0.035]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+            backgroundSize: '45px 45px',
+          }}
+        />
+
+      </div>
+
+      {/* =====================================
+          HEADER
+      ===================================== */}
+
+      <header
+        className="
+          relative
+          z-10
+          h-[76px]
+          border-b
+          border-white/10
+          bg-[#031326]/75
+          backdrop-blur-xl
+        "
+      >
+
+        <div
+          className="
+            max-w-[1180px]
+            mx-auto
+            h-full
+            px-5
+            sm:px-8
+            flex
+            items-center
+            justify-between
+          "
+        >
+
+          {/* Logo */}
 
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="text-[#526176] font-semibold text-[14px] hover:text-[#155ead] transition"
+            className="flex items-center gap-3"
+          >
+
+            <div
+              className="
+                w-[42px]
+                h-[42px]
+                rounded-[12px]
+                bg-white/[0.07]
+                border
+                border-white/10
+                flex
+                items-center
+                justify-center
+                overflow-hidden
+              "
+            >
+
+              <img
+                src="/assets/logo.png"
+                alt="HospitalFlow"
+                className="w-[34px]"
+              />
+
+            </div>
+
+            <div className="text-left">
+
+              <div
+                className="
+                  font-bold
+                  text-[17px]
+                  tracking-tight
+                "
+              >
+                Hospital
+                <span className="text-[#16d9e3]">
+                  Flow
+                </span>
+              </div>
+
+              <div
+                className="
+                  text-[9px]
+                  text-slate-500
+                  uppercase
+                  tracking-[0.12em]
+                "
+              >
+                Smart OPD Platform
+              </div>
+
+            </div>
+
+          </button>
+
+          {/* Back */}
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate('/role-selection')
+            }
+            className="
+              text-[12px]
+              sm:text-[13px]
+              font-semibold
+              text-slate-400
+              hover:text-[#16d9e3]
+              transition-colors
+            "
           >
             ← Back
           </button>
 
         </div>
+
       </header>
 
-      {/* Main */}
-      <main className="flex-1 px-[24px] py-[50px]">
+      {/* =====================================
+          MAIN
+      ===================================== */}
 
-        <div className="max-w-[900px] mx-auto">
+      <main
+        className="
+          relative
+          z-10
+          px-5
+          sm:px-8
+          py-12
+          sm:py-16
+        "
+      >
 
-          {/* Heading */}
-          <div className="text-center mb-[36px]">
+        <div className="max-w-[980px] mx-auto">
 
-            <div className="flex justify-center mb-[18px]">
-              <div className="w-[64px] h-[64px] rounded-[16px] bg-[#fff4df] flex items-center justify-center text-[32px]">
-                🏨
+          {/* =================================
+              PAGE HEADING
+          ================================= */}
+
+          <div className="text-center mb-10">
+
+            {/* Icon */}
+
+            <div
+              className="
+                relative
+                inline-flex
+                items-center
+                justify-center
+                mb-5
+              "
+            >
+
+              <div
+                className="
+                  absolute
+                  w-[120px]
+                  h-[120px]
+                  rounded-full
+                  bg-cyan-400/10
+                  blur-[30px]
+                "
+              />
+
+              <div
+                className="
+                  relative
+                  w-[82px]
+                  h-[82px]
+                  rounded-[24px]
+                  bg-white/[0.07]
+                  border
+                  border-white/10
+                  flex
+                  items-center
+                  justify-center
+                  shadow-[0_0_45px_rgba(22,217,227,0.12)]
+                "
+              >
+
+                <span
+                  className="
+                    text-[35px]
+                  "
+                >
+                  🏥
+                </span>
+
               </div>
+
             </div>
 
-            <h1 className="text-[#142033] font-bold text-[30px]">
-              Register Your Hospital
+            {/* Badge */}
+
+            <div className="flex justify-center mb-4">
+
+              <span
+                className="
+                  inline-flex
+                  px-4
+                  py-2
+                  rounded-full
+                  bg-[#16d9e3]/10
+                  border
+                  border-[#16d9e3]/20
+                  text-[#8ef8ff]
+                  text-[11px]
+                  font-medium
+                "
+              >
+                Hospital Onboarding
+              </span>
+
+            </div>
+
+            <h1
+              className="
+                text-[30px]
+                sm:text-[36px]
+                font-bold
+                tracking-tight
+              "
+            >
+              Register Your{' '}
+              <span className="text-[#16d9e3]">
+                Hospital
+              </span>
             </h1>
 
-            <p className="text-[#526176] text-[15px] mt-[10px]">
-              Submit your hospital details to join HospitalFlow.
+            <p
+              className="
+                text-[14px]
+                sm:text-[15px]
+                text-slate-400
+                mt-3
+              "
+            >
+              Submit your hospital details to join
+              the HospitalFlow network.
             </p>
 
           </div>
 
+          {/* =================================
+              FORM
+          ================================= */}
+
           <form
             onSubmit={handleSubmit}
-            className="bg-white border border-[#d8e1ec] rounded-[20px] shadow-[0px_5px_20px_0px_rgba(19,36,58,0.06)] p-[28px] md:p-[40px]"
+            className="
+              relative
+              rounded-[26px]
+              p-[1px]
+              bg-gradient-to-br
+              from-[#16d9e3]/30
+              via-white/10
+              to-transparent
+            "
           >
 
-            {/* Error */}
-            {error && (
-              <div className="mb-[28px] rounded-[10px] border border-red-200 bg-red-50 px-[16px] py-[12px] text-red-600 text-[14px]">
-                {error}
-              </div>
-            )}
+            <div
+              className="
+                rounded-[25px]
+                bg-[#071b31]/95
+                border
+                border-white/[0.07]
+                p-6
+                sm:p-8
+                lg:p-10
+                backdrop-blur-xl
+              "
+            >
 
-            {/* Hospital Information */}
-            <section>
+              {/* Error */}
 
-              <h2 className="text-[#142033] font-bold text-[20px]">
-                Hospital Information
-              </h2>
+              {error && (
+                <div
+                  className="
+                    mb-8
+                    rounded-[13px]
+                    border
+                    border-red-400/20
+                    bg-red-400/10
+                    px-4
+                    py-3
+                  "
+                >
+                  <p
+                    className="
+                      text-red-300
+                      text-[12px]
+                      leading-[1.5]
+                    "
+                  >
+                    {error}
+                  </p>
+                </div>
+              )}
 
-              <p className="text-[#66758a] text-[13px] mt-[5px] mb-[22px]">
-                Provide the official information of your hospital.
-              </p>
+              {/* =================================
+                  SECTION 01
+              ================================= */}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-[18px]">
+              <FormSectionHeader
+                number="01"
+                title="Hospital Information"
+                description="Provide the official information of your hospital."
+              />
+
+              <div
+                className="
+                  grid
+                  grid-cols-1
+                  md:grid-cols-2
+                  gap-5
+                "
+              >
 
                 <InputField
                   label="Hospital Name"
@@ -272,54 +879,59 @@ export default function HospitalRegistrationPage() {
 
               </div>
 
-              <div className="mt-[18px]">
-                <label className="block text-[#142033] font-semibold text-[13px] mb-[7px]">
-                  Address
-                </label>
+              {/* Address */}
 
-                <textarea
+              <div className="mt-5">
+
+                <TextareaField
+                  label="Address"
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
                   required
                   rows={3}
                   placeholder="Complete hospital address"
-                  className="w-full border border-[#d8e1ec] rounded-[10px] px-[14px] py-[12px] text-[14px] text-[#142033] outline-none focus:border-[#155ead] resize-none"
                 />
+
               </div>
 
-              <div className="mt-[18px]">
-                <label className="block text-[#142033] font-semibold text-[13px] mb-[7px]">
-                  Hospital Description
-                </label>
+              {/* Description */}
 
-                <textarea
+              <div className="mt-5">
+
+                <TextareaField
+                  label="Hospital Description"
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
                   rows={3}
                   placeholder="Brief description of your hospital"
-                  className="w-full border border-[#d8e1ec] rounded-[10px] px-[14px] py-[12px] text-[14px] text-[#142033] outline-none focus:border-[#155ead] resize-none"
                 />
+
               </div>
 
-            </section>
+              {/* Divider */}
 
-            {/* Divider */}
-            <div className="my-[35px] border-t border-[#e4eaf1]" />
+              <SectionDivider />
 
-            {/* Authorized Person */}
-            <section>
+              {/* =================================
+                  SECTION 02
+              ================================= */}
 
-              <h2 className="text-[#142033] font-bold text-[20px]">
-                Authorized Person
-              </h2>
+              <FormSectionHeader
+                number="02"
+                title="Authorized Person"
+                description="Details of the person authorized to register this hospital."
+              />
 
-              <p className="text-[#66758a] text-[13px] mt-[5px] mb-[22px]">
-                Details of the person authorized to register this hospital.
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-[18px]">
+              <div
+                className="
+                  grid
+                  grid-cols-1
+                  md:grid-cols-2
+                  gap-5
+                "
+              >
 
                 <InputField
                   label="Authorized Person Name"
@@ -369,21 +981,19 @@ export default function HospitalRegistrationPage() {
 
               </div>
 
-            </section>
+              {/* Divider */}
 
-            {/* Divider */}
-            <div className="my-[35px] border-t border-[#e4eaf1]" />
+              <SectionDivider />
 
-            {/* Verification */}
-            <section>
+              {/* =================================
+                  SECTION 03
+              ================================= */}
 
-              <h2 className="text-[#142033] font-bold text-[20px]">
-                Verification
-              </h2>
-
-              <p className="text-[#66758a] text-[13px] mt-[5px] mb-[22px]">
-                Add your registration or verification document reference.
-              </p>
+              <FormSectionHeader
+                number="03"
+                title="Verification"
+                description="Add your registration or verification document reference."
+              />
 
               <InputField
                 label="Verification Document"
@@ -393,27 +1003,107 @@ export default function HospitalRegistrationPage() {
                 placeholder="Document name or reference"
               />
 
-              <div className="mt-[14px] rounded-[10px] bg-[#f7f9fc] border border-[#e2e8f0] p-[14px]">
-                <p className="text-[#66758a] text-[12px] leading-[1.6]">
-                  Your registration will remain <strong>PENDING</strong> until
-                  it is reviewed by the HospitalFlow Super Admin.
-                </p>
+              {/* Pending info */}
+
+              <div
+                className="
+                  mt-5
+                  rounded-[14px]
+                  bg-[#16d9e3]/[0.05]
+                  border
+                  border-[#16d9e3]/15
+                  p-4
+                "
+              >
+
+                <div className="flex gap-3">
+
+                  <div
+                    className="
+                      flex-shrink-0
+                      w-8
+                      h-8
+                      rounded-[9px]
+                      bg-[#16d9e3]/10
+                      flex
+                      items-center
+                      justify-center
+                      text-[#16d9e3]
+                      text-[12px]
+                      font-bold
+                    "
+                  >
+                    i
+                  </div>
+
+                  <p
+                    className="
+                      text-slate-400
+                      text-[12px]
+                      leading-[1.7]
+                    "
+                  >
+                    Your registration will remain{' '}
+                    <strong className="text-[#8ef8ff]">
+                      PENDING
+                    </strong>{' '}
+                    until it is reviewed by the
+                    HospitalFlow Super Admin.
+                  </p>
+
+                </div>
+
               </div>
 
-            </section>
+              {/* =================================
+                  SUBMIT
+              ================================= */}
 
-            {/* Submit */}
-            <div className="mt-[35px] pt-[25px] border-t border-[#e4eaf1]">
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-[#155ead] hover:bg-[#104d91] disabled:bg-[#9bb6d5] text-white rounded-[10px] py-[14px] font-semibold text-[15px] transition"
+              <div
+                className="
+                  mt-9
+                  pt-7
+                  border-t
+                  border-white/[0.07]
+                "
               >
-                {loading
-                  ? 'Submitting Registration...'
-                  : 'Submit Hospital Registration'}
-              </button>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="
+                    w-full
+                    bg-[#16d9e3]
+                    hover:bg-[#5deaf0]
+                    disabled:opacity-50
+                    disabled:cursor-not-allowed
+                    text-[#031326]
+                    rounded-[13px]
+                    py-3.5
+                    font-bold
+                    text-[14px]
+                    transition-all
+                    shadow-[0_8px_28px_rgba(22,217,227,0.14)]
+                  "
+                >
+                  {loading
+                    ? 'Submitting Registration...'
+                    : 'Submit Hospital Registration'}
+                </button>
+
+                <p
+                  className="
+                    text-center
+                    text-[11px]
+                    text-slate-600
+                    mt-3
+                  "
+                >
+                  By submitting, your hospital will
+                  enter the HospitalFlow review process.
+                </p>
+
+              </div>
 
             </div>
 
@@ -427,12 +1117,101 @@ export default function HospitalRegistrationPage() {
   );
 }
 
+// ===========================================
+// SECTION HEADER
+// ===========================================
+
+type FormSectionHeaderProps = {
+  number: string;
+  title: string;
+  description: string;
+};
+
+function FormSectionHeader({
+  number,
+  title,
+  description,
+}: FormSectionHeaderProps) {
+  return (
+    <div className="flex items-start gap-4 mb-6">
+
+      <div
+        className="
+          flex-shrink-0
+          w-10
+          h-10
+          rounded-[12px]
+          bg-[#16d9e3]/10
+          border
+          border-[#16d9e3]/20
+          flex
+          items-center
+          justify-center
+          text-[#16d9e3]
+          text-[12px]
+          font-bold
+        "
+      >
+        {number}
+      </div>
+
+      <div>
+
+        <h2
+          className="
+            text-[19px]
+            sm:text-[20px]
+            font-bold
+            text-white
+          "
+        >
+          {title}
+        </h2>
+
+        <p
+          className="
+            text-[12px]
+            sm:text-[13px]
+            text-slate-500
+            mt-1
+            leading-[1.5]
+          "
+        >
+          {description}
+        </p>
+
+      </div>
+
+    </div>
+  );
+}
+
+// ===========================================
+// DIVIDER
+// ===========================================
+
+function SectionDivider() {
+  return (
+    <div
+      className="
+        my-9
+        border-t
+        border-white/[0.07]
+      "
+    />
+  );
+}
+
+// ===========================================
+// INPUT
+// ===========================================
+
 type InputFieldProps = {
   label: string;
   name: string;
   value: string;
   onChange: (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => void;
   type?: string;
   placeholder?: string;
@@ -450,9 +1229,23 @@ function InputField({
 }: InputFieldProps) {
   return (
     <div>
-      <label className="block text-[#142033] font-semibold text-[13px] mb-[7px]">
+
+      <label
+        className="
+          block
+          text-slate-300
+          font-semibold
+          text-[12px]
+          mb-2
+        "
+      >
         {label}
-        {required && <span className="text-red-500 ml-[3px]">*</span>}
+
+        {required && (
+          <span className="text-[#16d9e3] ml-1">
+            *
+          </span>
+        )}
       </label>
 
       <input
@@ -462,8 +1255,102 @@ function InputField({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full border border-[#d8e1ec] rounded-[10px] px-[14px] py-[12px] text-[14px] text-[#142033] outline-none focus:border-[#155ead]"
+        className="
+          w-full
+          bg-white/[0.045]
+          border
+          border-white/10
+          rounded-[12px]
+          px-4
+          py-3
+          text-[13px]
+          text-white
+          placeholder:text-slate-600
+          outline-none
+          focus:border-[#16d9e3]
+          focus:ring-2
+          focus:ring-[#16d9e3]/10
+          transition-all
+        "
       />
+
+    </div>
+  );
+}
+
+// ===========================================
+// TEXTAREA
+// ===========================================
+
+type TextareaFieldProps = {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => void;
+  rows?: number;
+  placeholder?: string;
+  required?: boolean;
+};
+
+function TextareaField({
+  label,
+  name,
+  value,
+  onChange,
+  rows = 3,
+  placeholder,
+  required = false,
+}: TextareaFieldProps) {
+  return (
+    <div>
+
+      <label
+        className="
+          block
+          text-slate-300
+          font-semibold
+          text-[12px]
+          mb-2
+        "
+      >
+        {label}
+
+        {required && (
+          <span className="text-[#16d9e3] ml-1">
+            *
+          </span>
+        )}
+      </label>
+
+      <textarea
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        rows={rows}
+        placeholder={placeholder}
+        className="
+          w-full
+          bg-white/[0.045]
+          border
+          border-white/10
+          rounded-[12px]
+          px-4
+          py-3
+          text-[13px]
+          text-white
+          placeholder:text-slate-600
+          outline-none
+          focus:border-[#16d9e3]
+          focus:ring-2
+          focus:ring-[#16d9e3]/10
+          transition-all
+          resize-none
+        "
+      />
+
     </div>
   );
 }

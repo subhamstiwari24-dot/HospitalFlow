@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import PatientLayout from '../../components/PatientLayout';
-import Button from '../../components/Button';
 import { usePatient } from '../../context/PatientContext';
+
 import type { Hospital } from '../../types';
+
 import { usePageLoad } from '../../hooks/usePageLoad';
 import { SkHospitalSearch } from '../../components/Skeleton';
-import EmptyState, { EmptyIcons, ErrorState } from '../../components/EmptyState';
+import EmptyState, {
+  EmptyIcons,
+  ErrorState,
+} from '../../components/EmptyState';
 
 type BackendHospital = {
   id: number;
@@ -20,17 +25,6 @@ type BackendHospital = {
 type PatientHospital = Hospital & {
   backendId: number;
 };
-
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <div className="flex items-center gap-[4px]">
-      <span className="text-[#f4a700] text-[12px]">★</span>
-      <p className="font-semibold text-[#142033] text-[12px]">
-        {rating.toFixed(1)}
-      </p>
-    </div>
-  );
-}
 
 export default function SearchHospitalPage() {
   const navigate = useNavigate();
@@ -54,14 +48,12 @@ export default function SearchHospitalPage() {
 
   const pageLoading = usePageLoad(400);
 
-  /*
-   * HospitalFlow backend
-   */
   const API_URL = '/api';
 
-  /*
-   * Load hospitals from Spring Boot
-   */
+  /* =====================================================
+     LOAD HOSPITALS
+  ===================================================== */
+
   useEffect(() => {
     const loadHospitals = async () => {
       try {
@@ -76,14 +68,6 @@ export default function SearchHospitalPage() {
 
         const data: BackendHospital[] = await response.json();
 
-        /*
-         * Convert backend hospital structure
-         * into the structure expected by the Figma UI.
-         *
-         * We only use information actually available
-         * from the backend. Fields such as rating,
-         * distance and departments are not invented.
-         */
         const mappedHospitals: PatientHospital[] = data
           .filter((hospital) => hospital.active)
           .map((hospital) => ({
@@ -103,6 +87,7 @@ export default function SearchHospitalPage() {
         setHospitals(mappedHospitals);
       } catch (err) {
         console.error('Hospital loading error:', err);
+
         setError(
           'Unable to connect to HospitalFlow backend. Please make sure the Spring Boot server is running.'
         );
@@ -114,9 +99,10 @@ export default function SearchHospitalPage() {
     loadHospitals();
   }, [retryKey]);
 
-  /*
-   * Filter hospitals
-   */
+  /* =====================================================
+     FILTER HOSPITALS
+  ===================================================== */
+
   const filtered = useMemo(() => {
     const searchValue = search.trim().toLowerCase();
 
@@ -133,248 +119,399 @@ export default function SearchHospitalPage() {
     });
   }, [hospitals, search, typeFilter]);
 
-  /*
-   * Select hospital
-   */
+  /* =====================================================
+     SELECT HOSPITAL
+  ===================================================== */
+
   const handleSelect = (hospital: PatientHospital) => {
     setSelectedHospital(hospital);
 
-    /*
-     * Reset downstream selections.
-     */
     setSelectedDepartment(null);
     setSelectedDoctor(null);
     setSelectedSlot(null);
   };
 
-  /*
-   * Continue to department selection
-   */
+  /* =====================================================
+     CONTINUE
+  ===================================================== */
+
   const handleContinue = () => {
     if (!selectedHospital) return;
 
     navigate('/patient/department');
   };
 
+  /* =====================================================
+     LOADING SKELETON
+  ===================================================== */
+
   if (pageLoading) {
     return (
       <PatientLayout
         step={0}
         showBack={false}
-        maxWidth="max-w-[900px]"
+        maxWidth="max-w-[1050px]"
       >
         <SkHospitalSearch />
       </PatientLayout>
     );
   }
 
+  /* =====================================================
+     MAIN UI
+  ===================================================== */
+
   return (
     <PatientLayout
       step={0}
       showBack={false}
-      maxWidth="max-w-[900px]"
+      maxWidth="max-w-[1050px]"
     >
-      {/* HEADER */}
-      <div className="mb-[28px]">
-        <h1 className="font-bold text-[#142033] text-[24px] leading-tight mb-[6px]">
-          Search Hospital
-        </h1>
+      {/* =================================================
+          HEADER
+      ================================================= */}
 
-        <p className="font-normal text-[#526176] text-[14px]">
-          Find a hospital near you and book your OPD appointment.
-        </p>
-      </div>
+      <div className="relative mb-8 sm:mb-10">
+        <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-cyan-400/10 blur-[80px] pointer-events-none" />
 
-      {/* SEARCH + FILTERS */}
-      <div className="flex items-center gap-[12px] mb-[20px] flex-wrap">
-        <div className="relative flex-1 min-w-[220px]">
-          <span className="absolute left-[14px] top-1/2 -translate-y-1/2 text-[#afc0d3] text-[14px]">
-            🔍
-          </span>
+        <div className="relative">
+          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-1.5 mb-4">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#16d9e3] shadow-[0_0_8px_#16d9e3]" />
 
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or location…"
-            className="bg-white border border-[#d8e1ec] rounded-[10px] pl-[36px] pr-[14px] py-[10px] text-[14px] text-[#142033] placeholder:text-[#afc0d3] outline-none focus:border-[#155ead] transition-colors w-full"
-          />
-        </div>
+            <span className="text-[11px] font-semibold tracking-wide text-[#8ef8ff]">
+              OPD BOOKING
+            </span>
+          </div>
 
-        <div className="flex gap-[6px]">
-          {(['All', 'Government', 'Private', 'Trust'] as const).map(
-            (type) => (
-              <button
-                key={type}
-                onClick={() => setTypeFilter(type)}
-                aria-pressed={typeFilter === type}
-                className={`px-[14px] py-[8px] rounded-[8px] text-[12px] font-semibold transition-colors cursor-pointer border active:translate-y-px focus-visible:outline-2 focus-visible:outline-[#2475d0] focus-visible:outline-offset-2 ${
-                  typeFilter === type
-                    ? 'bg-[#155ead] text-white border-[#155ead]'
-                    : 'bg-white border-[#d8e1ec] text-[#526176] hover:bg-[#f4f7fb]'
-                }`}
-              >
-                {type}
-              </button>
-            )
-          )}
+          <h1 className="text-[30px] sm:text-[36px] font-bold leading-tight tracking-[-0.5px] text-white">
+            Find Your Hospital
+          </h1>
+
+          <p className="mt-2 max-w-[620px] text-[13px] sm:text-[14px] text-slate-400">
+            Search hospitals, check OPD availability and choose where
+            you want to consult your doctor.
+          </p>
         </div>
       </div>
+
+      {/* =================================================
+          SEARCH + FILTER
+      ================================================= */}
+
+      <div className="relative mb-7">
+        <div className="absolute -inset-1 rounded-[22px] bg-cyan-400/[0.04] blur-xl pointer-events-none" />
+
+        <div className="relative rounded-[20px] border border-white/[0.08] bg-[#071b31]/90 p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.18)]">
+          {/* Search input */}
+
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[19px] text-[#16d9e3]">
+              ⌕
+            </span>
+
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search hospital by name or location..."
+              className="h-[48px] w-full rounded-[14px] border border-white/[0.08] bg-[#031326] pl-[46px] pr-4 text-[13px] text-white outline-none placeholder:text-slate-600 transition-all focus:border-[#16d9e3]/50 focus:ring-2 focus:ring-[#16d9e3]/10"
+            />
+          </div>
+
+          {/* Filters */}
+
+          <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+            <span className="hidden sm:block mr-1 text-[11px] text-slate-600">
+              Filter:
+            </span>
+
+            {(['All', 'Government', 'Private', 'Trust'] as const).map(
+              (type) => {
+                const active = typeFilter === type;
+
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setTypeFilter(type)}
+                    aria-pressed={active}
+                    className={
+                      active
+                        ? 'shrink-0 rounded-[10px] border border-[#16d9e3] bg-[#16d9e3] px-4 py-2 text-[11px] font-bold text-[#031326] shadow-[0_0_18px_rgba(22,217,227,0.18)] transition-all'
+                        : 'shrink-0 rounded-[10px] border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-semibold text-slate-400 transition-all hover:border-[#16d9e3]/30 hover:bg-[#16d9e3]/[0.05] hover:text-[#8ef8ff]'
+                    }
+                  >
+                    {type}
+                  </button>
+                );
+              }
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* =================================================
+          ERROR
+      ================================================= */}
 
       {error && !loadingHospitals && (
-        <ErrorState
-          description={error}
-          onRetry={() => setRetryKey((key) => key + 1)}
-        />
+        <div className="mb-6">
+          <ErrorState
+            description={error}
+            onRetry={() => setRetryKey((key) => key + 1)}
+          />
+        </div>
       )}
 
-      {/* LOADING */}
+      {/* =================================================
+          LOADING
+      ================================================= */}
+
       {loadingHospitals && (
-        <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[24px] text-center">
-          <p className="text-[#526176] text-[14px]">
+        <div className="rounded-[20px] border border-white/10 bg-[#071b31] p-10 text-center">
+          <div className="mx-auto mb-4 h-9 w-9 rounded-full border-2 border-white/10 border-t-[#16d9e3] animate-spin" />
+
+          <p className="text-[13px] text-slate-400">
             Loading hospitals from HospitalFlow...
           </p>
         </div>
       )}
 
-      {/* HOSPITAL LIST */}
+      {/* =================================================
+          HOSPITAL LIST
+      ================================================= */}
+
       {!loadingHospitals && !error && (
-        <div className="flex flex-col gap-[12px] mb-[24px]">
-          {filtered.map((hospital) => (
-            <div
-              key={hospital.id}
-              onClick={() => handleSelect(hospital)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  handleSelect(hospital);
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              className={`bg-white border rounded-[14px] p-[20px] cursor-pointer transition-[border-color,box-shadow,transform] focus-visible:outline-2 focus-visible:outline-[#2475d0] focus-visible:outline-offset-2 active:translate-y-px ${
-                selectedHospital?.id === hospital.id
-                  ? 'border-[#155ead] shadow-[0px_0px_0px_3px_rgba(21,94,173,0.12)]'
-                  : 'border-[#d8e1ec] hover:border-[#afc0d3] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-[16px]">
-                <div className="flex gap-[14px] items-start flex-1 min-w-0">
-                  {/* HOSPITAL ICON */}
-                  <div className="bg-[#eaf3fd] size-[48px] rounded-[12px] flex items-center justify-center shrink-0">
-                    <p className="font-bold text-[#155ead] text-[16px]">
-                      {hospital.name
-                        .split(' ')
-                        .slice(0, 2)
-                        .map((word) => word[0])
-                        .join('')}
-                    </p>
-                  </div>
+        <div>
+          {/* Result header */}
 
-                  <div className="flex-1 min-w-0">
-                    {/* NAME */}
-                    <div className="flex items-center gap-[10px] flex-wrap mb-[4px]">
-                      <p className="font-bold text-[#142033] text-[16px]">
-                        {hospital.name}
-                      </p>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] text-slate-500">
+                AVAILABLE HOSPITALS
+              </p>
 
-                      <span className="text-[11px] font-bold px-[8px] py-[3px] rounded-[999px] bg-[#eaf3fd] text-[#155ead]">
-                        Hospital
+              <p className="mt-1 text-[14px] font-semibold text-white">
+                {filtered.length}{' '}
+                {filtered.length === 1 ? 'hospital' : 'hospitals'} found
+              </p>
+            </div>
+
+            {selectedHospital && (
+              <div className="hidden sm:flex items-center gap-2 text-[11px] font-medium text-[#8ef8ff]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#16d9e3] shadow-[0_0_8px_#16d9e3]" />
+                Hospital selected
+              </div>
+            )}
+          </div>
+
+          {/* Cards */}
+
+          <div className="mb-8 flex flex-col gap-4">
+            {filtered.map((hospital) => {
+              const isSelected =
+                selectedHospital?.id === hospital.id;
+
+              const initials = hospital.name
+                .split(' ')
+                .slice(0, 2)
+                .map((word) => word[0])
+                .join('')
+                .toUpperCase();
+
+              return (
+                <div
+                  key={hospital.id}
+                  onClick={() => handleSelect(hospital)}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === 'Enter' ||
+                      event.key === ' '
+                    ) {
+                      event.preventDefault();
+                      handleSelect(hospital);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className={
+                    isSelected
+                      ? 'group relative overflow-hidden rounded-[22px] border border-[#16d9e3]/70 bg-[#0a243d] p-5 sm:p-6 shadow-[0_0_0_1px_rgba(22,217,227,0.12),0_15px_45px_rgba(0,0,0,0.22),0_0_35px_rgba(22,217,227,0.07)] transition-all duration-300 focus-visible:outline-none'
+                      : 'group relative overflow-hidden rounded-[22px] border border-white/[0.08] bg-[#071b31]/90 p-5 sm:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-[2px] hover:border-[#16d9e3]/30 hover:bg-[#092039] hover:shadow-[0_15px_40px_rgba(0,0,0,0.2)] focus-visible:outline-none'
+                  }
+                >
+                  {/* Selected glow */}
+
+                  {isSelected && (
+                    <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-[#16d9e3]/10 blur-[55px]" />
+                  )}
+
+                  <div className="relative flex items-start gap-4">
+                    {/* Avatar */}
+
+                    <div
+                      className={
+                        isSelected
+                          ? 'flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[16px] border border-[#16d9e3]/30 bg-[#16d9e3]/10 shadow-[0_0_20px_rgba(22,217,227,0.12)]'
+                          : 'flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[16px] border border-white/[0.07] bg-[#0b2742]'
+                      }
+                    >
+                      <span
+                        className={
+                          isSelected
+                            ? 'text-[15px] font-bold text-[#8ef8ff]'
+                            : 'text-[15px] font-bold text-[#16d9e3]'
+                        }
+                      >
+                        {initials}
                       </span>
                     </div>
 
-                    {/* LOCATION */}
-                    <p className="font-normal text-[#526176] text-[13px] mb-[10px]">
-                      📍 {hospital.location}, {hospital.city}
-                    </p>
+                    {/* Details */}
 
-                    {/* REAL BACKEND INFO */}
-                    <div className="flex items-center gap-[16px] flex-wrap">
+                    <div className="min-w-0 flex-1">
+                      {/* Name */}
+
+                      <div className="flex flex-wrap items-start gap-2 pr-8">
+                        <h3 className="text-[16px] sm:text-[17px] font-bold leading-tight text-white">
+                          {hospital.name}
+                        </h3>
+
+                        <span className="rounded-full border border-[#16d9e3]/15 bg-[#16d9e3]/[0.08] px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-[#8ef8ff]">
+                          Hospital
+                        </span>
+                      </div>
+
+                      {/* Location */}
+
+                      <div className="mt-2 flex items-center gap-2 text-[12px] text-slate-400">
+                        <span className="text-[#16d9e3]">●</span>
+
+                        <span className="truncate">
+                          {hospital.location}, {hospital.city}
+                        </span>
+                      </div>
+
+                      {/* Status */}
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-emerald-400/10 bg-emerald-400/[0.07] px-2.5 py-1.5 text-[10px] font-semibold text-emerald-300">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          Active
+                        </span>
+
+                        <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#16d9e3]/10 bg-[#16d9e3]/[0.06] px-2.5 py-1.5 text-[10px] font-medium text-[#8ef8ff]">
+                          <span>✦</span>
+                          HospitalFlow Connected
+                        </span>
+
+                        <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-white/[0.06] bg-white/[0.035] px-2.5 py-1.5 text-[10px] font-medium text-slate-400">
+                          Live OPD
+                        </span>
+                      </div>
+
+                      {/* Phone */}
+
                       {hospital.phone && (
-                        <p className="font-normal text-[#526176] text-[12px]">
-                          📞 {hospital.phone}
+                        <p className="mt-3 text-[11px] text-slate-500">
+                          ☎ {hospital.phone}
                         </p>
                       )}
-
-                      <span className="text-[#d8e1ec]">·</span>
-
-                      <p className="font-normal text-[#18865b] text-[12px] font-semibold">
-                        ● Active
-                      </p>
                     </div>
 
-                    {/* LIVE CONNECTION LABEL */}
-                    <div className="flex gap-[6px] mt-[12px] flex-wrap">
-                      <span className="bg-[#e8f7f1] text-[#18865b] text-[11px] font-semibold px-[8px] py-[3px] rounded-[6px]">
-                        HospitalFlow Connected
-                      </span>
+                    {/* Selection circle */}
 
-                      <span className="bg-[#f4f7fb] text-[#526176] text-[11px] font-medium px-[8px] py-[3px] rounded-[6px]">
-                        Live OPD available
-                      </span>
+                    <div
+                      className={
+                        isSelected
+                          ? 'absolute right-0 top-0 flex h-[25px] w-[25px] items-center justify-center rounded-full border border-[#16d9e3] bg-[#16d9e3] shadow-[0_0_16px_rgba(22,217,227,0.35)]'
+                          : 'absolute right-0 top-0 flex h-[25px] w-[25px] items-center justify-center rounded-full border border-white/15 bg-white/[0.02] transition-all group-hover:border-[#16d9e3]/40'
+                      }
+                    >
+                      {isSelected && (
+                        <span className="text-[12px] font-black text-[#031326]">
+                          ✓
+                        </span>
+                      )}
                     </div>
                   </div>
-                </div>
 
-                {/* SELECT INDICATOR */}
-                <div
-                  className={`size-[22px] rounded-[999px] border-2 flex items-center justify-center shrink-0 mt-[2px] transition-colors ${
-                    selectedHospital?.id === hospital.id
-                      ? 'border-[#155ead] bg-[#155ead]'
-                      : 'border-[#d8e1ec]'
-                  }`}
-                >
-                  {selectedHospital?.id === hospital.id && (
-                    <span className="text-white text-[11px] font-bold">
-                      ✓
-                    </span>
+                  {/* Selected information */}
+
+                  {isSelected && (
+                    <div className="relative mt-5 flex items-center justify-between border-t border-[#16d9e3]/10 pt-4">
+                      <span className="text-[10px] font-semibold text-[#8ef8ff]">
+                        ✓ Hospital selected
+                      </span>
+
+                      <span className="text-[10px] text-slate-500">
+                        Ready to continue
+                      </span>
+                    </div>
                   )}
                 </div>
-              </div>
-            </div>
-          ))}
+              );
+            })}
 
-          {/* NO RESULTS */}
-          {filtered.length === 0 && !error && (
-            <EmptyState
-              icon={EmptyIcons.mapPin(28)}
-              title="No hospitals found"
-              description="Try a different search term."
-              action={
-                <button
-                  onClick={() => {
-                    setSearch('');
-                    setTypeFilter('All');
-                  }}
-                  className="border border-[#d8e1ec] bg-white text-[#526176] font-bold text-[13px] px-[16px] py-[10px] rounded-[10px] hover:bg-[#f4f7fb] transition-colors cursor-pointer"
-                >
-                  Clear search
-                </button>
-              }
-            />
-          )}
+            {/* No results */}
+
+            {filtered.length === 0 && !error && (
+              <div className="rounded-[22px] border border-white/[0.08] bg-[#071b31]/90 px-6 py-12">
+                <EmptyState
+                  icon={EmptyIcons.mapPin(28)}
+                  title="No hospitals found"
+                  description="Try a different search term."
+                  action={
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch('');
+                        setTypeFilter('All');
+                      }}
+                      className="rounded-[10px] border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[12px] font-semibold text-slate-300 transition-all hover:border-[#16d9e3]/30 hover:text-[#8ef8ff]"
+                    >
+                      Clear search
+                    </button>
+                  }
+                />
+              </div>
+            )}
+          </div>
+
+          {/* =================================================
+              BOTTOM CTA
+          ================================================= */}
+
+          <div className="sticky bottom-4 z-10 rounded-[18px] border border-white/[0.08] bg-[#06182b]/95 p-3 sm:p-3.5 shadow-[0_15px_40px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-3">
+              {/* Selected hospital */}
+
+              <div className="hidden min-w-0 sm:block">
+                <p className="text-[10px] text-slate-500">
+                  Selected hospital
+                </p>
+
+                <p className="mt-0.5 max-w-[320px] truncate text-[12px] font-semibold text-white">
+                  {selectedHospital
+                    ? selectedHospital.name
+                    : 'Please select a hospital'}
+                </p>
+              </div>
+
+              {/* Continue */}
+
+              <button
+                type="button"
+                onClick={handleContinue}
+                disabled={!selectedHospital}
+                className="ml-auto rounded-[12px] bg-[#16d9e3] px-6 sm:px-7 py-3 text-[12px] sm:text-[13px] font-bold text-[#031326] shadow-[0_0_20px_rgba(22,217,227,0.16)] transition-all hover:bg-[#5deaf0] hover:shadow-[0_0_28px_rgba(22,217,227,0.25)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
+              >
+                Continue to Department →
+              </button>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* CTA */}
-      <div className="flex items-center gap-[12px] flex-wrap">
-        <Button
-          variant="primary"
-          onClick={handleContinue}
-          disabled={!selectedHospital}
-          className="px-[28px] py-[12px] text-[14px]"
-        >
-          Select Department →
-        </Button>
-
-        {selectedHospital && (
-          <p className="font-normal text-[#526176] text-[13px]">
-            Selected:{' '}
-            <span className="font-semibold text-[#142033]">
-              {selectedHospital.name}
-            </span>
-          </p>
-        )}
-      </div>
     </PatientLayout>
   );
 }

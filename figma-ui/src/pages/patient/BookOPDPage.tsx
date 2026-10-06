@@ -12,11 +12,10 @@ import {
   isTenDigitPhone,
 } from '../../utils/validation';
 
-
-
 /* =========================================================
- * RAZORPAY TYPES
- * ========================================================= */
+   RAZORPAY TYPES
+========================================================= */
+
 type RazorpayCheckoutOptions = {
   key: string;
   amount: number;
@@ -24,15 +23,21 @@ type RazorpayCheckoutOptions = {
   name: string;
   description: string;
   order_id: string;
+
   prefill?: {
     name?: string;
     contact?: string;
     email?: string;
   };
+
   theme?: {
     color?: string;
   };
-  handler: (response: RazorpayPaymentResponse) => void | Promise<void>;
+
+  handler: (
+    response: RazorpayPaymentResponse
+  ) => void | Promise<void>;
+
   modal?: {
     ondismiss?: () => void;
   };
@@ -46,7 +51,11 @@ type RazorpayPaymentResponse = {
 
 type RazorpayCheckout = {
   open: () => void;
-  on: (event: string, handler: (response: unknown) => void) => void;
+
+  on: (
+    event: string,
+    handler: (response: unknown) => void
+  ) => void;
 };
 
 type BackendPayment = {
@@ -54,15 +63,20 @@ type BackendPayment = {
   amount: number;
   currency: string;
   paymentStatus: string;
-  razorpayOrderId?: string;
-  paymentMethod?: string;
+  razorpayOrderId: string;
 };
 
 declare global {
   interface Window {
-    Razorpay: new (options: RazorpayCheckoutOptions) => RazorpayCheckout;
+    Razorpay: new (
+      options: RazorpayCheckoutOptions
+    ) => RazorpayCheckout;
   }
 }
+
+/* =========================================================
+   RAZORPAY SCRIPT
+========================================================= */
 
 const loadRazorpayScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
@@ -72,23 +86,43 @@ const loadRazorpayScript = (): Promise<boolean> => {
     }
 
     const existingScript = document.querySelector(
-      'script[src=\"https://checkout.razorpay.com/v1/checkout.js\"]'
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
     );
 
     if (existingScript) {
-      existingScript.addEventListener('load', () => resolve(true), { once: true });
-      existingScript.addEventListener('error', () => resolve(false), { once: true });
+      existingScript.addEventListener(
+        'load',
+        () => resolve(true),
+        { once: true }
+      );
+
+      existingScript.addEventListener(
+        'error',
+        () => resolve(false),
+        { once: true }
+      );
+
       return;
     }
 
     const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+
+    script.src =
+      'https://checkout.razorpay.com/v1/checkout.js';
+
     script.async = true;
+
     script.onload = () => resolve(true);
+
     script.onerror = () => resolve(false);
+
     document.body.appendChild(script);
   });
 };
+
+/* =========================================================
+   BACKEND TYPES
+========================================================= */
 
 type BackendSlot = {
   id: string;
@@ -99,19 +133,25 @@ type BackendSlot = {
 
 type BackendAppointment = {
   id: number;
+
   appointmentDate?: string;
+
   appointmentTime?: string;
+
   status?: string;
+
   doctor?: {
     id?: number;
   };
 };
 
-/*
- * Generate today's date + next 4 days.
- */
+/* =========================================================
+   DATES
+========================================================= */
+
 const getAvailableDates = (): string[] => {
   const dates: string[] = [];
+
   const today = new Date();
 
   for (let i = 0; i < 5; i++) {
@@ -119,12 +159,13 @@ const getAvailableDates = (): string[] => {
 
     date.setDate(today.getDate() + i);
 
-    const formattedDate = date.toLocaleDateString('en-GB', {
-      weekday: 'short',
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    const formattedDate =
+      date.toLocaleDateString('en-GB', {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
 
     dates.push(formattedDate);
   }
@@ -134,6 +175,10 @@ const getAvailableDates = (): string[] => {
 
 const DATES = getAvailableDates();
 
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export default function BookOPDPage() {
   const navigate = useNavigate();
 
@@ -141,54 +186,53 @@ export default function BookOPDPage() {
     selectedHospital,
     selectedDepartment,
     selectedDoctor,
+
     selectedDate,
     setSelectedDate,
+
     selectedSlot,
     setSelectedSlot,
+
     patientName,
     patientPhone,
+
     reasonForVisit,
     setReasonForVisit,
+
     confirmBooking,
   } = usePatient();
 
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  /* =======================================================
+     STATE
+  ======================================================= */
+
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  const [error, setError] =
+    useState('');
 
   /*
-   * PAYMENT METHOD
+   * ONLINE
+   * PAY_AT_HOSPITAL
    */
   const [paymentMethod, setPaymentMethod] =
-    useState<'ONLINE' | 'PAY_AT_HOSPITAL'>('ONLINE');
+    useState<
+      'ONLINE' | 'PAY_AT_HOSPITAL'
+    >('ONLINE');
 
-  /*
-   * REAL BACKEND SLOTS
-   *
-   * No mock opdSlots are used.
-   */
-  const [opdSlots, setOpdSlots] = useState<BackendSlot[]>([]);
+  /* Real backend slots */
+  const [opdSlots, setOpdSlots] =
+    useState<BackendSlot[]>([]);
 
-  /*
-   * Loading state while backend slots are being fetched.
-   */
-  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsLoading, setSlotsLoading] =
+    useState(false);
 
-  /*
-   * Current time is kept only for the Live indicator.
-   *
-   * Slot availability itself is decided by backend.
-   */
-  const [currentTime, setCurrentTime] = useState(
-    new Date()
-  );
+  /* Current time for Live indicator */
+  const [currentTime, setCurrentTime] =
+    useState(new Date());
 
-  /*
-   * REAL QUEUE SUMMARY
-   *
-   * These values come from PostgreSQL through the
-   * Appointment API. No patientsToday / queueLength /
-   * nextSlot mock values are used here.
-   */
+  /* Queue */
   const [patientsToday, setPatientsToday] =
     useState(0);
 
@@ -201,6 +245,10 @@ export default function BookOPDPage() {
   const [queueError, setQueueError] =
     useState('');
 
+  /* =======================================================
+     LIVE CLOCK
+  ======================================================= */
+
   useEffect(() => {
     const timer = window.setInterval(() => {
       setCurrentTime(new Date());
@@ -211,26 +259,39 @@ export default function BookOPDPage() {
     };
   }, []);
 
-  /*
-   * If required selection is missing,
-   * return to hospital selection.
-   */
+  /* =======================================================
+     SAFETY REDIRECT
+  ======================================================= */
+
+  useEffect(() => {
+    if (
+      !selectedHospital ||
+      !selectedDepartment ||
+      !selectedDoctor
+    ) {
+      navigate('/patient/hospital', {
+        replace: true,
+      });
+    }
+  }, [
+    selectedHospital,
+    selectedDepartment,
+    selectedDoctor,
+    navigate,
+  ]);
+
   if (
     !selectedHospital ||
     !selectedDepartment ||
     !selectedDoctor
   ) {
-    navigate('/patient/hospital');
     return null;
   }
 
-  /*
-   * Convert:
-   *
-   * Mon, 28 Sep 2026
-   *
-   * into a JavaScript Date.
-   */
+  /* =======================================================
+     DATE PARSER
+  ======================================================= */
+
   const parseSelectedDate = (
     dateString: string
   ): Date | null => {
@@ -244,7 +305,10 @@ export default function BookOPDPage() {
 
     const [, day, month, year] = match;
 
-    const monthMap: Record<string, number> = {
+    const monthMap: Record<
+      string,
+      number
+    > = {
       Jan: 0,
       Feb: 1,
       Mar: 2,
@@ -261,7 +325,8 @@ export default function BookOPDPage() {
       Dec: 11,
     };
 
-    const monthNumber = monthMap[month];
+    const monthNumber =
+      monthMap[month];
 
     if (monthNumber === undefined) {
       return null;
@@ -274,16 +339,38 @@ export default function BookOPDPage() {
     );
   };
 
-  /*
-   * =====================================================
-   * FETCH REAL SLOTS FROM BACKEND
-   * =====================================================
-   *
-   * Example:
-   *
-   * GET
-   * http://localhost:8080/api/doctors/1/slots?date=2026-09-28
-   */
+  /* =======================================================
+     BACKEND DATE
+  ======================================================= */
+
+  const getBackendDate = (
+    dateString: string
+  ): string | null => {
+    const date =
+      parseSelectedDate(dateString);
+
+    if (!date) {
+      return null;
+    }
+
+    const year =
+      date.getFullYear();
+
+    const month = String(
+      date.getMonth() + 1
+    ).padStart(2, '0');
+
+    const day = String(
+      date.getDate()
+    ).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  };
+
+  /* =======================================================
+     LOAD REAL SLOTS
+  ======================================================= */
+
   useEffect(() => {
     const loadSlots = async () => {
       if (
@@ -294,40 +381,27 @@ export default function BookOPDPage() {
         return;
       }
 
-      const selectedDateObject =
-        parseSelectedDate(selectedDate);
+      const backendDate =
+        getBackendDate(selectedDate);
 
-      if (!selectedDateObject) {
+      if (!backendDate) {
         setOpdSlots([]);
         return;
       }
-
-      const year =
-        selectedDateObject.getFullYear();
-
-      const month = String(
-        selectedDateObject.getMonth() + 1
-      ).padStart(2, '0');
-
-      const day = String(
-        selectedDateObject.getDate()
-      ).padStart(2, '0');
-
-      const backendDate =
-        `${year}-${month}-${day}`;
 
       setSlotsLoading(true);
       setError('');
 
       /*
-       * Whenever date changes, remove old selected slot.
+       * Date change resets old slot.
        */
       setSelectedSlot('');
 
       try {
-        const response = await fetch(
-          `http://localhost:8080/api/doctors/${selectedDoctor.id}/slots?date=${backendDate}`
-        );
+        const response =
+          await fetch(
+            `http://localhost:8080/api/doctors/${selectedDoctor.id}/slots?date=${backendDate}`
+          );
 
         if (!response.ok) {
           throw new Error(
@@ -342,7 +416,9 @@ export default function BookOPDPage() {
           !data ||
           typeof data !== 'object' ||
           !Array.isArray(
-            (data as { slots?: unknown }).slots
+            (data as {
+              slots?: unknown;
+            }).slots
           )
         ) {
           throw new Error(
@@ -356,7 +432,6 @@ export default function BookOPDPage() {
           }).slots;
 
         setOpdSlots(slots);
-
       } catch (err) {
         console.error(
           'Unable to load slots:',
@@ -370,33 +445,21 @@ export default function BookOPDPage() {
             ? err.message
             : 'Unable to load available time slots.'
         );
-
       } finally {
         setSlotsLoading(false);
       }
     };
 
     void loadSlots();
-
   }, [
     selectedDoctor?.id,
     selectedDate,
   ]);
 
-  /*
-   * =====================================================
-   * FETCH REAL QUEUE SUMMARY FROM BACKEND
-   * =====================================================
-   *
-   * Patients today:
-   *   All non-cancelled appointments for this doctor/date.
-   *
-   * Currently waiting:
-   *   WAITING appointments returned by the queue endpoint.
-   *
-   * The existing backend APIs are used; no new backend
-   * endpoint is required for this summary.
-   */
+  /* =======================================================
+     LOAD REAL QUEUE
+  ======================================================= */
+
   useEffect(() => {
     const loadQueueSummary = async () => {
       if (
@@ -409,40 +472,26 @@ export default function BookOPDPage() {
         return;
       }
 
-      const selectedDateObject =
-        parseSelectedDate(selectedDate);
+      const backendDate =
+        getBackendDate(selectedDate);
 
-      if (!selectedDateObject) {
+      if (!backendDate) {
         setPatientsToday(0);
         setCurrentlyWaiting(0);
+
         setQueueError(
           'Unable to read the selected date.'
         );
+
         return;
       }
-
-      const year =
-        selectedDateObject.getFullYear();
-
-      const month = String(
-        selectedDateObject.getMonth() + 1
-      ).padStart(2, '0');
-
-      const day = String(
-        selectedDateObject.getDate()
-      ).padStart(2, '0');
-
-      const backendDate =
-        `${year}-${month}-${day}`;
 
       setQueueLoading(true);
       setQueueError('');
 
       try {
         /*
-         * 1. Get all appointments.
-         * Used to calculate total patients for
-         * the selected doctor/date.
+         * ALL APPOINTMENTS
          */
         const appointmentsResponse =
           await fetch(
@@ -465,12 +514,15 @@ export default function BookOPDPage() {
         }
 
         const doctorAppointments =
-          (appointmentsData as BackendAppointment[])
+          (
+            appointmentsData as BackendAppointment[]
+          )
             .filter(
               (appointment) =>
                 Number(
                   appointment.doctor?.id
-                ) === Number(selectedDoctor.id)
+                ) ===
+                Number(selectedDoctor.id)
             )
             .filter(
               (appointment) =>
@@ -490,7 +542,7 @@ export default function BookOPDPage() {
         );
 
         /*
-         * 2. Get the active waiting queue.
+         * LIVE QUEUE
          */
         const queueResponse =
           await fetch(
@@ -512,14 +564,9 @@ export default function BookOPDPage() {
           );
         }
 
-        /*
-         * The current queue endpoint returns WAITING
-         * appointments. Count them directly.
-         */
         setCurrentlyWaiting(
           queueData.length
         );
-
       } catch (err) {
         console.error(
           'Unable to load queue summary:',
@@ -534,69 +581,58 @@ export default function BookOPDPage() {
             ? err.message
             : 'Unable to load live queue.'
         );
-
       } finally {
         setQueueLoading(false);
       }
     };
 
     void loadQueueSummary();
-
   }, [
     selectedDoctor?.id,
     selectedDate,
   ]);
 
-  /*
-   * Check whether selected date is today.
-   *
-   * Used only for the "Live" indicator.
-   */
-  const isSelectedDateToday = (): boolean => {
-    const selectedDateObject =
-      parseSelectedDate(selectedDate);
+  /* =======================================================
+     TODAY CHECK
+  ======================================================= */
 
-    if (!selectedDateObject) {
-      return false;
-    }
+  const isSelectedDateToday =
+    (): boolean => {
+      const selectedDateObject =
+        parseSelectedDate(
+          selectedDate
+        );
 
-    return (
-      selectedDateObject.getFullYear() ===
-        currentTime.getFullYear() &&
-      selectedDateObject.getMonth() ===
-        currentTime.getMonth() &&
-      selectedDateObject.getDate() ===
-        currentTime.getDate()
-    );
-  };
+      if (!selectedDateObject) {
+        return false;
+      }
 
-  /*
-   * IMPORTANT:
-   *
-   * Do NOT filter slots on frontend based on current time.
-   *
-   * Backend SlotService already decides:
-   *
-   * available: true / false
-   * remaining: number
-   *
-   * Therefore frontend simply displays the backend result.
-   */
+      return (
+        selectedDateObject.getFullYear() ===
+          currentTime.getFullYear() &&
+        selectedDateObject.getMonth() ===
+          currentTime.getMonth() &&
+        selectedDateObject.getDate() ===
+          currentTime.getDate()
+      );
+    };
+
+  /* =======================================================
+     SLOTS
+  ======================================================= */
+
   const visibleSlots = opdSlots;
 
-  /*
-   * First available slot from the backend.
-   *
-   * This replaces selectedDoctor.nextSlot mock data.
-   */
   const nextAvailableSlot =
     visibleSlots.find(
       (slot) => slot.available
-    )?.time ?? 'No slots available';
+    )?.time ??
+    'No slots available';
 
-  /*
-   * Select a time slot.
-   */
+  /* =======================================================
+     SELECT SLOT
+  ======================================================= */
+
   const handleSlotSelect = (
     slotTime: string
   ) => {
@@ -610,11 +646,10 @@ export default function BookOPDPage() {
           item.time === slotTime
       );
 
-    /*
-     * Extra protection:
-     * only an available backend slot can be selected.
-     */
-    if (!slot || !slot.available) {
+    if (
+      !slot ||
+      !slot.available
+    ) {
       return;
     }
 
@@ -622,9 +657,10 @@ export default function BookOPDPage() {
     setError('');
   };
 
-  /*
-   * Change selected date.
-   */
+  /* =======================================================
+     DATE CHANGE
+  ======================================================= */
+
   const handleDateChange = (
     date: string
   ) => {
@@ -633,63 +669,112 @@ export default function BookOPDPage() {
     setError('');
   };
 
-  /*
-   * =====================================================
-   * CONFIRM BOOKING
-   * =====================================================
-   */
+  /* =======================================================
+     BOOKING + PAYMENT
+  ======================================================= */
+
   const handleBook = async () => {
-    if (!selectedSlot || submitting) {
+    if (
+      !selectedSlot ||
+      submitting
+    ) {
       return;
     }
 
     /*
-     * Final slot availability check before creating the appointment.
+     * Final availability check
      */
-    const selectedSlotData = opdSlots.find(
-      (slot) => slot.time === selectedSlot
-    );
+    const selectedSlotData =
+      opdSlots.find(
+        (slot) =>
+          slot.time === selectedSlot
+      );
 
-    if (!selectedSlotData || !selectedSlotData.available) {
+    if (
+      !selectedSlotData ||
+      !selectedSlotData.available
+    ) {
       setSelectedSlot('');
+
       setError(
         'This time slot is no longer available. Please select another slot.'
       );
+
       return;
     }
 
-    /* Patient validation */
-    if (!hasMinimumLength(patientName, 2)) {
-      setError('Full name must be at least 2 characters.');
+    /*
+     * Patient validation
+     */
+    if (
+      !hasMinimumLength(
+        patientName,
+        2
+      )
+    ) {
+      setError(
+        'Full name must be at least 2 characters.'
+      );
+
       return;
     }
-
-    if (!isTenDigitPhone(patientPhone)) {
-      setError('Mobile number must be exactly 10 digits.');
-      return;
-    }
-
-    if (!reasonForVisit.trim()) {
-      setError('Please enter your reason for visit.');
-      return;
-    }
-
-    const amount = Number(selectedDoctor.fee);
-
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setError('Invalid consultation fee. Please contact the hospital.');
-      return;
-    }
-
-    const razorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
 
     if (
-      paymentMethod === 'ONLINE' &&
+      !isTenDigitPhone(
+        patientPhone
+      )
+    ) {
+      setError(
+        'Mobile number must be exactly 10 digits.'
+      );
+
+      return;
+    }
+
+    if (
+      !reasonForVisit.trim()
+    ) {
+      setError(
+        'Please enter your reason for visit.'
+      );
+
+      return;
+    }
+
+    /*
+     * Consultation fee
+     */
+    const amount =
+      Number(selectedDoctor.fee);
+
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+      setError(
+        'Invalid consultation fee. Please contact the hospital.'
+      );
+
+      return;
+    }
+
+    /*
+     * Razorpay key required ONLY
+     * for online payment.
+     */
+    const razorpayKeyId =
+      import.meta.env
+        .VITE_RAZORPAY_KEY_ID;
+
+    if (
+      paymentMethod ===
+        'ONLINE' &&
       !razorpayKeyId
     ) {
       setError(
         'Razorpay Key ID is missing. Add VITE_RAZORPAY_KEY_ID to the frontend .env file and restart Vite.'
       );
+
       return;
     }
 
@@ -697,126 +782,60 @@ export default function BookOPDPage() {
     setError('');
 
     try {
-      /*
-       * STEP 1: Create the HospitalFlow appointment.
-       *
-       * The existing confirmBooking() is preserved, so the real
-       * backend slot/queue/token flow continues to work.
-       */
-      console.log('Creating HospitalFlow appointment...');
+      /* =================================================
+         STEP 1
+         CREATE APPOINTMENT
+      ================================================= */
 
-      const booking = await confirmBooking();
+      console.log(
+        'Creating HospitalFlow appointment...'
+      );
 
-      console.log('Appointment successfully created:', booking);
+      const booking =
+        await confirmBooking();
 
-      if (!booking?.appointmentId) {
+      console.log(
+        'Appointment successfully created:',
+        booking
+      );
+
+      if (
+        !booking?.appointmentId
+      ) {
         throw new Error(
           'Appointment was created but no appointment ID was returned.'
         );
       }
 
-      /*
-       * STEP 2: Create the payment record.
-       *
-       * ONLINE:
-       * - Backend creates a Razorpay order.
-       * - Razorpay Checkout is opened.
-       * - Backend verifies the Razorpay signature.
-       *
-       * PAY_AT_HOSPITAL:
-       * - Backend creates a PENDING payment record.
-       * - No Razorpay order is created.
-       * - Appointment is confirmed directly.
-       */
-      const createPaymentUrl =
-        `http://localhost:8080/api/payments/create?appointmentId=${encodeURIComponent(
-          booking.appointmentId
-        )}&amount=${encodeURIComponent(
-          amount
-        )}&paymentMethod=${encodeURIComponent(
-          paymentMethod
-        )}`;
-
-      const paymentResponse = await fetch(
-        createPaymentUrl,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const paymentData: unknown =
-        await paymentResponse.json();
-
-      if (!paymentResponse.ok) {
-        const backendMessage =
-          paymentData &&
-          typeof paymentData === 'object' &&
-          'error' in paymentData
-            ? String(
-                (paymentData as { error?: unknown }).error ??
-                  'Unable to create payment.'
-              )
-            : 'Unable to create payment.';
-
-        throw new Error(backendMessage);
-      }
+      /* =================================================
+         PAY AT HOSPITAL
+      ================================================= */
 
       if (
-        !paymentData ||
-        typeof paymentData !== 'object'
+        paymentMethod ===
+        'PAY_AT_HOSPITAL'
       ) {
-        throw new Error(
-          'Invalid payment response from server.'
-        );
-      }
-
-      const payment =
-        paymentData as BackendPayment;
-
-      if (!payment.id) {
-        throw new Error(
-          'Payment record was not created.'
-        );
-      }
-
-      /*
-       * =====================================================
-       * PAY AT HOSPITAL
-       * =====================================================
-       */
-      if (paymentMethod === 'PAY_AT_HOSPITAL') {
-
-        console.log(
-          'Appointment confirmed with Pay at Hospital:',
-          payment
+        sessionStorage.setItem(
+          'hospitalflow_payment_method',
+          'PAY_AT_HOSPITAL'
         );
 
-        /*
-         * No Razorpay verification is required.
-         * Payment intentionally remains PENDING.
-         */
-        navigate('/patient/confirmation');
+        localStorage.setItem(
+          'hospitalflow_payment_method',
+          'PAY_AT_HOSPITAL'
+        );
+
+        navigate(
+          '/patient/confirmation'
+        );
+
         return;
       }
 
-      /*
-       * =====================================================
-       * ONLINE PAYMENT
-       * =====================================================
-       */
+      /* =================================================
+         ONLINE PAYMENT
+      ================================================= */
 
-      if (!payment.razorpayOrderId) {
-        throw new Error(
-          'Payment was created but Razorpay order information is missing.'
-        );
-      }
-
-      /*
-       * STEP 3: Load Razorpay Checkout.js.
-       */
       const razorpayLoaded =
         await loadRazorpayScript();
 
@@ -829,891 +848,1213 @@ export default function BookOPDPage() {
         );
       }
 
-      /*
-       * STEP 4: Open Razorpay Checkout.
-       */
-      await new Promise<void>((resolve, reject) => {
+      /* =================================================
+         CREATE RAZORPAY ORDER
+      ================================================= */
 
-        let settled = false;
+      const createPaymentUrl =
+        `http://localhost:8080/api/payments/create?appointmentId=${encodeURIComponent(
+          booking.appointmentId
+        )}&amount=${encodeURIComponent(
+          amount
+        )}`;
 
-        const finishResolve = () => {
-          if (settled) return;
-          settled = true;
-          resolve();
-        };
+      const paymentResponse =
+        await fetch(
+          createPaymentUrl,
+          {
+            method: 'POST',
 
-        const finishReject = (
-          message: string
-        ) => {
-          if (settled) return;
-          settled = true;
-          reject(new Error(message));
-        };
-
-        const checkout =
-          new window.Razorpay({
-
-            key: razorpayKeyId as string,
-
-            amount:
-              Math.round(amount * 100),
-
-            currency:
-              payment.currency || 'INR',
-
-            name: 'HospitalFlow',
-
-            description:
-              `OPD Consultation - Appointment #${booking.appointmentId}`,
-
-            order_id:
-              payment.razorpayOrderId,
-
-            prefill: {
-              name: patientName,
-              contact: patientPhone,
+            headers: {
+              'Content-Type':
+                'application/json',
             },
-
-            theme: {
-              color: '#155ead',
-            },
-
-            /*
-             * STEP 5: Razorpay returns payment ID + signature.
-             * Send both to our backend for HMAC verification.
-             */
-            handler: async (
-              response
-            ) => {
-
-              try {
-
-                const verifyUrl =
-                  `http://localhost:8080/api/payments/verify?paymentId=${encodeURIComponent(
-                    payment.id
-                  )}&razorpayPaymentId=${encodeURIComponent(
-                    response.razorpay_payment_id
-                  )}&razorpaySignature=${encodeURIComponent(
-                    response.razorpay_signature
-                  )}`;
-
-                const verifyResponse =
-                  await fetch(
-                    verifyUrl,
-                    {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type':
-                          'application/json',
-                      },
-                    }
-                  );
-
-                const verifyData: unknown =
-                  await verifyResponse.json();
-
-                if (!verifyResponse.ok) {
-
-                  const verifyMessage =
-                    verifyData &&
-                    typeof verifyData ===
-                      'object' &&
-                    'error' in verifyData
-                      ? String(
-                          (
-                            verifyData as {
-                              error?: unknown;
-                            }
-                          ).error ??
-                            'Payment verification failed.'
-                        )
-                      : 'Payment verification failed.';
-
-                  finishReject(
-                    verifyMessage
-                  );
-
-                  return;
-                }
-
-                const verifiedPayment =
-                  verifyData as Partial<BackendPayment>;
-
-                if (
-                  verifiedPayment.paymentStatus !==
-                  'PAID'
-                ) {
-
-                  finishReject(
-                    'Payment was received but could not be verified.'
-                  );
-
-                  return;
-                }
-
-                console.log(
-                  'Razorpay payment verified successfully:',
-                  verifiedPayment
-                );
-
-                finishResolve();
-
-              } catch (
-                verificationError
-              ) {
-
-                console.error(
-                  'Payment verification error:',
-                  verificationError
-                );
-
-                finishReject(
-                  verificationError instanceof
-                    Error
-                    ? verificationError.message
-                    : 'Payment verification failed.'
-                );
-              }
-            },
-
-            modal: {
-
-              ondismiss: () => {
-
-                finishReject(
-                  'Payment was cancelled. Your appointment has not been confirmed as paid.'
-                );
-
-              },
-
-            },
-
-          });
-
-        checkout.on(
-          'payment.failed',
-          () => {
-
-            finishReject(
-              'Payment failed. Please try again or choose another payment method.'
-            );
-
           }
         );
 
-        checkout.open();
+      const paymentData: unknown =
+        await paymentResponse.json();
 
-      });
+      if (
+        !paymentResponse.ok
+      ) {
+        const backendMessage =
+          paymentData &&
+          typeof paymentData ===
+            'object' &&
+          'error' in paymentData
+            ? String(
+                (
+                  paymentData as {
+                    error?: unknown;
+                  }
+                ).error ??
+                  'Unable to create payment.'
+              )
+            : 'Unable to create payment.';
+
+        throw new Error(
+          backendMessage
+        );
+      }
+
+      if (
+        !paymentData ||
+        typeof paymentData !==
+          'object'
+      ) {
+        throw new Error(
+          'Invalid payment response from server.'
+        );
+      }
+
+      const payment =
+        paymentData as BackendPayment;
+
+      if (
+        !payment.id ||
+        !payment.razorpayOrderId
+      ) {
+        throw new Error(
+          'Payment was created but Razorpay order information is missing.'
+        );
+      }
+
+      /* =================================================
+         OPEN RAZORPAY
+      ================================================= */
+
+      await new Promise<void>(
+        (resolve, reject) => {
+          let settled = false;
+
+          const finishResolve =
+            () => {
+              if (settled) return;
+
+              settled = true;
+              resolve();
+            };
+
+          const finishReject =
+            (
+              message: string
+            ) => {
+              if (settled) return;
+
+              settled = true;
+              reject(
+                new Error(message)
+              );
+            };
+
+          const checkout =
+            new window.Razorpay({
+              key: razorpayKeyId,
+
+              amount:
+                Math.round(
+                  amount * 100
+                ),
+
+              currency:
+                payment.currency ||
+                'INR',
+
+              name:
+                'HospitalFlow',
+
+              description:
+                `OPD Consultation - Appointment #${booking.appointmentId}`,
+
+              order_id:
+                payment.razorpayOrderId,
+
+              prefill: {
+                name: patientName,
+                contact:
+                  patientPhone,
+              },
+
+              theme: {
+                color:
+                  '#16d9e3',
+              },
+
+              handler:
+                async (
+                  response
+                ) => {
+                  try {
+                    const verifyUrl =
+                      `http://localhost:8080/api/payments/verify?paymentId=${encodeURIComponent(
+                        payment.id
+                      )}&razorpayPaymentId=${encodeURIComponent(
+                        response.razorpay_payment_id
+                      )}&razorpaySignature=${encodeURIComponent(
+                        response.razorpay_signature
+                      )}`;
+
+                    const verifyResponse =
+                      await fetch(
+                        verifyUrl,
+                        {
+                          method:
+                            'POST',
+
+                          headers: {
+                            'Content-Type':
+                              'application/json',
+                          },
+                        }
+                      );
+
+                    const verifyData: unknown =
+                      await verifyResponse.json();
+
+                    if (
+                      !verifyResponse.ok
+                    ) {
+                      const verifyMessage =
+                        verifyData &&
+                        typeof verifyData ===
+                          'object' &&
+                        'error' in
+                          verifyData
+                          ? String(
+                              (
+                                verifyData as {
+                                  error?: unknown;
+                                }
+                              ).error ??
+                                'Payment verification failed.'
+                            )
+                          : 'Payment verification failed.';
+
+                      finishReject(
+                        verifyMessage
+                      );
+
+                      return;
+                    }
+
+                    const verifiedPayment =
+                      verifyData as Partial<BackendPayment>;
+
+                    if (
+                      verifiedPayment.paymentStatus !==
+                      'PAID'
+                    ) {
+                      finishReject(
+                        'Payment was received but could not be verified.'
+                      );
+
+                      return;
+                    }
+
+                    console.log(
+                      'Razorpay payment verified:',
+                      verifiedPayment
+                    );
+
+                    finishResolve();
+                  } catch (
+                    verificationError
+                  ) {
+                    console.error(
+                      'Payment verification error:',
+                      verificationError
+                    );
+
+                    finishReject(
+                      verificationError instanceof
+                        Error
+                        ? verificationError.message
+                        : 'Payment verification failed.'
+                    );
+                  }
+                },
+
+              modal: {
+                ondismiss:
+                  () => {
+                    finishReject(
+                      'Payment was cancelled. Please try again or choose Pay at Hospital.'
+                    );
+                  },
+              },
+            });
+
+          checkout.on(
+            'payment.failed',
+            () => {
+              finishReject(
+                'Payment failed. Please try again or choose another payment method.'
+              );
+            }
+          );
+
+          checkout.open();
+        }
+      );
 
       /*
-       * Only navigate after backend payment verification succeeds.
+       * Navigate ONLY after successful
+       * backend verification.
        */
-      navigate('/patient/confirmation');
-
-
+      navigate(
+        '/patient/confirmation'
+      );
     } catch (err) {
-      console.error('Booking/payment failed:', err);
+      console.error(
+        'Booking/payment failed:',
+        err
+      );
 
-      const message =
+      setError(
         err instanceof Error
           ? err.message
-          : 'Unable to complete appointment booking and payment.';
-
-      setError(message);
-
+          : 'Unable to complete appointment booking and payment.'
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
+  /* =======================================================
+     UI
+  ======================================================= */
+
   return (
-    <PatientLayout
-      step={3}
-      backTo="/patient/doctor"
-      maxWidth="max-w-[860px]"
-    >
+    <div className="relative min-h-screen text-white">
 
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
+      {/* BACKGROUND */}
+      <div className="fixed inset-0 -z-10 overflow-hidden bg-[#031326]">
 
-      <div className="mb-[24px]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(22,217,227,0.10),transparent_30%),radial-gradient(circle_at_85%_20%,rgba(59,130,246,0.08),transparent_28%),linear-gradient(180deg,#031326_0%,#020d1b_100%)]" />
 
-        <h1 className="font-bold text-[#142033] text-[24px]">
-          Book OPD Appointment
-        </h1>
-
-        <p className="font-normal text-[#526176] text-[14px] mt-[4px]">
-          Review your selections and choose a time slot.
-        </p>
+        <div className="absolute inset-0 opacity-[0.035] bg-[linear-gradient(rgba(255,255,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.5)_1px,transparent_1px)] bg-[size:40px_40px]" />
 
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-[14px] lg:gap-[18px]">
+      <PatientLayout
+        step={3}
+        backTo="/patient/doctor"
+        maxWidth="max-w-[1000px]"
+      >
 
-        {/* ===================================================
-            LEFT SIDE
-        =================================================== */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
 
-        <div className="flex-1 min-w-0 flex flex-col gap-[16px]">
+        <div className="mb-7">
+
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#16d9e3]/10 border border-[#16d9e3]/20 text-[#8ef8ff] text-[10px] font-semibold tracking-wide mb-4">
+
+            <span className="w-1.5 h-1.5 rounded-full bg-[#16d9e3] shadow-[0_0_10px_#16d9e3]" />
+
+            OPD BOOKING
+
+          </div>
+
+          <h1 className="text-white text-[28px] sm:text-[34px] font-bold tracking-[-0.03em]">
+
+            Book your{' '}
+
+            <span className="bg-gradient-to-r from-white via-cyan-100 to-[#16d9e3] bg-clip-text text-transparent">
+              OPD Appointment
+            </span>
+
+          </h1>
+
+          <p className="text-slate-400 text-[13px] mt-2">
+            Review your details, select a live slot and choose your payment method.
+          </p>
+
+        </div>
+
+        {/* =================================================
+            MAIN GRID
+        ================================================= */}
+
+        <div className="flex flex-col lg:flex-row gap-5">
 
           {/* =================================================
-              BOOKING SUMMARY
+              LEFT
           ================================================= */}
 
-          <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
+          <div className="flex-1 min-w-0 space-y-5">
 
-            <div className="flex items-center gap-[8px] mb-[16px] pb-[14px] border-b border-[#d8e1ec]">
+            {/* BOOKING SUMMARY */}
 
-              <div className="bg-[#18865b] h-[20px] rounded-[2px] w-[4px]" />
+            <div className="relative overflow-hidden rounded-[22px] border border-white/[0.08] bg-[#071b31]/90 backdrop-blur-xl p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
 
-              <p className="font-bold text-[#142033] text-[15px]">
-                Booking Summary
-              </p>
+              <div className="absolute -top-24 -right-24 w-56 h-56 rounded-full bg-cyan-400/10 blur-[70px]" />
 
-            </div>
+              <div className="relative flex items-center gap-3 mb-5">
 
-            <div className="flex flex-col gap-[12px]">
+                <div className="w-9 h-9 rounded-xl bg-[#16d9e3]/10 border border-[#16d9e3]/20 flex items-center justify-center">
 
-              {[
-                {
-                  label: 'Patient',
-                  value:
-                    patientName ||
-                    'Not entered',
-                },
-                {
-                  label: 'Hospital',
-                  value:
-                    selectedHospital.name,
-                },
-                {
-                  label: 'Department',
-                  value:
-                    selectedDepartment,
-                },
-                {
-                  label: 'Doctor',
-                  value:
-                    selectedDoctor.name,
-                },
-                {
-                  label: 'Specialization',
-                  value:
-                    selectedDoctor.specialization,
-                },
-                {
-                  label: 'Room',
-                  value:
-                    selectedDoctor.room ||
-                    'Room not assigned',
-                },
-                {
-                  label: 'Consultation Fee',
-                  value:
-                    `₹${selectedDoctor.fee}`,
-                },
-              ].map((row) => (
+                  <span className="text-[#16d9e3] text-sm">
+                    ✓
+                  </span>
 
-                <div
-                  key={row.label}
-                  className="flex items-center justify-between gap-[16px]"
-                >
+                </div>
 
-                  <p className="font-normal text-[#7b899c] text-[13px] shrink-0">
-                    {row.label}
+                <div>
+
+                  <p className="text-white font-bold text-[15px]">
+                    Booking Summary
                   </p>
 
-                  <p className="font-semibold text-[#142033] text-[13px] text-right">
-                    {row.value}
+                  <p className="text-slate-500 text-[10px]">
+                    Your selected hospital and doctor
                   </p>
 
                 </div>
 
-              ))}
+              </div>
 
-              <div className="flex items-center justify-between gap-[16px]">
+              <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-3">
 
-                <p className="font-normal text-[#7b899c] text-[13px]">
-                  Doctor Status
-                </p>
+                {[
+                  {
+                    label: 'Patient',
+                    value:
+                      patientName ||
+                      'Not entered',
+                  },
 
-                <StatusBadge
-                  status={
-                    selectedDoctor.status
-                  }
-                />
+                  {
+                    label: 'Hospital',
+                    value:
+                      selectedHospital.name,
+                  },
+
+                  {
+                    label: 'Department',
+                    value:
+                      selectedDepartment,
+                  },
+
+                  {
+                    label: 'Doctor',
+                    value:
+                      selectedDoctor.name,
+                  },
+
+                  {
+                    label: 'Specialization',
+                    value:
+                      selectedDoctor.specialization,
+                  },
+
+                  {
+                    label: 'Room',
+                    value:
+                      selectedDoctor.room ||
+                      'Room not assigned',
+                  },
+
+                  {
+                    label: 'Consultation Fee',
+                    value:
+                      `₹${selectedDoctor.fee}`,
+                  },
+                ].map(
+                  (row) => (
+                    <div
+                      key={
+                        row.label
+                      }
+                      className="rounded-xl border border-white/[0.06] bg-[#031326]/60 px-4 py-3"
+                    >
+
+                      <p className="text-[9px] uppercase tracking-[0.12em] text-slate-500 mb-1">
+                        {row.label}
+                      </p>
+
+                      <p className="text-[12px] font-semibold text-slate-100 truncate">
+                        {row.value}
+                      </p>
+
+                    </div>
+                  )
+                )}
+
+                <div className="rounded-xl border border-white/[0.06] bg-[#031326]/60 px-4 py-3">
+
+                  <p className="text-[9px] uppercase tracking-[0.12em] text-slate-500 mb-1">
+                    Doctor Status
+                  </p>
+
+                  <StatusBadge
+                    status={
+                      selectedDoctor.status
+                    }
+                  />
+
+                </div>
 
               </div>
 
             </div>
 
-          </div>
+            {/* REASON */}
 
-          {/* =================================================
-              REASON FOR VISIT
-          ================================================= */}
+            <div className="rounded-[22px] border border-white/[0.08] bg-[#071b31]/90 backdrop-blur-xl p-5 sm:p-6">
 
-          <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
+              <div className="flex items-center justify-between mb-3">
 
-            <div className="flex items-center gap-[8px] mb-[12px]">
+                <div>
 
-              <div className="bg-[#6750a4] h-[20px] rounded-[2px] w-[4px]" />
+                  <p className="text-white font-bold text-[15px]">
+                    Reason for Visit
+                    <span className="text-red-400 ml-1">
+                      *
+                    </span>
+                  </p>
 
-              <p className="font-bold text-[#142033] text-[15px]">
-                Reason for Visit
-              </p>
+                  <p className="text-slate-500 text-[11px] mt-1">
+                    Briefly describe why you are visiting the doctor.
+                  </p>
 
-              <span className="text-[#d14343] text-[13px]">
-                *
-              </span>
+                </div>
 
-            </div>
-
-            <p className="font-normal text-[#7b899c] text-[12px] mb-[8px]">
-              Briefly describe why you are visiting the doctor.
-            </p>
-
-            <textarea
-              value={reasonForVisit}
-              onChange={(event) => {
-                setReasonForVisit(
-                  event.target.value
-                );
-
-                setError('');
-              }}
-              disabled={submitting}
-              rows={4}
-              maxLength={500}
-              placeholder="Example: Fever and weakness for the last 2 days"
-              className="w-full resize-none rounded-[10px] border border-[#d8e1ec] bg-white px-[12px] py-[10px] text-[13px] text-[#142033] outline-none transition-colors placeholder:text-[#9aa7b8] focus:border-[#155ead] focus:ring-2 focus:ring-[#155ead]/10 disabled:bg-[#f4f7fb] disabled:cursor-not-allowed"
-            />
-
-            <div className="flex justify-end mt-[5px]">
-
-              <span className="text-[10px] text-[#7b899c]">
-                {reasonForVisit.length}/500
-              </span>
-
-            </div>
-
-          </div>
-
-          {/* =================================================
-              SELECT DATE
-          ================================================= */}
-
-          <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
-
-            <div className="flex items-center gap-[8px] mb-[14px]">
-
-              <div className="bg-[#2475d0] h-[20px] rounded-[2px] w-[4px]" />
-
-              <p className="font-bold text-[#142033] text-[15px]">
-                Select Date
-              </p>
-
-            </div>
-
-            <div className="flex gap-[8px] flex-wrap">
-
-              {DATES.map((date) => (
-
-                <button
-                  key={date}
-                  onClick={() =>
-                    handleDateChange(
-                      date
-                    )
-                  }
-                  disabled={submitting}
-                  className={`px-[14px] py-[9px] rounded-[10px] text-[12px] font-semibold border transition-colors ${
-                    selectedDate === date
-                      ? 'bg-[#155ead] text-white border-[#155ead]'
-                      : 'bg-white border-[#d8e1ec] text-[#526176] hover:bg-[#f4f7fb]'
-                  } ${
-                    submitting
-                      ? 'opacity-60 cursor-not-allowed'
-                      : 'cursor-pointer'
-                  }`}
-                >
-                  {date}
-                </button>
-
-              ))}
-
-            </div>
-
-          </div>
-
-          {/* =================================================
-              SELECT TIME SLOT
-          ================================================= */}
-
-          <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
-
-            <div className="flex items-center justify-between gap-[10px] mb-[14px]">
-
-              <div className="flex items-center gap-[8px]">
-
-                <div className="bg-[#6750a4] h-[20px] rounded-[2px] w-[4px]" />
-
-                <p className="font-bold text-[#142033] text-[15px]">
-                  Select Time Slot
-                </p>
-
-              </div>
-
-              {isSelectedDateToday() && (
-                <span className="text-[10px] font-semibold text-[#18865b] bg-[#e8f7f1] px-[8px] py-[4px] rounded-full">
-                  Live
+                <span className="text-[#16d9e3] text-[10px] font-semibold px-2 py-1 rounded-full bg-[#16d9e3]/10 border border-[#16d9e3]/15">
+                  Required
                 </span>
-              )}
+
+              </div>
+
+              <textarea
+                value={reasonForVisit}
+                onChange={(
+                  event
+                ) => {
+                  setReasonForVisit(
+                    event.target
+                      .value
+                  );
+
+                  setError('');
+                }}
+                disabled={
+                  submitting
+                }
+                rows={4}
+                maxLength={500}
+                placeholder="Example: Fever and weakness for the last 2 days"
+                className="w-full resize-none rounded-xl border border-white/[0.08] bg-[#031326]/70 px-4 py-3 text-[13px] text-white placeholder:text-slate-600 outline-none focus:border-[#16d9e3]/60 focus:ring-2 focus:ring-[#16d9e3]/10 transition disabled:opacity-50"
+              />
+
+              <div className="flex justify-end mt-1">
+
+                <span className="text-[9px] text-slate-600">
+                  {reasonForVisit.length}/500
+                </span>
+
+              </div>
 
             </div>
 
-            {/* =================================================
-                LOADING
-            ================================================= */}
+            {/* DATE */}
 
-            {slotsLoading ? (
+            <div className="rounded-[22px] border border-white/[0.08] bg-[#071b31]/90 backdrop-blur-xl p-5 sm:p-6">
 
-              <div className="bg-[#f4f7fb] border border-[#d8e1ec] rounded-[10px] px-[14px] py-[18px] text-center">
+              <div className="flex items-center justify-between mb-4">
 
-                <p className="font-semibold text-[#526176] text-[13px]">
-                  Loading available time slots...
-                </p>
+                <div>
 
-                <p className="font-normal text-[#7b899c] text-[11px] mt-[4px]">
-                  Checking live availability.
-                </p>
+                  <p className="text-white font-bold text-[15px]">
+                    Select Date
+                  </p>
 
-              </div>
+                  <p className="text-slate-500 text-[11px] mt-1">
+                    Choose your preferred OPD date.
+                  </p>
 
-            ) : visibleSlots.length === 0 ? (
+                </div>
 
-              <div className="bg-[#f4f7fb] border border-[#d8e1ec] rounded-[10px] px-[14px] py-[18px] text-center">
-
-                <p className="font-semibold text-[#526176] text-[13px]">
-                  No available time slots
-                </p>
-
-                <p className="font-normal text-[#7b899c] text-[11px] mt-[4px]">
-                  There are currently no slots returned by the server for this date.
-                  Please select another date.
-                </p>
+                <span className="text-[#8ef8ff] text-xs">
+                  📅
+                </span>
 
               </div>
 
-            ) : (
+              <div className="flex gap-2 flex-wrap">
 
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-[8px]">
-
-                {visibleSlots.map((slot) => {
-
-                  const isSelected =
-                    selectedSlot ===
-                    slot.time;
-
-                  return (
-
+                {DATES.map(
+                  (date) => (
                     <button
-                      key={slot.id}
+                      key={date}
+                      type="button"
                       onClick={() =>
-                        handleSlotSelect(
-                          slot.time
+                        handleDateChange(
+                          date
                         )
                       }
                       disabled={
-                        !slot.available ||
                         submitting
                       }
-                      className={`rounded-[10px] p-[10px] text-center border transition-colors ${
-                        !slot.available
-                          ? 'bg-[#f4f7fb] border-[#f4f7fb] opacity-50 cursor-not-allowed'
-                          : isSelected
-                          ? 'bg-[#155ead] border-[#155ead] text-white'
-                          : 'bg-white border-[#d8e1ec] hover:border-[#afc0d3] cursor-pointer'
+                      className={`px-4 py-2.5 rounded-xl text-[11px] font-semibold border transition-all ${
+                        selectedDate ===
+                        date
+                          ? 'bg-[#16d9e3] text-[#031326] border-[#16d9e3] shadow-[0_0_25px_rgba(22,217,227,0.18)]'
+                          : 'bg-[#031326]/60 text-slate-400 border-white/[0.08] hover:border-[#16d9e3]/40 hover:text-[#8ef8ff]'
+                      } ${
+                        submitting
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'cursor-pointer'
                       }`}
                     >
-
-                      <p
-                        className={`font-bold text-[12px] ${
-                          isSelected
-                            ? 'text-white'
-                            : slot.available
-                            ? 'text-[#142033]'
-                            : 'text-[#afc0d3]'
-                        }`}
-                      >
-                        {slot.time}
-                      </p>
-
-                      {slot.available ? (
-
-                        <p
-                          className={`font-normal text-[10px] mt-[2px] ${
-                            isSelected
-                              ? 'text-[rgba(255,255,255,0.8)]'
-                              : 'text-[#7b899c]'
-                          }`}
-                        >
-                          {slot.remaining} left
-                        </p>
-
-                      ) : (
-
-                        <p className="font-normal text-[#afc0d3] text-[10px] mt-[2px]">
-                          Full
-                        </p>
-
-                      )}
-
+                      {date}
                     </button>
-
-                  );
-
-                })}
+                  )
+                )}
 
               </div>
 
-            )}
+            </div>
 
-            {!slotsLoading &&
-              !selectedSlot &&
-              visibleSlots.length > 0 && (
+            {/* TIME SLOTS */}
 
-                <p className="font-normal text-[#a86508] text-[12px] mt-[10px]">
-                  Please select a time slot to continue.
-                </p>
+            <div className="rounded-[22px] border border-white/[0.08] bg-[#071b31]/90 backdrop-blur-xl p-5 sm:p-6">
+
+              <div className="flex items-center justify-between mb-4">
+
+                <div>
+
+                  <p className="text-white font-bold text-[15px]">
+                    Select Time Slot
+                  </p>
+
+                  <p className="text-slate-500 text-[11px] mt-1">
+                    Live availability from HospitalFlow.
+                  </p>
+
+                </div>
+
+                {isSelectedDateToday() && (
+                  <span className="inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#8ef8ff] bg-[#16d9e3]/10 border border-[#16d9e3]/20 px-2.5 py-1.5 rounded-full">
+
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#16d9e3] shadow-[0_0_8px_#16d9e3]" />
+
+                    LIVE
+
+                  </span>
+                )}
+
+              </div>
+
+              {slotsLoading ? (
+
+                <div className="rounded-xl border border-white/[0.07] bg-[#031326]/60 px-5 py-7 text-center">
+
+                  <div className="w-8 h-8 mx-auto rounded-full border-2 border-white/10 border-t-[#16d9e3] animate-spin mb-3" />
+
+                  <p className="text-slate-300 font-semibold text-[12px]">
+                    Loading available slots...
+                  </p>
+
+                  <p className="text-slate-600 text-[10px] mt-1">
+                    Checking live availability.
+                  </p>
+
+                </div>
+
+              ) : visibleSlots.length === 0 ? (
+
+                <div className="rounded-xl border border-white/[0.07] bg-[#031326]/60 px-5 py-7 text-center">
+
+                  <div className="text-2xl mb-2">
+                    🕐
+                  </div>
+
+                  <p className="text-slate-300 font-semibold text-[12px]">
+                    No available time slots
+                  </p>
+
+                  <p className="text-slate-600 text-[10px] mt-1">
+                    Please select another date.
+                  </p>
+
+                </div>
+
+              ) : (
+
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+
+                  {visibleSlots.map(
+                    (slot) => {
+                      const isSelected =
+                        selectedSlot ===
+                        slot.time;
+
+                      return (
+                        <button
+                          key={
+                            slot.id
+                          }
+                          type="button"
+                          onClick={() =>
+                            handleSlotSelect(
+                              slot.time
+                            )
+                          }
+                          disabled={
+                            !slot.available ||
+                            submitting
+                          }
+                          className={`rounded-xl p-3 text-center border transition-all ${
+                            !slot.available
+                              ? 'bg-[#020d1b] border-white/[0.03] opacity-35 cursor-not-allowed'
+                              : isSelected
+                              ? 'bg-[#16d9e3] border-[#16d9e3] text-[#031326] shadow-[0_0_25px_rgba(22,217,227,0.20)]'
+                              : 'bg-[#031326]/60 border-white/[0.07] hover:border-[#16d9e3]/40 hover:bg-[#16d9e3]/5 cursor-pointer'
+                          }`}
+                        >
+
+                          <p
+                            className={`font-bold text-[11px] ${
+                              isSelected
+                                ? 'text-[#031326]'
+                                : slot.available
+                                ? 'text-white'
+                                : 'text-slate-600'
+                            }`}
+                          >
+                            {
+                              slot.time
+                            }
+                          </p>
+
+                          {slot.available ? (
+                            <p
+                              className={`text-[9px] mt-1 ${
+                                isSelected
+                                  ? 'text-[#031326]/70'
+                                  : 'text-slate-500'
+                              }`}
+                            >
+                              {
+                                slot.remaining
+                              } left
+                            </p>
+                          ) : (
+                            <p className="text-slate-700 text-[9px] mt-1">
+                              Full
+                            </p>
+                          )}
+
+                        </button>
+                      );
+                    }
+                  )}
+
+                </div>
 
               )}
 
+              {!slotsLoading &&
+                !selectedSlot &&
+                visibleSlots.length >
+                  0 && (
+                  <p className="text-amber-400/80 text-[10px] mt-3">
+                    Select a time slot to continue.
+                  </p>
+                )}
+
+            </div>
+
           </div>
 
+          {/* =================================================
+              RIGHT
+          ================================================= */}
+
+          <div className="w-full lg:w-[270px] lg:shrink-0 space-y-4">
+
+            {/* QUEUE */}
+
+            <div className="rounded-[22px] border border-white/[0.08] bg-[#071b31]/90 backdrop-blur-xl p-5">
+
+              <div className="flex items-center justify-between mb-5">
+
+                <div>
+
+                  <p className="text-white font-bold text-[14px]">
+                    Queue Summary
+                  </p>
+
+                  <p className="text-slate-600 text-[9px] mt-1">
+                    Real-time OPD status
+                  </p>
+
+                </div>
+
+                <div className="w-9 h-9 rounded-xl bg-[#16d9e3]/10 border border-[#16d9e3]/15 flex items-center justify-center">
+                  <span className="text-[#16d9e3] text-sm">
+                    ≋
+                  </span>
+                </div>
+
+              </div>
+
+              {queueError && (
+                <div className="rounded-lg border border-red-400/10 bg-red-400/5 px-3 py-2 mb-3">
+
+                  <p className="text-red-300 text-[9px]">
+                    {queueError}
+                  </p>
+
+                </div>
+              )}
+
+              <div className="space-y-2">
+
+                {[
+                  {
+                    label:
+                      'Patients today',
+                    value:
+                      queueLoading
+                        ? '...'
+                        : patientsToday,
+                  },
+
+                  {
+                    label:
+                      'Currently waiting',
+                    value:
+                      queueLoading
+                        ? '...'
+                        : currentlyWaiting,
+                  },
+
+                  {
+                    label:
+                      'Est. wait',
+                    value:
+                      queueLoading
+                        ? '...'
+                        : currentlyWaiting ===
+                          0
+                        ? 'No wait'
+                        : `~${
+                            currentlyWaiting *
+                            10
+                          } min`,
+                  },
+
+                  {
+                    label:
+                      'Next slot',
+                    value:
+                      nextAvailableSlot,
+                  },
+                ].map(
+                  (row) => (
+                    <div
+                      key={
+                        row.label
+                      }
+                      className="flex items-center justify-between py-2.5 border-b border-white/[0.05] last:border-0"
+                    >
+
+                      <p className="text-slate-500 text-[10px]">
+                        {row.label}
+                      </p>
+
+                      <p className="text-slate-200 font-bold text-[11px] text-right">
+                        {row.value}
+                      </p>
+
+                    </div>
+                  )
+                )}
+
+              </div>
+
+            </div>
+
+            {/* HOW IT WORKS */}
+
+            <div className="rounded-[20px] border border-[#16d9e3]/15 bg-[#16d9e3]/5 p-4">
+
+              <div className="flex items-center gap-2 mb-2">
+
+                <span className="text-[#16d9e3]">
+                  ✦
+                </span>
+
+                <p className="text-[#8ef8ff] font-bold text-[11px]">
+                  How it works
+                </p>
+
+              </div>
+
+              <p className="text-slate-500 text-[10px] leading-[1.7]">
+                After booking, you'll receive a real token number. Track your position in the live queue and visit when it is your turn.
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
 
         {/* =================================================
             PAYMENT METHOD
         ================================================= */}
 
-        <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[20px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
+        <div className="relative overflow-hidden mt-5 rounded-[22px] border border-white/[0.08] bg-[#071b31]/90 backdrop-blur-xl p-5 sm:p-6">
 
-          <div className="flex items-center gap-[8px] mb-[6px]">
+          <div className="absolute -top-20 right-0 w-52 h-52 rounded-full bg-cyan-400/5 blur-[65px]" />
 
-            <div className="bg-[#18865b] h-[20px] rounded-[2px] w-[4px]" />
+          <div className="relative flex items-center justify-between gap-4 mb-5">
 
-            <p className="font-bold text-[#142033] text-[15px]">
-              Payment Method
-            </p>
+            <div>
 
-          </div>
+              <p className="text-white font-bold text-[15px]">
+                Payment Method
+              </p>
 
-          <p className="font-normal text-[#7b899c] text-[12px] mb-[14px]">
-            Choose how you want to pay your consultation fee.
-          </p>
+              <p className="text-slate-500 text-[10px] mt-1">
+                Choose how you would like to pay for your OPD consultation.
+              </p>
 
-          <div className="flex flex-col gap-[10px]">
+            </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentMethod('ONLINE');
-                setError('');
-              }}
-              disabled={submitting}
-              className={`w-full text-left rounded-[12px] border p-[14px] transition-colors ${
-                paymentMethod === 'ONLINE'
-                  ? 'border-[#155ead] bg-[#eef6ff]'
-                  : 'border-[#d8e1ec] bg-white hover:bg-[#f8fafc]'
-              } ${
-                submitting
-                  ? 'opacity-60 cursor-not-allowed'
-                  : 'cursor-pointer'
-              }`}
-            >
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.06]">
 
-              <div className="flex items-start gap-[12px]">
-
-                <div
-                  className={`mt-[2px] h-[18px] w-[18px] rounded-full border flex items-center justify-center shrink-0 ${
-                    paymentMethod === 'ONLINE'
-                      ? 'border-[#155ead]'
-                      : 'border-[#9aa7b8]'
-                  }`}
-                >
-                  {paymentMethod === 'ONLINE' && (
-                    <div className="h-[8px] w-[8px] rounded-full bg-[#155ead]" />
-                  )}
-                </div>
-
-                <div className="min-w-0">
-
-                  <p className="font-bold text-[#142033] text-[13px]">
-                    Pay Online
-                  </p>
-
-                  <p className="font-normal text-[#526176] text-[11px] mt-[3px] leading-relaxed">
-                    Secure payment through Razorpay using UPI, card, net banking or wallet.
-                  </p>
-
-                </div>
-
-              </div>
-
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentMethod('PAY_AT_HOSPITAL');
-                setError('');
-              }}
-              disabled={submitting}
-              className={`w-full text-left rounded-[12px] border p-[14px] transition-colors ${
-                paymentMethod === 'PAY_AT_HOSPITAL'
-                  ? 'border-[#18865b] bg-[#effaf6]'
-                  : 'border-[#d8e1ec] bg-white hover:bg-[#f8fafc]'
-              } ${
-                submitting
-                  ? 'opacity-60 cursor-not-allowed'
-                  : 'cursor-pointer'
-              }`}
-            >
-
-              <div className="flex items-start gap-[12px]">
-
-                <div
-                  className={`mt-[2px] h-[18px] w-[18px] rounded-full border flex items-center justify-center shrink-0 ${
-                    paymentMethod === 'PAY_AT_HOSPITAL'
-                      ? 'border-[#18865b]'
-                      : 'border-[#9aa7b8]'
-                  }`}
-                >
-                  {paymentMethod === 'PAY_AT_HOSPITAL' && (
-                    <div className="h-[8px] w-[8px] rounded-full bg-[#18865b]" />
-                  )}
-                </div>
-
-                <div className="min-w-0">
-
-                  <p className="font-bold text-[#142033] text-[13px]">
-                    Pay at Hospital
-                  </p>
-
-                  <p className="font-normal text-[#526176] text-[11px] mt-[3px] leading-relaxed">
-                    Confirm your appointment now and pay the consultation fee at the hospital.
-                  </p>
-
-                </div>
-
-              </div>
-
-            </button>
-
-          </div>
-
-          <div className="mt-[12px] rounded-[9px] bg-[#f4f7fb] px-[11px] py-[9px]">
-
-            <div className="flex items-center justify-between gap-[12px]">
-
-              <span className="font-normal text-[#7b899c] text-[11px]">
-                Consultation fee
+              <span className="text-slate-500 text-[9px]">
+                Consultation
               </span>
 
-              <span className="font-bold text-[#142033] text-[13px]">
+              <span className="text-[#8ef8ff] font-bold text-[11px]">
                 ₹{selectedDoctor.fee}
               </span>
 
             </div>
 
-            {paymentMethod === 'PAY_AT_HOSPITAL' && (
-              <p className="font-normal text-[#526176] text-[10px] mt-[5px] leading-relaxed">
-                No online payment will be charged now.
-              </p>
-            )}
-
           </div>
 
-        </div>
+          <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-3">
 
+            {/* ONLINE */}
 
-        </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentMethod(
+                  'ONLINE'
+                );
 
-        {/* ===================================================
-            RIGHT SIDE
-        =================================================== */}
+                setError('');
+              }}
+              disabled={submitting}
+              className={`group relative text-left rounded-[16px] p-[1px] transition-all ${
+                paymentMethod ===
+                'ONLINE'
+                  ? 'bg-gradient-to-r from-[#16d9e3] to-blue-400'
+                  : 'bg-white/[0.07]'
+              } ${
+                submitting
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'cursor-pointer'
+              }`}
+            >
 
-        <div className="w-full lg:w-[240px] lg:shrink-0 flex flex-col gap-[14px]">
+              <div className={`rounded-[15px] p-4 h-full ${
+                paymentMethod ===
+                'ONLINE'
+                  ? 'bg-[#06182b]'
+                  : 'bg-[#031326]/70 group-hover:bg-[#06182b]'
+              }`}>
 
-          {/* =================================================
-              TODAY'S QUEUE
-          ================================================= */}
+                <div className="flex items-start justify-between gap-3">
 
-          <div className="bg-white border border-[#d8e1ec] rounded-[14px] p-[18px] shadow-[0px_2px_8px_0px_rgba(19,36,58,0.04)]">
+                  <div className="flex gap-3">
 
-            <p className="font-bold text-[#142033] text-[14px] mb-[12px]">
-              Queue Summary
-            </p>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+                      paymentMethod ===
+                      'ONLINE'
+                        ? 'bg-[#16d9e3]/10 border-[#16d9e3]/25'
+                        : 'bg-white/[0.03] border-white/[0.06]'
+                    }`}>
 
-            {queueError && (
-              <p className="text-[#b42318] text-[11px] mb-[8px]">
-                {queueError}
-              </p>
-            )}
+                      <span className="text-lg">
+                        💳
+                      </span>
 
-            <div className="flex flex-col gap-[6px]">
+                    </div>
 
-              {[
-                {
-                  label: 'Patients today',
-                  value:
-                    queueLoading
-                      ? '...'
-                      : patientsToday,
-                },
-                {
-                  label: 'Currently waiting',
-                  value:
-                    queueLoading
-                      ? '...'
-                      : currentlyWaiting,
-                },
-                {
-                  label: 'Est. wait',
-                  value:
-                    queueLoading
-                      ? '...'
-                      : currentlyWaiting === 0
-                      ? 'No wait'
-                      : `~${currentlyWaiting * 10} min`,
-                },
-                {
-                  label: 'Next slot',
-                  value:
-                    nextAvailableSlot,
-                },
-              ].map((row) => (
+                    <div>
 
-                <div
-                  key={row.label}
-                  className="flex items-center justify-between py-[5px] border-b border-[#f4f7fb] last:border-0"
-                >
+                      <p className="text-white font-bold text-[13px]">
+                        Pay Online
+                      </p>
 
-                  <p className="font-normal text-[#526176] text-[12px]">
-                    {row.label}
-                  </p>
+                      <p className="text-slate-500 text-[10px] mt-1 leading-relaxed">
+                        Secure payment through Razorpay using UPI, card, net banking or wallet.
+                      </p>
 
-                  <p className="font-bold text-[#142033] text-[12px]">
-                    {row.value}
-                  </p>
+                    </div>
+
+                  </div>
+
+                  <span className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+                    paymentMethod ===
+                    'ONLINE'
+                      ? 'border-[#16d9e3] bg-[#16d9e3]'
+                      : 'border-slate-700'
+                  }`}>
+
+                    {paymentMethod ===
+                      'ONLINE' && (
+                      <span className="w-2 h-2 rounded-full bg-[#031326]" />
+                    )}
+
+                  </span>
 
                 </div>
 
-              ))}
+                {paymentMethod ===
+                  'ONLINE' && (
+                  <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center gap-2 text-[9px] text-[#8ef8ff]">
+
+                    <span>
+                      ✓
+                    </span>
+
+                    Instant payment confirmation
+
+                  </div>
+                )}
+
+              </div>
+
+            </button>
+
+            {/* PAY AT HOSPITAL */}
+
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentMethod(
+                  'PAY_AT_HOSPITAL'
+                );
+
+                setError('');
+              }}
+              disabled={submitting}
+              className={`group relative text-left rounded-[16px] p-[1px] transition-all ${
+                paymentMethod ===
+                'PAY_AT_HOSPITAL'
+                  ? 'bg-gradient-to-r from-[#16d9e3] to-emerald-400'
+                  : 'bg-white/[0.07]'
+              } ${
+                submitting
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'cursor-pointer'
+              }`}
+            >
+
+              <div className={`rounded-[15px] p-4 h-full ${
+                paymentMethod ===
+                'PAY_AT_HOSPITAL'
+                  ? 'bg-[#06182b]'
+                  : 'bg-[#031326]/70 group-hover:bg-[#06182b]'
+              }`}>
+
+                <div className="flex items-start justify-between gap-3">
+
+                  <div className="flex gap-3">
+
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+                      paymentMethod ===
+                      'PAY_AT_HOSPITAL'
+                        ? 'bg-emerald-400/10 border-emerald-400/20'
+                        : 'bg-white/[0.03] border-white/[0.06]'
+                    }`}>
+
+                      <span className="text-lg">
+                        🏥
+                      </span>
+
+                    </div>
+
+                    <div>
+
+                      <p className="text-white font-bold text-[13px]">
+                        Pay at Hospital
+                      </p>
+
+                      <p className="text-slate-500 text-[10px] mt-1 leading-relaxed">
+                        Reserve your appointment now and pay the consultation fee at hospital reception.
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                  <span className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+                    paymentMethod ===
+                    'PAY_AT_HOSPITAL'
+                      ? 'border-emerald-400 bg-emerald-400'
+                      : 'border-slate-700'
+                  }`}>
+
+                    {paymentMethod ===
+                      'PAY_AT_HOSPITAL' && (
+                      <span className="w-2 h-2 rounded-full bg-[#031326]" />
+                    )}
+
+                  </span>
+
+                </div>
+
+                {paymentMethod ===
+                  'PAY_AT_HOSPITAL' && (
+                  <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center gap-2 text-[9px] text-emerald-300">
+
+                    <span>
+                      ✓
+                    </span>
+
+                    No online payment required now
+
+                  </div>
+                )}
+
+              </div>
+
+            </button>
+
+          </div>
+
+          {/* PAY AT HOSPITAL INFO */}
+
+          {paymentMethod ===
+            'PAY_AT_HOSPITAL' && (
+            <div className="relative mt-3 rounded-xl border border-amber-300/10 bg-amber-300/5 px-4 py-3">
+
+              <div className="flex items-start gap-2.5">
+
+                <span className="text-amber-300 text-sm">
+                  ℹ
+                </span>
+
+                <p className="text-amber-100/70 text-[10px] leading-[1.7]">
+                  Your appointment will be confirmed without an online payment. Please pay the consultation fee at the hospital reception during your visit.
+                </p>
+
+              </div>
 
             </div>
-
-          </div>
-
-          {/* =================================================
-              HOW IT WORKS
-          ================================================= */}
-
-          <div className="bg-[#eaf3fd] border border-[#c3d9f7] rounded-[12px] p-[14px]">
-
-            <p className="font-bold text-[#155ead] text-[12px] mb-[4px]">
-              💡 How it works
-            </p>
-
-            <p className="font-normal text-[#526176] text-[12px] leading-relaxed">
-              After booking, you'll receive a real token number.
-              Track your position in the live queue and visit when
-              it's your turn.
-            </p>
-
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* =====================================================
-          ERROR
-      ===================================================== */}
-
-      {error && (
-
-        <div className="mt-[18px]">
-
-          <ErrorState
-            compact
-            title="Booking could not be completed"
-            description={error}
-            onRetry={handleBook}
-            retryLabel="Retry booking"
-          />
-
-        </div>
-
-      )}
-
-      {/* =====================================================
-          CONFIRM BOOKING
-      ===================================================== */}
-
-      <div className="mt-[24px] flex items-center gap-[12px] flex-wrap">
-
-        <Button
-          variant="primary"
-          onClick={handleBook}
-          disabled={
-            !selectedSlot ||
-            submitting ||
-            slotsLoading
-          }
-          loading={submitting}
-          className="px-[32px] py-[13px] text-[15px]"
-        >
-          {submitting
-            ? paymentMethod === 'ONLINE'
-              ? 'Processing Payment...'
-              : 'Confirming Appointment...'
-            : paymentMethod === 'ONLINE'
-            ? 'Confirm & Pay Online'
-            : 'Confirm & Pay at Hospital'}
-        </Button>
-
-        <div className="text-[#526176] text-[13px]">
-
-          {selectedSlot ? (
-
-            <span>
-
-              Slot:{' '}
-
-              <span className="font-semibold text-[#142033]">
-                {selectedSlot}
-              </span>{' '}
-
-              on{' '}
-
-              <span className="font-semibold text-[#142033]">
-                {selectedDate}
-              </span>
-
-            </span>
-
-          ) : (
-
-            'Select a slot to book'
-
           )}
 
         </div>
 
-      </div>
+        {/* =================================================
+            ERROR
+        ================================================= */}
 
-    </PatientLayout>
+        {error && (
+          <div className="mt-4">
+
+            <div className="rounded-2xl border border-red-400/15 bg-red-400/5 p-1">
+
+              <ErrorState
+                compact
+                title="Booking could not be completed"
+                description={
+                  error
+                }
+                onRetry={
+                  handleBook
+                }
+                retryLabel="Retry booking"
+              />
+
+            </div>
+
+          </div>
+        )}
+
+        {/* =================================================
+            FINAL CTA
+        ================================================= */}
+
+        <div className="mt-5 rounded-[22px] border border-white/[0.08] bg-[#071b31]/90 backdrop-blur-xl p-4 sm:p-5">
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+
+            <div>
+
+              <p className="text-slate-500 text-[9px] uppercase tracking-[0.12em] mb-1">
+                Selected appointment
+              </p>
+
+              {selectedSlot ? (
+
+                <p className="text-white text-[13px] font-semibold">
+
+                  {selectedSlot}
+
+                  <span className="text-slate-600 mx-2">
+                    •
+                  </span>
+
+                  {selectedDate}
+
+                </p>
+
+              ) : (
+
+                <p className="text-slate-600 text-[12px]">
+                  Select a time slot to continue
+                </p>
+
+              )}
+
+            </div>
+
+            <Button
+              variant="primary"
+              onClick={
+                handleBook
+              }
+              disabled={
+                !selectedSlot ||
+                submitting ||
+                slotsLoading
+              }
+              loading={
+                submitting
+              }
+              className="w-full sm:w-auto min-w-[230px] justify-center px-6 py-3 text-[13px] !bg-[#16d9e3] !text-[#031326] hover:!bg-[#5deaf0] !shadow-[0_0_30px_rgba(22,217,227,0.18)]"
+            >
+
+              {submitting
+                ? paymentMethod ===
+                  'ONLINE'
+                  ? 'Processing Payment...'
+                  : 'Confirming Appointment...'
+                : paymentMethod ===
+                  'ONLINE'
+                ? 'Confirm & Pay Online'
+                : 'Confirm & Pay at Hospital'}
+
+            </Button>
+
+          </div>
+
+        </div>
+
+      </PatientLayout>
+
+    </div>
   );
 }

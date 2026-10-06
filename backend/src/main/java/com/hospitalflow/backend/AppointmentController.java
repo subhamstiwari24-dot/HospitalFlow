@@ -1,5 +1,7 @@
 package com.hospitalflow.backend;
 
+import com.hospitalflow.backend.dto.QueuePositionResponse;
+import com.hospitalflow.backend.dto.WaitingTimeResponse;
 import com.hospitalflow.backend.entity.Appointment;
 import com.hospitalflow.backend.entity.Payment;
 import com.hospitalflow.backend.repository.AppointmentRepository;
@@ -26,7 +28,7 @@ public class AppointmentController {
     private final AppointmentService appointmentService;
     private final AppointmentRepository appointmentRepository;
     private final PaymentService paymentService;
-        private final HospitalSettingsRepository hospitalSettingsRepository;
+    private final HospitalSettingsRepository hospitalSettingsRepository;
 
     public AppointmentController(
             AppointmentService appointmentService,
@@ -99,6 +101,36 @@ public class AppointmentController {
                         doctorId,
                         appointmentDate
                 )
+        );
+    }
+
+
+    // =====================================================
+    // GET PATIENT QUEUE POSITION
+    // =====================================================
+
+    @GetMapping("/{id}/queue-position")
+    public ResponseEntity<QueuePositionResponse> getQueuePosition(
+            @PathVariable Long id
+    ) {
+
+        return ResponseEntity.ok(
+                appointmentService.getQueuePosition(id)
+        );
+    }
+
+
+    // =====================================================
+    // GET PATIENT ESTIMATED WAITING TIME
+    // =====================================================
+
+    @GetMapping("/{id}/waiting-time")
+    public ResponseEntity<WaitingTimeResponse> getWaitingTime(
+            @PathVariable Long id
+    ) {
+
+        return ResponseEntity.ok(
+                appointmentService.getWaitingTime(id)
         );
     }
 
@@ -245,14 +277,39 @@ public class AppointmentController {
                                     )
                             );
 
-                        if (appointment.getHospital() != null) {
-                                boolean cancellationEnabled = hospitalSettingsRepository.findByHospital_Id(appointment.getHospital().getId())
-                                                .map(settings -> Boolean.TRUE.equals(settings.getCancellationEnabled()))
-                                                .orElse(true);
-                                if (!cancellationEnabled) {
-                                        return ResponseEntity.badRequest().body(Map.of("error", "Appointment cancellation is currently disabled."));
-                                }
-                        }
+
+            // =================================================
+            // CHECK HOSPITAL CANCELLATION SETTING
+            // =================================================
+
+            if (appointment.getHospital() != null) {
+
+                boolean cancellationEnabled =
+                        hospitalSettingsRepository
+                                .findByHospital_Id(
+                                        appointment
+                                                .getHospital()
+                                                .getId()
+                                )
+                                .map(settings ->
+                                        Boolean.TRUE.equals(
+                                                settings.getCancellationEnabled()
+                                        )
+                                )
+                                .orElse(true);
+
+                if (!cancellationEnabled) {
+
+                    return ResponseEntity
+                            .badRequest()
+                            .body(
+                                    Map.of(
+                                            "error",
+                                            "Appointment cancellation is currently disabled."
+                                    )
+                            );
+                }
+            }
 
 
             // =================================================
@@ -316,7 +373,6 @@ public class AppointmentController {
                     "CANCELLED"
             );
 
-
             /*
              * IMPORTANT:
              *
@@ -373,28 +429,23 @@ public class AppointmentController {
                                 payment.getId()
                         );
 
-
                 Map<String, Object> response =
                         new HashMap<>();
-
 
                 response.put(
                         "message",
                         "Appointment cancelled and refund initiated."
                 );
 
-
                 response.put(
                         "appointment",
                         cancelledAppointment
                 );
 
-
                 response.put(
                         "payment",
                         refundPayment
                 );
-
 
                 return ResponseEntity.ok(
                         response
@@ -409,24 +460,20 @@ public class AppointmentController {
             Map<String, Object> response =
                     new HashMap<>();
 
-
             response.put(
                     "message",
                     "Appointment cancelled. No paid payment was found, so no refund was initiated."
             );
-
 
             response.put(
                     "appointment",
                     cancelledAppointment
             );
 
-
             response.put(
                     "payment",
                     payment
             );
-
 
             return ResponseEntity.ok(
                     response
@@ -436,7 +483,6 @@ public class AppointmentController {
         } catch (IllegalStateException e) {
 
             e.printStackTrace();
-
 
             /*
              * Appointment has already been marked CANCELLED.
@@ -460,7 +506,6 @@ public class AppointmentController {
         } catch (RuntimeException e) {
 
             e.printStackTrace();
-
 
             return ResponseEntity
                     .status(
@@ -498,9 +543,7 @@ public class AppointmentController {
                     .build();
         }
 
-
         appointmentService.deleteAppointment(id);
-
 
         return ResponseEntity
                 .noContent()
