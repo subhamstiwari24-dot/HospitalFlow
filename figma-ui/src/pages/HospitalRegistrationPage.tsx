@@ -97,7 +97,7 @@ export default function HospitalRegistrationPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#031326] text-white relative overflow-hidden">
+      <div className="hospital-registration-page min-h-screen bg-[#031326] text-white relative overflow-hidden">
 
         {/* Background */}
 
@@ -989,70 +989,72 @@ export default function HospitalRegistrationPage() {
                   SECTION 03
               ================================= */}
 
-              <FormSectionHeader
-                number="03"
-                title="Verification"
-                description="Add your registration or verification document reference."
-              />
+              <div className="verification-section">
+                <FormSectionHeader
+                  number="03"
+                  title="Verification"
+                  description="Add your registration or verification document reference."
+                />
 
-              <InputField
-                label="Verification Document"
-                name="verificationDocument"
-                value={formData.verificationDocument}
-                onChange={handleChange}
-                placeholder="Document name or reference"
-              />
+                <InputField
+                  label="Verification Document"
+                  name="verificationDocument"
+                  value={formData.verificationDocument}
+                  onChange={handleChange}
+                  placeholder="Document name or reference"
+                />
 
-              {/* Pending info */}
+                {/* Pending info */}
 
-              <div
-                className="
-                  mt-5
-                  rounded-[14px]
-                  bg-[#16d9e3]/[0.05]
-                  border
-                  border-[#16d9e3]/15
-                  p-4
-                "
-              >
+                <div
+                  className="
+                    mt-5
+                    rounded-[14px]
+                    bg-[#16d9e3]/[0.05]
+                    border
+                    border-[#16d9e3]/15
+                    p-4
+                  "
+                >
 
-                <div className="flex gap-3">
+                  <div className="flex gap-3">
 
-                  <div
-                    className="
-                      flex-shrink-0
-                      w-8
-                      h-8
-                      rounded-[9px]
-                      bg-[#16d9e3]/10
-                      flex
-                      items-center
-                      justify-center
-                      text-[#16d9e3]
-                      text-[12px]
-                      font-bold
-                    "
-                  >
-                    i
+                    <div
+                      className="
+                        flex-shrink-0
+                        w-8
+                        h-8
+                        rounded-[9px]
+                        bg-[#16d9e3]/10
+                        flex
+                        items-center
+                        justify-center
+                        text-[#16d9e3]
+                        text-[12px]
+                        font-bold
+                      "
+                    >
+                      i
+                    </div>
+
+                    <p
+                      className="
+                        text-slate-400
+                        text-[12px]
+                        leading-[1.7]
+                      "
+                    >
+                      Your registration will remain{' '}
+                      <strong className="text-[#8ef8ff]">
+                        PENDING
+                      </strong>{' '}
+                      until it is reviewed by the
+                      HospitalFlow Super Admin.
+                    </p>
+
                   </div>
 
-                  <p
-                    className="
-                      text-slate-400
-                      text-[12px]
-                      leading-[1.7]
-                    "
-                  >
-                    Your registration will remain{' '}
-                    <strong className="text-[#8ef8ff]">
-                      PENDING
-                    </strong>{' '}
-                    until it is reviewed by the
-                    HospitalFlow Super Admin.
-                  </p>
-
                 </div>
-
               </div>
 
               {/* =================================

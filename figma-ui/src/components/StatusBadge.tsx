@@ -3,19 +3,19 @@ import type { DoctorStatus, AppointmentStatus, ConsultationStatus } from '../typ
 type BadgeVariant = DoctorStatus | AppointmentStatus | ConsultationStatus | string;
 
 const variantStyles: Record<string, { bg: string; text: string; dot: string }> = {
-  Available: { bg: 'bg-[#e7f6ef]', text: 'text-[#18865b]', dot: 'bg-[#18865b]' },
-  Busy: { bg: 'bg-[#fef3f2]', text: 'text-[#c53a45]', dot: 'bg-[#c53a45]' },
-  'On Break': { bg: 'bg-[#fff4de]', text: 'text-[#a86508]', dot: 'bg-[#a86508]' },
-  Offline: { bg: 'bg-[#f4f7fb]', text: 'text-[#7b899c]', dot: 'bg-[#7b899c]' },
-  Scheduled: { bg: 'bg-[#eaf3fd]', text: 'text-[#155ead]', dot: 'bg-[#155ead]' },
-  'In Progress': { bg: 'bg-[#e8f7f1]', text: 'text-[#18865b]', dot: 'bg-[#18865b]' },
-  'In consultation': { bg: 'bg-[#e8f7f1]', text: 'text-[#18865b]', dot: 'bg-[#18865b]' },
-  Completed: { bg: 'bg-[#f4f7fb]', text: 'text-[#526176]', dot: 'bg-[#526176]' },
-  Cancelled: { bg: 'bg-[#fef3f2]', text: 'text-[#c53a45]', dot: 'bg-[#c53a45]' },
-  Waiting: { bg: 'bg-[#fff4de]', text: 'text-[#a86508]', dot: 'bg-[#a86508]' },
-  Active: { bg: 'bg-[#e8f7f1]', text: 'text-[#18865b]', dot: 'bg-[#18865b]' },
-  Priority: { bg: 'bg-[#fff4de]', text: 'text-[#a86508]', dot: 'bg-[#a86508]' },
-  Urgent: { bg: 'bg-[#fef3f2]', text: 'text-[#c53a45]', dot: 'bg-[#c53a45]' },
+  Available: { bg: 'bg-[#E8F3FA]', text: 'text-[#145EA8]', dot: 'bg-[#25D9E6]' },
+  Busy: { bg: 'bg-[#FCEDED]', text: 'text-[#B63838]', dot: 'bg-[#D64545]' },
+  'On Break': { bg: 'bg-[#E8F3FA]', text: 'text-[#145EA8]', dot: 'bg-[#25D9E6]' },
+  Offline: { bg: 'bg-[#EDF2F6]', text: 'text-[#6B7C8F]', dot: 'bg-[#7B899C]' },
+  Scheduled: { bg: 'bg-[#E8F3FA]', text: 'text-[#145EA8]', dot: 'bg-[#145EA8]' },
+  'In Progress': { bg: 'bg-[#E5F7F3]', text: 'text-[#218A78]', dot: 'bg-[#38B8A8]' },
+  'In consultation': { bg: 'bg-[#E5F7F3]', text: 'text-[#218A78]', dot: 'bg-[#38B8A8]' },
+  Completed: { bg: 'bg-[#EDF2F6]', text: 'text-[#526A7C]', dot: 'bg-[#526A7C]' },
+  Cancelled: { bg: 'bg-[#FCEDED]', text: 'text-[#B63838]', dot: 'bg-[#D64545]' },
+  Waiting: { bg: 'bg-[#E8F3FA]', text: 'text-[#145EA8]', dot: 'bg-[#25D9E6]' },
+  Active: { bg: 'bg-[#E5F7F3]', text: 'text-[#218A78]', dot: 'bg-[#38B8A8]' },
+  Priority: { bg: 'bg-[#E8F3FA]', text: 'text-[#145EA8]', dot: 'bg-[#25D9E6]' },
+  Urgent: { bg: 'bg-[#FCEDED]', text: 'text-[#B63838]', dot: 'bg-[#D64545]' },
 };
 
 interface StatusBadgeProps {
@@ -25,7 +25,7 @@ interface StatusBadgeProps {
 }
 
 export default function StatusBadge({ status, showDot = true, className }: StatusBadgeProps) {
-  const style = variantStyles[status] ?? { bg: 'bg-[#f4f7fb]', text: 'text-[#7b899c]', dot: 'bg-[#7b899c]' };
+  const style = variantStyles[status] ?? { bg: 'bg-[#EDF2F6]', text: 'text-[#6B7C8F]', dot: 'bg-[#7B899C]' };
   return (
     <span
       className={`inline-flex items-center gap-[6px] px-[10px] py-[5px] rounded-[999px] text-[11px] font-bold leading-none ${style.bg} ${style.text} ${className ?? ''}`}

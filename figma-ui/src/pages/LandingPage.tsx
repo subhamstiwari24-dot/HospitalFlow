@@ -1,239 +1,293 @@
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
+  BarChart3,
   Building2,
+  CalendarCheck2,
+  CheckCircle2,
+  ChevronDown,
   HeartPulse,
+  LayoutDashboard,
+  Menu,
+  MonitorSmartphone,
+  Network,
   ShieldCheck,
   Sparkles,
+  Stethoscope,
+  Ticket,
   UserRound,
+  X,
 } from 'lucide-react';
+import { useState } from 'react';
+
+const features = [
+  {
+    icon: CalendarCheck2,
+    title: 'Smart appointments',
+    description: 'Coordinate visits with a clear, connected booking experience for every care team.',
+    tone: 'blue',
+  },
+  {
+    icon: Ticket,
+    title: 'Digital tokens',
+    description: 'Give patients a simple way to join the right queue and stay informed.',
+    tone: 'cyan',
+  },
+  {
+    icon: MonitorSmartphone,
+    title: 'Real-time OPD queues',
+    description: 'Make live queue progress visible across the patient and hospital experience.',
+    tone: 'teal',
+  },
+  {
+    icon: Building2,
+    title: 'Hospital operations',
+    description: 'Bring staff, departments, doctors, and patient workflows into one platform.',
+    tone: 'blue',
+  },
+  {
+    icon: Stethoscope,
+    title: 'Doctor coordination',
+    description: 'Help clinicians focus on care with organized schedules and queue context.',
+    tone: 'cyan',
+  },
+  {
+    icon: UserRound,
+    title: 'Patient management',
+    description: 'Deliver a calmer, more transparent journey from booking to consultation.',
+    tone: 'teal',
+  },
+];
+
+const highlights = [
+  { icon: HeartPulse, label: 'Real-time OPD' },
+  { icon: Ticket, label: 'Digital tokens' },
+  { icon: CalendarCheck2, label: 'Smart appointments' },
+  { icon: Network, label: 'Connected healthcare' },
+];
+
+const benefits = [
+  'Efficient workflows for busy hospital teams',
+  'Connected experiences across every care touchpoint',
+  'Secure, role-based access for staff and patients',
+  'Real-time visibility when queues are moving',
+  'Patient-first design that reduces uncertainty',
+  'A scalable foundation for growing operations',
+];
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
-    <div className="min-h-screen bg-[#031326] text-white relative overflow-hidden">
-
-      {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-180px] left-[-120px] w-[420px] h-[420px] bg-cyan-400/10 rounded-full blur-[100px]" />
-        <div className="absolute top-[20%] right-[-180px] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-220px] left-[35%] w-[500px] h-[500px] bg-cyan-400/5 rounded-full blur-[120px]" />
-
-        {/* subtle grid */}
-        <div
-          className="absolute inset-0 opacity-[0.035]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-            backgroundSize: '45px 45px',
-          }}
-        />
+    <div className="landing-page min-h-screen bg-white text-[#102A43]">
+      <div className="landing-utility">
+        <div className="landing-container landing-utility-inner">
+          <span>HospitalFlow <b>|</b> Smart OPD Platform</span>
+          <span className="landing-utility-secure"><ShieldCheck size={14} /> Secure Healthcare Platform</span>
+        </div>
       </div>
 
-      {/* Header */}
-      <header className="relative z-10 border-b border-white/10 bg-[#031326]/75 backdrop-blur-xl">
-        <div className="max-w-[1180px] mx-auto px-5 sm:px-8 h-[76px] flex items-center justify-between">
+      <header className="landing-navbar">
+        <div className="landing-container landing-navbar-inner">
+          <a href="#home" className="landing-brand" aria-label="HospitalFlow home">
+            <span className="landing-brand-mark"><img src="/assets/logo.png" alt="" /></span>
+            <span>
+              <strong>Hospital<span>Flow</span></strong>
+              <small>Smart OPD Platform</small>
+            </span>
+          </a>
 
-          {/* Brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-[42px] h-[42px] rounded-[12px] bg-white/10 border border-white/10 flex items-center justify-center overflow-hidden">
-              <img
-                src="/assets/logo.png"
-                alt="HospitalFlow"
-                className="w-[34px] h-auto object-contain"
-              />
-            </div>
+          <nav className={`landing-nav-links ${mobileMenuOpen ? 'is-open' : ''}`} aria-label="Landing page navigation">
+            <a href="#home" onClick={closeMobileMenu}>Home</a>
+            <a href="#about" onClick={closeMobileMenu}>About</a>
+            <a href="#features" onClick={closeMobileMenu}>Services</a>
+            <a href="#contact" onClick={closeMobileMenu}>Contact</a>
+            <button type="button" onClick={() => navigate('/hospital-portal')}>Get Started <ArrowRight size={15} /></button>
+          </nav>
 
-            <div>
-              <div className="font-bold text-[17px] tracking-tight">
-                Hospital<span className="text-[#16d9e3]">Flow</span>
-              </div>
-
-              <div className="text-[10px] text-slate-400 tracking-[0.12em] uppercase">
-                Smart OPD Platform
-              </div>
-            </div>
-          </div>
-
-          {/* Security badge */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-full bg-white/[0.04] border border-white/10 text-slate-300 text-[12px]">
-            <ShieldCheck className="w-4 h-4 text-[#16d9e3]" />
-            Secure Healthcare Platform
-          </div>
-
+          <button
+            type="button"
+            className="landing-menu-toggle"
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
         </div>
       </header>
 
-      {/* Main */}
-      <main className="relative z-10 min-h-[calc(100vh-76px)] flex items-center justify-center px-5 sm:px-8 py-12 sm:py-16">
-
-        <div className="w-full max-w-[1050px]">
-
-          {/* Hero */}
-          <div className="text-center mb-10 sm:mb-12">
-
-            {/* Logo */}
-            <div className="relative inline-flex items-center justify-center mb-7">
-
-              <div className="absolute w-[105px] h-[105px] rounded-full bg-cyan-400/10 blur-[25px]" />
-
-              <div className="relative w-[88px] h-[88px] rounded-[26px] bg-white/[0.07] border border-white/10 backdrop-blur-xl flex items-center justify-center shadow-[0_0_45px_rgba(22,217,227,0.12)]">
-                <img
-                  src="/assets/logo.png"
-                  alt="HospitalFlow"
-                  className="w-[68px] h-auto object-contain"
-                />
+      <main>
+        <section id="home" className="landing-hero">
+          <div className="landing-container landing-hero-grid">
+            <div className="landing-hero-copy">
+              <div className="landing-eyebrow"><Sparkles size={15} /> SMART OPD PLATFORM</div>
+              <h1>Smarter healthcare.<br /><span>Better flow.</span></h1>
+              <p>
+                HospitalFlow helps manage hospital operations, appointments, digital tokens,
+                and real-time OPD queues from one connected platform.
+              </p>
+              <div className="landing-hero-actions">
+                <button type="button" className="landing-button landing-button-primary" onClick={() => navigate('/hospital-portal')}>
+                  Get Started <ArrowRight size={17} />
+                </button>
+                <a href="#access" className="landing-button landing-button-outline">
+                  Explore HospitalFlow <ChevronDown size={16} />
+                </a>
               </div>
-
-            </div>
-
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#16d9e3]/10 border border-[#16d9e3]/20 text-[#8ef8ff] text-[12px] font-medium mb-5">
-              <Sparkles className="w-3.5 h-3.5" />
-              Smarter Healthcare. Better Flow.
-            </div>
-
-            <h1 className="text-[34px] sm:text-[46px] md:text-[52px] leading-[1.08] font-bold tracking-[-0.035em]">
-              Welcome to{' '}
-              <span className="bg-gradient-to-r from-white via-cyan-100 to-[#16d9e3] bg-clip-text text-transparent">
-                HospitalFlow
-              </span>
-            </h1>
-
-            <p className="max-w-[590px] mx-auto mt-5 text-[14px] sm:text-[16px] leading-[1.7] text-slate-400">
-              A smarter way to manage hospital operations, appointments,
-              digital tokens and real-time OPD queues.
-            </p>
-
-          </div>
-
-          {/* Choose text */}
-          <div className="text-center mb-6">
-            <p className="text-slate-300 text-[13px] font-medium">
-              Choose how you want to continue
-            </p>
-          </div>
-
-          {/* Role Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-            {/* Hospital */}
-            <button
-              type="button"
-              onClick={() => navigate('/hospital-portal')}
-              className="group relative text-left rounded-[24px] p-[1px] bg-gradient-to-br from-blue-400/30 via-white/10 to-transparent hover:from-[#16d9e3]/70 hover:via-blue-400/30 transition-all duration-500"
-            >
-              <div className="relative h-full min-h-[280px] rounded-[23px] bg-[#071b31]/95 border border-white/[0.07] p-7 sm:p-8 overflow-hidden backdrop-blur-xl">
-
-                {/* Card glow */}
-                <div className="absolute top-[-100px] right-[-80px] w-[240px] h-[240px] bg-blue-500/10 rounded-full blur-[70px] group-hover:bg-blue-500/20 transition-all duration-500" />
-
-                {/* Icon */}
-                <div className="relative w-[62px] h-[62px] rounded-[18px] bg-blue-400/10 border border-blue-300/15 flex items-center justify-center mb-6 group-hover:scale-105 group-hover:bg-blue-400/15 transition-all duration-300">
-                  <Building2 className="w-8 h-8 text-[#55a9ff]" />
-                </div>
-
-                <div className="relative">
-
-                  <div className="flex items-center gap-2 mb-2">
-                    <h2 className="text-[22px] font-bold text-white">
-                      Hospital
-                    </h2>
-
-                    <span className="text-[9px] uppercase tracking-[0.12em] px-2 py-1 rounded-full bg-blue-400/10 text-blue-300 border border-blue-400/15">
-                      Staff
-                    </span>
-                  </div>
-
-                  <p className="text-[14px] leading-[1.7] text-slate-400 max-w-[390px]">
-                    Access hospital staff, hospital admin and hospital
-                    registration services from one central platform.
-                  </p>
-
-                  <div className="mt-7 inline-flex items-center gap-2 text-[#55d8ff] font-semibold text-[14px]">
-                    Continue as Hospital
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </div>
-
-                </div>
-
+              <div className="landing-hero-trust">
+                <CheckCircle2 size={17} /> Designed for hospitals, doctors, and patients
               </div>
-            </button>
+            </div>
 
-            {/* Patient */}
-            <button
-              type="button"
-              onClick={() => navigate('/patient/login')}
-              className="group relative text-left rounded-[24px] p-[1px] bg-gradient-to-br from-[#16d9e3]/35 via-white/10 to-transparent hover:from-[#16d9e3]/80 hover:via-cyan-300/30 transition-all duration-500"
-            >
-              <div className="relative h-full min-h-[280px] rounded-[23px] bg-[#071b31]/95 border border-white/[0.07] p-7 sm:p-8 overflow-hidden backdrop-blur-xl">
-
-                {/* Card glow */}
-                <div className="absolute top-[-100px] right-[-80px] w-[240px] h-[240px] bg-cyan-400/10 rounded-full blur-[70px] group-hover:bg-cyan-400/20 transition-all duration-500" />
-
-                {/* Icon */}
-                <div className="relative w-[62px] h-[62px] rounded-[18px] bg-[#16d9e3]/10 border border-[#16d9e3]/15 flex items-center justify-center mb-6 group-hover:scale-105 group-hover:bg-[#16d9e3]/15 transition-all duration-300">
-                  <UserRound className="w-8 h-8 text-[#16d9e3]" />
+            <div className="landing-hero-visual" aria-label="HospitalFlow operations overview">
+              <div className="landing-visual-glow" />
+              <div className="landing-visual-panel">
+                <div className="landing-visual-header">
+                  <div><span className="landing-status-dot" /> OPD overview</div>
+                  <span>Live view</span>
                 </div>
-
-                <div className="relative">
-
-                  <div className="flex items-center gap-2 mb-2">
-                    <h2 className="text-[22px] font-bold text-white">
-                      Patient
-                    </h2>
-
-                    <span className="text-[9px] uppercase tracking-[0.12em] px-2 py-1 rounded-full bg-[#16d9e3]/10 text-[#7ff7ff] border border-[#16d9e3]/15">
-                      Personal
-                    </span>
-                  </div>
-
-                  <p className="text-[14px] leading-[1.7] text-slate-400 max-w-[390px]">
-                    Book appointments, get digital tokens and track your
-                    real-time OPD queue from anywhere.
-                  </p>
-
-                  <div className="mt-7 inline-flex items-center gap-2 text-[#16d9e3] font-semibold text-[14px]">
-                    Continue as Patient
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </div>
-
+                <div className="landing-visual-main">
+                  <div className="landing-visual-icon"><LayoutDashboard size={26} /></div>
+                  <h2>Care that keeps moving</h2>
+                  <p>One clear view for appointments, queues, and the people who make care happen.</p>
                 </div>
-
+                <div className="landing-visual-metrics">
+                  {highlights.slice(0, 3).map(({ icon: Icon, label }) => (
+                    <div key={label}><Icon size={17} /><span>{label}</span></div>
+                  ))}
+                </div>
               </div>
-            </button>
-
+              <div className="landing-visual-float landing-visual-float-top"><BarChart3 size={18} /><span><b>Connected</b><small>hospital operations</small></span></div>
+              <div className="landing-visual-float landing-visual-float-bottom"><Ticket size={18} /><span><b>Digital token</b><small>patient-ready flow</small></span></div>
+            </div>
           </div>
+        </section>
 
-          {/* Bottom features */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[11px] text-slate-500">
-
-            <div className="flex items-center gap-2">
-              <HeartPulse className="w-3.5 h-3.5 text-[#16d9e3]" />
-              Real-time OPD
+        <section id="access" className="landing-access landing-section">
+          <div className="landing-container">
+            <div className="landing-section-heading landing-centered-heading">
+              <span className="landing-section-kicker">ACCESS HOSPITALFLOW</span>
+              <h2>One platform. Two connected experiences.</h2>
+              <p>Choose the experience that fits your role and move through healthcare with more clarity.</p>
             </div>
-
-            <div className="w-1 h-1 rounded-full bg-slate-700 hidden sm:block" />
-
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#16d9e3]" />
-              Secure & Private
+            <div className="landing-access-grid">
+              <button type="button" className="landing-access-card landing-access-card-hospital" onClick={() => navigate('/hospital-portal')}>
+                <span className="landing-access-icon"><Building2 size={27} /></span>
+                <span className="landing-access-content">
+                  <small>FOR HOSPITAL TEAMS</small>
+                  <strong>Hospital access</strong>
+                  <span>Staff, hospital admin, and registration services from one central platform.</span>
+                  <b>Continue as Hospital <ArrowRight size={16} /></b>
+                </span>
+              </button>
+              <button type="button" className="landing-access-card landing-access-card-patient" onClick={() => navigate('/patient/login')}>
+                <span className="landing-access-icon"><UserRound size={27} /></span>
+                <span className="landing-access-content">
+                  <small>FOR PATIENTS</small>
+                  <strong>Patient access</strong>
+                  <span>Book appointments, get digital tokens, and track your real-time OPD queue.</span>
+                  <b>Continue as Patient <ArrowRight size={16} /></b>
+                </span>
+              </button>
             </div>
-
-            <div className="w-1 h-1 rounded-full bg-slate-700 hidden sm:block" />
-
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-[#16d9e3]" />
-              Smart Queue Management
-            </div>
-
           </div>
+        </section>
 
-        </div>
+        <section id="about" className="landing-about landing-section">
+          <div className="landing-container landing-two-column">
+            <div className="landing-about-visual">
+              <div className="landing-about-frame">
+                <div className="landing-about-topline"><span>HospitalFlow</span><span>Connected care</span></div>
+                <div className="landing-about-screen">
+                  <div className="landing-screen-sidebar"><span /><span /><span /><span /></div>
+                  <div className="landing-screen-content">
+                    <div className="landing-screen-title" />
+                    <div className="landing-screen-row"><span /><span /><span /></div>
+                    <div className="landing-screen-row"><span /><span /><span /></div>
+                    <div className="landing-screen-row"><span /><span /><span /></div>
+                  </div>
+                </div>
+              </div>
+              <div className="landing-about-badge"><HeartPulse size={19} /><span><b>Human-centered</b><small>technology for better care</small></span></div>
+            </div>
+            <div className="landing-section-heading">
+              <span className="landing-section-kicker">ABOUT HOSPITALFLOW</span>
+              <h2>Make every part of the OPD journey feel more connected.</h2>
+              <p>HospitalFlow brings the operational and patient sides of healthcare together. It helps hospitals coordinate daily work while giving patients a clearer, calmer way to access care.</p>
+              <p>From appointment booking to live queue visibility, every interaction is designed to keep people informed and teams in control.</p>
+              <a href="#features" className="landing-text-link">Explore our capabilities <ArrowRight size={16} /></a>
+            </div>
+          </div>
+        </section>
 
+        <section id="features" className="landing-features landing-section">
+          <div className="landing-container">
+            <div className="landing-section-heading landing-centered-heading">
+              <span className="landing-section-kicker">BUILT FOR BETTER FLOW</span>
+              <h2>Everything your healthcare journey needs.</h2>
+              <p>Purposeful tools for the people, processes, and moments that keep a hospital moving.</p>
+            </div>
+            <div className="landing-feature-grid">
+              {features.map(({ icon: Icon, title, description, tone }) => (
+                <article className={`landing-feature-card landing-feature-${tone}`} key={title}>
+                  <span className="landing-feature-icon"><Icon size={22} /></span>
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                  <span className="landing-feature-line" />
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="landing-highlights landing-section">
+          <div className="landing-container">
+            <div className="landing-highlights-heading">
+              <span className="landing-section-kicker">THE HOSPITALFLOW DIFFERENCE</span>
+              <h2>Clarity at every step of care.</h2>
+            </div>
+            <div className="landing-highlights-grid">
+              {highlights.map(({ icon: Icon, label }) => (
+                <div className="landing-highlight" key={label}><Icon size={22} /><span>{label}</span></div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="landing-benefits landing-section">
+          <div className="landing-container landing-two-column landing-benefits-grid">
+            <div className="landing-section-heading">
+              <span className="landing-section-kicker">WHY HOSPITALFLOW</span>
+              <h2>Designed around the people behind better healthcare.</h2>
+              <p>Reliable structure, timely information, and a thoughtful experience for every role in the care journey.</p>
+            </div>
+            <div className="landing-benefit-list">
+              {benefits.map((benefit) => <div key={benefit}><CheckCircle2 size={19} /><span>{benefit}</span></div>)}
+            </div>
+          </div>
+        </section>
+
+        <section id="contact" className="landing-cta">
+          <div className="landing-container landing-cta-inner">
+            <div><span className="landing-section-kicker">READY TO MOVE FORWARD?</span><h2>Make healthcare flow better.</h2><p>Bring appointments, tokens, and OPD operations into one connected experience.</p></div>
+            <button type="button" className="landing-button landing-button-light" onClick={() => navigate('/hospital-portal')}>Get Started <ArrowRight size={17} /></button>
+          </div>
+        </section>
       </main>
 
+      <footer className="landing-footer">
+        <div className="landing-container landing-footer-grid">
+          <div className="landing-footer-brand"><a href="#home" className="landing-brand"><span className="landing-brand-mark"><img src="/assets/logo.png" alt="" /></span><span><strong>Hospital<span>Flow</span></strong><small>Smart OPD Platform</small></span></a><p>Connected healthcare operations for a better patient journey.</p></div>
+          <div><h3>Explore</h3><a href="#about">About HospitalFlow</a><a href="#features">Capabilities</a><a href="#access">Access platform</a></div>
+          <div><h3>Access</h3><button type="button" onClick={() => navigate('/hospital-portal')}>Hospital portal</button><button type="button" onClick={() => navigate('/patient/login')}>Patient portal</button></div>
+          <div><h3>Our promise</h3><p className="landing-footer-promise"><ShieldCheck size={18} /> Secure, clear, human-centered care experiences.</p></div>
+        </div>
+        <div className="landing-container landing-footer-bottom"><span>© {new Date().getFullYear()} HospitalFlow. Smart OPD Platform.</span><span>Built for better flow.</span></div>
+      </footer>
     </div>
   );
 }

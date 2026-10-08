@@ -10,11 +10,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-[#155ead] border-[#155ead] text-white hover:bg-[#1250a0]',
-  secondary: 'bg-white border-[#155ead] text-[#155ead] hover:bg-[#eaf3fd]',
-  success: 'bg-[#18865b] border-[#18865b] text-white hover:bg-[#14724d]',
-  danger: 'bg-[#c53a45] border-[#c53a45] text-white hover:bg-[#b0323c]',
-  ghost: 'bg-transparent border-[#d8e1ec] text-[#526176] hover:bg-[#f4f7fb]',
+  primary: 'bg-[#25D9E6] border-[#25D9E6] text-[#071B3A] shadow-[0_6px_18px_rgba(37,217,230,0.18)] hover:bg-[#4AE2EC] hover:shadow-[0_8px_22px_rgba(37,217,230,0.24)]',
+  secondary: 'bg-transparent border-[#145EA8] text-[#145EA8] hover:bg-[#E8F3FA] hover:border-[#25D9E6]',
+  success: 'bg-[#2E9E5B] border-[#2E9E5B] text-white hover:bg-[#267F49]',
+  danger: 'bg-[#D64545] border-[#D64545] text-white hover:bg-[#B63838]',
+  ghost: 'bg-transparent border-transparent text-[#6B7C8F] hover:bg-[#E8F3FA] hover:text-[#071B3A]',
 };
 
 export default function Button({ variant = 'secondary', children, className, loading, disabled, ...props }: ButtonProps) {
@@ -22,7 +22,7 @@ export default function Button({ variant = 'secondary', children, className, loa
     <button
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={`inline-flex items-center gap-[8px] border border-solid px-[16px] py-[10px] rounded-[10px] text-[13px] font-bold leading-none transition-[background-color,border-color,color,box-shadow,transform] cursor-pointer whitespace-nowrap active:translate-y-px focus-visible:outline-2 focus-visible:outline-[#2475d0] focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${className ?? ''}`}
+      className={`inline-flex items-center gap-[8px] border border-solid px-[16px] py-[10px] rounded-[8px] text-[13px] font-bold leading-none transition-[background-color,border-color,color,box-shadow,transform] cursor-pointer whitespace-nowrap active:translate-y-px focus-visible:outline-2 focus-visible:outline-[#25D9E6] focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${className ?? ''}`}
       {...props}
     >
       {loading && (

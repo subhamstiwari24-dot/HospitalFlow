@@ -12,7 +12,7 @@ export default function DoctorLayout({ children, title }: DoctorLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#f4f7fb] overflow-hidden">
+    <div className="app-shell flex h-screen bg-[#f4f7fb] overflow-hidden">
 
       {/* Mobile backdrop */}
       {sidebarOpen && (

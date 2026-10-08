@@ -13,7 +13,7 @@ export default function HospitalPortalPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#031326] text-white relative overflow-hidden">
+    <div className="hospital-portal-page min-h-screen bg-[#031326] text-white relative overflow-hidden">
 
       {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">

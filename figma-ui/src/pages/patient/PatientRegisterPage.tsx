@@ -386,7 +386,7 @@ export default function PatientRegisterPage() {
   // ============================================================
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#031326] text-white">
+    <div className="patient-register-page min-h-screen overflow-hidden bg-[#031326] text-white">
 
       {/* ========================================================
           BACKGROUND GLOW

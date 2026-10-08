@@ -5,7 +5,7 @@ export default function RoleSelectionPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#031326] text-white relative overflow-hidden">
+    <div className="role-selection-page min-h-screen bg-[#031326] text-white relative overflow-hidden">
 
       {/* Background Glow */}
       <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-[#16d9e3]/10 rounded-full blur-[140px]" />

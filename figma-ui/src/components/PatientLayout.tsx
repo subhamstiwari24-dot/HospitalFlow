@@ -29,7 +29,7 @@ export default function PatientLayout({
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#031326] text-white flex flex-col relative overflow-hidden">
+    <div className="patient-shell min-h-screen bg-[#031326] text-white flex flex-col relative overflow-hidden">
 
       {/* =====================================================
           BACKGROUND GLOW

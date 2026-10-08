@@ -122,7 +122,7 @@ export default function PatientLoginPage() {
     'w-full h-[52px] bg-[#071D31] border border-[#183B55] rounded-[12px] px-[15px] text-[14px] text-white placeholder:text-[#6E899F] outline-none transition-all duration-200 focus:border-[#00D9FF] focus:ring-[3px] focus:ring-[#00D9FF]/10';
 
   return (
-    <div className="min-h-screen bg-[#03111F] text-white overflow-hidden">
+    <div className="patient-login-page min-h-screen bg-[#03111F] text-white overflow-hidden">
 
       {/* =========================================================
           BACKGROUND GLOW

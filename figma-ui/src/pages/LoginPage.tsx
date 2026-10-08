@@ -151,7 +151,7 @@ export default function LoginPage() {
   // -----------------------------
 
   return (
-    <div className="min-h-screen bg-[#031326] text-white relative overflow-hidden">
+    <div className="staff-login-page min-h-screen bg-[#031326] text-white relative overflow-hidden">
 
       {/* =========================================
           BACKGROUND

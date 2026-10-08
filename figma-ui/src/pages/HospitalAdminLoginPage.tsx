@@ -96,7 +96,7 @@ export default function HospitalAdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#031326] text-white relative overflow-hidden">
+    <div className="hospital-admin-login-page min-h-screen bg-[#031326] text-white relative overflow-hidden">
 
       {/* =========================================
           BACKGROUND

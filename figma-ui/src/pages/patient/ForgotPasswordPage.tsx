@@ -173,7 +173,7 @@ export default function ForgotPasswordPage() {
       : 'Choose a strong new password for your HospitalFlow account.';
 
   return (
-    <div className="min-h-screen bg-[#031326] text-white relative overflow-hidden">
+    <div className="forgot-password-page min-h-screen bg-[#031326] text-white relative overflow-hidden">
 
       {/* Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
