@@ -123,7 +123,7 @@ export default function PatientEntryPage() {
     'bg-white border border-[#d8e1ec] rounded-[10px] px-[14px] py-[12px] text-[15px] text-[#142033] placeholder:text-[#afc0d3] outline-none focus:border-[#155ead] transition-colors w-full';
 
   return (
-    <div className="min-h-screen bg-[#f4f7fb] flex flex-col">
+    <div className="patient-entry-page min-h-screen bg-[#f4f7fb] flex flex-col">
 
       {/* Header */}
 

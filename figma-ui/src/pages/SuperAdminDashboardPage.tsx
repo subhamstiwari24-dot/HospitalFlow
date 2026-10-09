@@ -167,7 +167,7 @@ export default function SuperAdminDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f7fb] text-[#10213b]">
+    <div className="super-admin-dashboard-page min-h-screen bg-[#f4f7fb] text-[#10213b]">
       {/* Header */}
       <header className="border-b border-[#dce4ef] bg-white">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">

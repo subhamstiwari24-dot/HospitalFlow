@@ -1789,3 +1789,166 @@ body,
   border-color: #25d9e6 !important;
   box-shadow: 0 14px 28px rgba(20, 94, 168, .14) !important;
 }
+
+/* Standalone operational pages use the same reference shell as the
+   authenticated dashboards without changing their data or navigation. */
+.hospital-admin-dashboard-page,
+.super-admin-dashboard-page {
+  background: #f7fafc !important;
+  color: #172033 !important;
+}
+
+.hospital-admin-dashboard-page > header,
+.super-admin-dashboard-page > header {
+  background: #071b3a !important;
+  border-color: rgba(37, 217, 230, .25) !important;
+  color: #ffffff !important;
+}
+
+.hospital-admin-dashboard-page > header h1,
+.hospital-admin-dashboard-page > header p,
+.super-admin-dashboard-page > header h1,
+.super-admin-dashboard-page > header p {
+  color: #ffffff !important;
+}
+
+.hospital-admin-dashboard-page > header p,
+.super-admin-dashboard-page > header p {
+  color: #a9bdd2 !important;
+}
+
+.hospital-admin-dashboard-page > header button,
+.super-admin-dashboard-page > header button {
+  border-color: rgba(37, 217, 230, .45) !important;
+  background: transparent !important;
+  color: #25d9e6 !important;
+}
+
+.hospital-admin-dashboard-page > header button:hover,
+.super-admin-dashboard-page > header button:hover {
+  background: rgba(37, 217, 230, .1) !important;
+}
+
+.hospital-admin-dashboard-page main,
+.super-admin-dashboard-page main {
+  max-width: 1160px;
+}
+
+.hospital-admin-dashboard-page main h2,
+.hospital-admin-dashboard-page main h3,
+.hospital-admin-dashboard-page main h4,
+.super-admin-dashboard-page main h2,
+.super-admin-dashboard-page main h3 {
+  color: #071b3a !important;
+}
+
+.hospital-admin-dashboard-page main > div > p:first-child {
+  color: #145ea8 !important;
+}
+
+.hospital-admin-dashboard-page main > div > p,
+.hospital-admin-dashboard-page main > div > p + h2 + p,
+.super-admin-dashboard-page main > div > p {
+  color: #6f8093 !important;
+}
+
+.hospital-admin-dashboard-page main > div > div,
+.hospital-admin-dashboard-page main button,
+.super-admin-dashboard-page main > section,
+.super-admin-dashboard-page main > div > div {
+  border-color: #d7e5ef !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 24px rgba(7, 27, 58, .05) !important;
+}
+
+.hospital-admin-dashboard-page main button,
+.super-admin-dashboard-page main button {
+  background: #ffffff !important;
+}
+
+.hospital-admin-dashboard-page main button:hover {
+  border-color: #25d9e6 !important;
+  box-shadow: 0 14px 28px rgba(20, 94, 168, .12) !important;
+}
+
+.hospital-admin-dashboard-page main [class*="text-slate-900"],
+.hospital-admin-dashboard-page main [class*="text-slate-700"],
+.super-admin-dashboard-page main [class*="text-[#14253d]"] {
+  color: #172033 !important;
+}
+
+.hospital-admin-dashboard-page main [class*="text-slate-500"],
+.hospital-admin-dashboard-page main [class*="text-slate-400"],
+.super-admin-dashboard-page main [class*="text-[#718096]"],
+.super-admin-dashboard-page main [class*="text-[#63748a]"] {
+  color: #6f8093 !important;
+}
+
+.super-admin-dashboard-page main thead tr {
+  background: #0b2854 !important;
+  border-color: #0b2854 !important;
+}
+
+.super-admin-dashboard-page main thead th {
+  color: #ffffff !important;
+}
+
+.super-admin-dashboard-page main tbody tr:hover {
+  background: #edf8fb !important;
+}
+
+.patient-entry-page {
+  background:
+    linear-gradient(
+      to bottom,
+      #071b3a 0,
+      #0b2854 34%,
+      #f7fafc 34%,
+      #f7fafc 100%
+    ) !important;
+}
+
+.patient-entry-page > div:first-child {
+  background: #ffffff !important;
+  border-color: #d7e5ef !important;
+}
+
+.patient-entry-page > div:last-child > div > div:first-child h1 {
+  color: #ffffff !important;
+}
+
+.patient-entry-page > div:last-child > div > div:first-child p {
+  color: #c9d8e6 !important;
+}
+
+.patient-entry-page > div:last-child > div > div:nth-child(2),
+.patient-entry-page > div:last-child > div > div:nth-child(3) {
+  border-color: #d7e5ef !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 24px rgba(7, 27, 58, .05) !important;
+}
+
+.patient-entry-page input,
+.patient-entry-page textarea {
+  border-color: #d7e5ef !important;
+  background: #ffffff !important;
+}
+
+@media (max-width: 640px) {
+  .hospital-admin-dashboard-page main,
+  .super-admin-dashboard-page main {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .patient-entry-page {
+    background:
+      linear-gradient(
+        to bottom,
+        #071b3a 0,
+        #0b2854 28%,
+        #f7fafc 28%,
+        #f7fafc 100%
+      ) !important;
+  }
+}
