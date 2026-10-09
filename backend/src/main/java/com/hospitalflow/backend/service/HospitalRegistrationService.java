@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -37,7 +38,9 @@ public class HospitalRegistrationService {
 
     // Get registrations by status
     public List<HospitalRegistration> getRegistrationsByStatus(String status) {
-        return registrationRepository.findByStatusOrderBySubmissionDateDesc(status);
+        return registrationRepository.findByStatusOrderBySubmissionDateDesc(
+                normalizeStatus(status)
+        );
     }
 
     // Get registration by ID
@@ -49,6 +52,11 @@ public class HospitalRegistrationService {
     public HospitalRegistration createRegistration(
             HospitalRegistration registration
     ) {
+        if (registration == null) {
+            throw new IllegalArgumentException(
+                    "Registration details are required."
+            );
+        }
 
         if (registrationRepository.existsByRegistrationNumber(
                 registration.getRegistrationNumber()
@@ -66,25 +74,25 @@ public class HospitalRegistrationService {
             );
         }
 
+        // Always initialize a new registration as pending.
         registration.setStatus("PENDING");
         registration.setVerificationStatus("PENDING");
+        registration.setReviewNotes(null);
+        registration.setReviewedAt(null);
 
         if (registration.getSubmissionDate() == null) {
             registration.setSubmissionDate(LocalDateTime.now());
         }
 
-        registration.setReviewedAt(null);
-
         return registrationRepository.save(registration);
     }
 
-    // Approve hospital registration
+    // Approve hospital registration and create Hospital Admin
     @Transactional
     public HospitalRegistration approveRegistration(
             Long id,
             String reviewNotes
     ) {
-
         HospitalRegistration registration =
                 registrationRepository.findById(id)
                         .orElseThrow(() ->
@@ -93,28 +101,37 @@ public class HospitalRegistrationService {
                                 )
                         );
 
-        // Prevent approving an already approved registration
-        if ("APPROVED".equalsIgnoreCase(registration.getStatus())) {
+        String currentStatus = normalizeStatus(
+                registration.getStatus()
+        );
+
+        if ("APPROVED".equals(currentStatus)) {
             throw new IllegalArgumentException(
                     "This registration is already approved."
             );
         }
 
-        // Prevent approving a rejected registration
-        if ("REJECTED".equalsIgnoreCase(registration.getStatus())) {
+        if ("REJECTED".equals(currentStatus)) {
             throw new IllegalArgumentException(
                     "A rejected registration cannot be approved."
             );
         }
 
-        // Decide which email will be used for Hospital Admin
+        if (!"PENDING".equals(currentStatus)
+                && !"UNDER_REVIEW".equals(currentStatus)) {
+            throw new IllegalArgumentException(
+                    "This registration cannot be approved from its current status."
+            );
+        }
+
         String adminEmail = registration.getAdminEmail();
 
         if (adminEmail == null || adminEmail.isBlank()) {
             adminEmail = registration.getOfficialEmail();
         }
 
-        // Check whether a user with this email already exists
+        adminEmail = adminEmail.trim();
+
         if (userRepository.existsByEmailIgnoreCase(adminEmail)) {
             throw new IllegalArgumentException(
                     "A user with this admin email already exists."
@@ -123,7 +140,6 @@ public class HospitalRegistrationService {
 
         // Create Hospital
         Hospital hospital = new Hospital();
-
         hospital.setName(registration.getHospitalName());
         hospital.setAddress(registration.getAddress());
         hospital.setCity(registration.getCity());
@@ -134,93 +150,101 @@ public class HospitalRegistrationService {
         hospital.setDescription(registration.getDescription());
         hospital.setActive(true);
 
-        Hospital savedHospital =
-                hospitalRepository.save(hospital);
+        Hospital savedHospital = hospitalRepository.save(hospital);
 
         // Create Hospital Admin account
         User hospitalAdmin = new User();
-
-        hospitalAdmin.setName(
-                registration.getAuthorizedPersonName()
-        );
-
+        hospitalAdmin.setName(registration.getAuthorizedPersonName());
         hospitalAdmin.setEmail(adminEmail);
-
         hospitalAdmin.setRole("HOSPITAL_ADMIN");
-
-        hospitalAdmin.setHospitalId(
-                savedHospital.getId()
-        );
-
+        hospitalAdmin.setHospitalId(savedHospital.getId());
         hospitalAdmin.setEnabled(true);
-
-        // First login will require password setup
         hospitalAdmin.setFirstLogin(true);
-
-        // Password will be created during first-login setup
         hospitalAdmin.setPasswordHash(null);
 
         userRepository.save(hospitalAdmin);
 
-        // Update registration
+        // Mark registration approved only after creating both records.
         registration.setStatus("APPROVED");
-
         registration.setVerificationStatus("APPROVED");
-
         registration.setReviewNotes(reviewNotes);
-
-        registration.setReviewedAt(
-                LocalDateTime.now()
-        );
+        registration.setReviewedAt(LocalDateTime.now());
 
         return registrationRepository.save(registration);
     }
 
-    // Update registration status
+    // Only allow review/rejection here.
+    // APPROVED must go through approveRegistration().
     public Optional<HospitalRegistration> updateStatus(
             Long id,
             String status,
             String reviewNotes
     ) {
+        String normalizedStatus = normalizeStatus(status);
 
-        return registrationRepository.findById(id)
-                .map(registration -> {
+        if (!"UNDER_REVIEW".equals(normalizedStatus)
+                && !"REJECTED".equals(normalizedStatus)) {
+            throw new IllegalArgumentException(
+                    "Allowed status updates are UNDER_REVIEW or REJECTED. "
+                            + "Use the approval endpoint to approve a registration."
+            );
+        }
 
-                    registration.setStatus(status);
+        return registrationRepository.findById(id).map(registration -> {
+            String currentStatus = normalizeStatus(
+                    registration.getStatus()
+            );
 
-                    registration.setReviewNotes(reviewNotes);
+            if ("APPROVED".equals(currentStatus)) {
+                throw new IllegalArgumentException(
+                        "An approved registration cannot be changed."
+                );
+            }
 
-                    registration.setReviewedAt(
-                            LocalDateTime.now()
-                    );
+            if ("REJECTED".equals(currentStatus)) {
+                throw new IllegalArgumentException(
+                        "A rejected registration cannot be changed."
+                );
+            }
 
-                    if ("APPROVED".equalsIgnoreCase(status)) {
-                        registration.setVerificationStatus("APPROVED");
-                    }
+            if (!"PENDING".equals(currentStatus)
+                    && !"UNDER_REVIEW".equals(currentStatus)) {
+                throw new IllegalArgumentException(
+                        "This registration cannot be updated from its current status."
+                );
+            }
 
-                    if ("REJECTED".equalsIgnoreCase(status)) {
-                        registration.setVerificationStatus("REJECTED");
-                    }
+            registration.setStatus(normalizedStatus);
+            registration.setVerificationStatus(normalizedStatus);
+            registration.setReviewNotes(reviewNotes);
+            registration.setReviewedAt(LocalDateTime.now());
 
-                    if ("UNDER_REVIEW".equalsIgnoreCase(status)) {
-                        registration.setVerificationStatus("UNDER_REVIEW");
-                    }
+            return registrationRepository.save(registration);
+        });
+    }
 
-                    return registrationRepository.save(
-                            registration
-                    );
-                });
+    // Normalize status safely
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Registration status is required."
+            );
+        }
+
+        return status.trim().toUpperCase(Locale.ROOT);
     }
 
     // Delete registration
     public boolean deleteRegistration(Long id) {
-
         if (!registrationRepository.existsById(id)) {
             return false;
         }
 
-        registrationRepository.deleteById(id);
-
+        deleteRegistrationRecord(id);
         return true;
+    }
+
+    private void deleteRegistrationRecord(Long id) {
+        registrationRepository.deleteById(id);
     }
 }

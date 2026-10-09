@@ -1,8 +1,8 @@
+
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const HOSPITAL_ADMIN_TOKEN_KEY =
-  'hospitalflow_hospital_admin_token';
+const HOSPITAL_ADMIN_TOKEN_KEY = 'hospitalflow_hospital_admin_token';
 
 interface LoginResponse {
   token: string;
@@ -18,17 +18,12 @@ export default function HospitalAdminLoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // ----------------------------------
-  // LOGIN
-  // ----------------------------------
-
-  const handleLogin = async (event: FormEvent) => {
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     setError('');
 
     if (!email.trim()) {
@@ -44,32 +39,30 @@ export default function HospitalAdminLoginPage() {
     try {
       setIsLoading(true);
 
-      const response = await fetch(
-        '/api/hospital-admin/auth/login',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-            password,
-          }),
+      const response = await fetch('/api/hospital-admin/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
 
-      const data =
-        (await response.json()) as
-          | LoginResponse
-          | { message?: string };
+      const data = await response.json().catch(() => null);
 
       if (!response.ok) {
         setError(
-          'message' in data && data.message
-            ? data.message
-            : 'Invalid email or password.',
+          data?.message ||
+            data?.error ||
+            'Invalid email or password.'
         );
+        return;
+      }
 
+      if (!data?.token) {
+        setError('Login response did not contain an authentication token.');
         return;
       }
 
@@ -77,18 +70,18 @@ export default function HospitalAdminLoginPage() {
 
       sessionStorage.setItem(
         HOSPITAL_ADMIN_TOKEN_KEY,
-        loginData.token,
+        loginData.token
       );
 
       sessionStorage.setItem(
         'hospitalflow_hospital_admin',
-        JSON.stringify(loginData),
+        JSON.stringify(loginData)
       );
 
       navigate('/hospital-admin/dashboard');
     } catch {
       setError(
-        'Unable to connect to the server. Please try again.',
+        'Unable to connect to the server. Please check your connection and try again.'
       );
     } finally {
       setIsLoading(false);
@@ -96,374 +89,156 @@ export default function HospitalAdminLoginPage() {
   };
 
   return (
-    <div className="hospital-admin-login-page min-h-screen bg-[#031326] text-white relative overflow-hidden">
-
-      {/* =========================================
-          BACKGROUND
-      ========================================= */}
-
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-
-        {/* Top left glow */}
-        <div
-          className="
-            absolute
-            top-[-180px]
-            left-[-160px]
-            w-[450px]
-            h-[450px]
-            rounded-full
-            bg-cyan-400/10
-            blur-[120px]
-          "
-        />
-
-        {/* Right glow */}
-        <div
-          className="
-            absolute
-            top-[25%]
-            right-[-180px]
-            w-[500px]
-            h-[500px]
-            rounded-full
-            bg-blue-500/10
-            blur-[120px]
-          "
-        />
-
-        {/* Bottom glow */}
-        <div
-          className="
-            absolute
-            bottom-[-220px]
-            left-[35%]
-            w-[500px]
-            h-[400px]
-            rounded-full
-            bg-cyan-400/5
-            blur-[120px]
-          "
-        />
-
-        {/* Grid */}
-        <div
-          className="absolute inset-0 opacity-[0.035]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-            backgroundSize: '45px 45px',
-          }}
-        />
-
-      </div>
-
-      {/* =========================================
-          HEADER
-      ========================================= */}
-
-      <header
-        className="
-          relative
-          z-10
-          h-[76px]
-          border-b
-          border-white/10
-          bg-[#031326]/75
-          backdrop-blur-xl
-        "
-      >
-
-        <div
-          className="
-            max-w-[1180px]
-            mx-auto
-            h-full
-            px-5
-            sm:px-8
-            flex
-            items-center
-            justify-between
-          "
-        >
-
-          {/* Logo */}
-
+    <div className="min-h-screen bg-[#f5f9fc] text-[#10213f]">
+      {/* Header */}
+      <header className="sticky top-0 z-20 border-b border-[#e1eaf3] bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-[76px] max-w-[1200px] items-center justify-between px-5 sm:px-8">
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="flex items-center gap-3"
+            className="flex items-center gap-3 text-left"
           >
-
-            <div
-              className="
-                w-[42px]
-                h-[42px]
-                rounded-[12px]
-                bg-white/[0.07]
-                border
-                border-white/10
-                flex
-                items-center
-                justify-center
-                overflow-hidden
-              "
-            >
-
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-[#e1eaf3] bg-white">
               <img
                 src="/assets/logo.png"
                 alt="HospitalFlow"
-                className="w-[34px] h-auto object-contain"
+                className="h-9 w-9 object-contain"
               />
-
             </div>
 
-            <div className="text-left">
-
-              <div
-                className="
-                  font-bold
-                  text-[17px]
-                  tracking-tight
-                "
-              >
-                Hospital
-                <span className="text-[#16d9e3]">
-                  Flow
-                </span>
+            <div>
+              <div className="text-lg font-extrabold tracking-tight text-[#10213f]">
+                Hospital<span className="text-[#19c9d5]">Flow</span>
               </div>
-
-              <div
-                className="
-                  text-[9px]
-                  text-slate-500
-                  tracking-[0.12em]
-                  uppercase
-                "
-              >
+              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#7890aa]">
                 Smart OPD Platform
-              </div>
-
+              </p>
             </div>
-
           </button>
-
-          {/* Change Role */}
 
           <button
             type="button"
-            onClick={() =>
-              navigate('/role-selection')
-            }
-            className="
-              text-[12px]
-              sm:text-[13px]
-              font-semibold
-              text-slate-400
-              hover:text-[#16d9e3]
-              transition-colors
-            "
+            onClick={() => navigate('/role-selection')}
+            className="rounded-lg px-3 py-2 text-sm font-semibold text-[#078f9f] transition hover:bg-[#e9fbfd]"
           >
-            Change Role →
+            Change Role <span aria-hidden="true">→</span>
           </button>
-
         </div>
-
       </header>
 
-      {/* =========================================
-          MAIN
-      ========================================= */}
+      {/* Login page */}
+      <main className="relative overflow-hidden px-5 py-10 sm:px-8 sm:py-14 lg:py-16">
+        <div className="pointer-events-none absolute -left-32 top-20 h-80 w-80 rounded-full bg-cyan-200/30 blur-3xl" />
+        <div className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-blue-100/60 blur-3xl" />
 
-      <main
-        className="
-          relative
-          z-10
-          min-h-[calc(100vh-76px)]
-          flex
-          items-center
-          justify-center
-          px-5
-          sm:px-8
-          py-12
-        "
-      >
-
-        <div className="w-full max-w-[460px]">
-
-          {/* =====================================
-              LOGO + HEADING
-          ===================================== */}
-
-          <div className="text-center mb-8">
-
-            <div
-              className="
-                relative
-                inline-flex
-                items-center
-                justify-center
-                mb-5
-              "
-            >
-
-              {/* Glow */}
-
-              <div
-                className="
-                  absolute
-                  w-[115px]
-                  h-[115px]
-                  rounded-full
-                  bg-cyan-400/10
-                  blur-[30px]
-                "
-              />
-
-              {/* Logo container */}
-
-              <div
-                className="
-                  relative
-                  w-[84px]
-                  h-[84px]
-                  rounded-[24px]
-                  bg-white/[0.07]
-                  border
-                  border-white/10
-                  flex
-                  items-center
-                  justify-center
-                  shadow-[0_0_45px_rgba(22,217,227,0.12)]
-                "
-              >
-
-                <img
-                  src="/assets/logo.png"
-                  alt="HospitalFlow"
-                  className="w-[54px]"
-                />
-
-              </div>
-
+        <div className="relative mx-auto grid max-w-[1180px] items-center gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16">
+          {/* Left introduction */}
+          <section className="hidden lg:block">
+            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#bceff3] bg-[#e9fbfd] px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-[#078f9f]">
+              <span className="h-2 w-2 rounded-full bg-[#19c9d5]" />
+              Hospital management portal
             </div>
 
-            {/* Badge */}
-
-            <div className="flex justify-center mb-4">
-
-              <span
-                className="
-                  inline-flex
-                  items-center
-                  px-4
-                  py-2
-                  rounded-full
-                  bg-[#16d9e3]/10
-                  border
-                  border-[#16d9e3]/20
-                  text-[#8ef8ff]
-                  text-[11px]
-                  font-medium
-                "
-              >
-                Hospital Administration
-              </span>
-
-            </div>
-
-            <h1
-              className="
-                text-[30px]
-                sm:text-[34px]
-                font-bold
-                tracking-tight
-              "
-            >
-              Hospital Admin{' '}
-              <span className="text-[#16d9e3]">
-                Login
-              </span>
+            <h1 className="max-w-[650px] text-5xl font-extrabold leading-[1.12] tracking-tight text-[#10213f] xl:text-[60px]">
+              Smarter hospital
+              <br />
+              <span className="text-[#19c9d5]">management starts here.</span>
             </h1>
 
-            <p
-              className="
-                text-[14px]
-                text-slate-400
-                mt-3
-              "
-            >
-              Sign in to manage your hospital operations.
+            <p className="mt-6 max-w-[570px] text-base leading-8 text-[#7890aa]">
+              Access your hospital workspace to coordinate OPD operations,
+              manage doctors and appointments, and keep your hospital running
+              smoothly.
             </p>
 
-          </div>
+            <div className="mt-9 grid max-w-[590px] grid-cols-2 gap-4">
+              <FeatureCard
+                icon="◷"
+                title="OPD Operations"
+                description="Manage daily hospital activities."
+              />
+              <FeatureCard
+                icon="♡"
+                title="Doctor Management"
+                description="Keep your medical team organised."
+              />
+              <FeatureCard
+                icon="▤"
+                title="Appointments"
+                description="Coordinate patient appointments."
+              />
+              <FeatureCard
+                icon="✓"
+                title="Secure Access"
+                description="Sign in to your authorised account."
+              />
+            </div>
 
-          {/* =====================================
-              LOGIN CARD
-          ===================================== */}
+            <p className="mt-7 flex items-center gap-2 text-xs font-medium text-[#7890aa]">
+              <span className="text-[#19c9d5]">✓</span>
+              Designed for streamlined hospital operations
+            </p>
+          </section>
 
-          <div
-            className="
-              relative
-              rounded-[24px]
-              p-[1px]
-              bg-gradient-to-br
-              from-[#16d9e3]/40
-              via-white/10
-              to-transparent
-            "
-          >
+          {/* Right login panel */}
+          <section className="mx-auto w-full max-w-[470px]">
+            {/* Mobile heading */}
+            <div className="mb-7 text-center lg:hidden">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#d8edf2] bg-white text-3xl shadow-sm">
+                🏥
+              </div>
 
-            <div
-              className="
-                relative
-                rounded-[23px]
-                bg-[#071b31]/95
-                border
-                border-white/[0.07]
-                p-6
-                sm:p-8
-                backdrop-blur-xl
-              "
-            >
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#10213f]">
+                Hospital Admin
+                <span className="text-[#19c9d5]"> Login</span>
+              </h1>
 
-              <form
-                onSubmit={handleLogin}
-                className="flex flex-col gap-5"
-              >
+              <p className="mt-3 text-sm leading-6 text-[#7890aa]">
+                Sign in to manage your hospital operations.
+              </p>
+            </div>
 
-                {/* Error */}
+            <div className="rounded-[26px] border border-[#dce8f3] bg-white p-6 shadow-[0_18px_55px_rgba(16,33,63,0.08)] sm:p-9">
+              {/* Card heading */}
+              <div className="mb-8 flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#c9f2f5] bg-[#e9fbfd] text-2xl text-[#079eaf]">
+                  ♙
+                </div>
 
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.13em] text-[#7890aa]">
+                    Hospital portal
+                  </p>
+                  <h2 className="mt-1 text-xl font-extrabold text-[#10213f]">
+                    Welcome back
+                  </h2>
+                  <p className="mt-1 text-xs text-[#7890aa]">
+                    Secure administrator access
+                  </p>
+                </div>
+              </div>
+
+              <p className="mb-7 text-sm leading-6 text-[#7890aa]">
+                Sign in to continue to your HospitalFlow account.
+              </p>
+
+              <form onSubmit={handleLogin} className="space-y-5">
                 {error && (
                   <div
-                    className="
-                      rounded-[12px]
-                      border
-                      border-red-400/20
-                      bg-red-400/10
-                      px-4
-                      py-3
-                    "
+                    role="alert"
+                    className="rounded-xl border border-red-200 bg-red-50 px-4 py-3"
                   >
-                    <p className="text-red-300 text-[12px]">
+                    <p className="text-sm font-medium leading-6 text-red-700">
                       {error}
                     </p>
                   </div>
                 )}
 
                 {/* Email */}
-
                 <div>
-
                   <label
                     htmlFor="hospital-admin-email"
-                    className="
-                      block
-                      text-[12px]
-                      font-semibold
-                      text-slate-300
-                      mb-2
-                    "
+                    className="mb-2 block text-sm font-semibold text-[#34465e]"
                   >
                     Admin Email
                   </label>
@@ -476,193 +251,132 @@ export default function HospitalAdminLoginPage() {
                       setEmail(event.target.value);
                       setError('');
                     }}
-                    placeholder="Enter hospital admin email"
-                    autoComplete="email"
-                    className="
-                      w-full
-                      bg-white/[0.045]
-                      border
-                      border-white/10
-                      rounded-[12px]
-                      px-4
-                      py-3
-                      text-[14px]
-                      text-white
-                      placeholder:text-slate-600
-                      outline-none
-                      focus:border-[#16d9e3]
-                      focus:ring-2
-                      focus:ring-[#16d9e3]/10
-                      transition-all
-                    "
+                    placeholder="admin@hospital.com"
+                    autoComplete="username"
+                    required
+                    className="w-full rounded-xl border border-[#d8e4ef] bg-[#f1f6ff] px-4 py-3.5 text-sm text-[#10213f] outline-none transition placeholder:text-[#91a2b8] focus:border-[#19c9d5] focus:bg-white focus:ring-4 focus:ring-cyan-100"
                   />
-
                 </div>
 
                 {/* Password */}
-
                 <div>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <label
+                      htmlFor="hospital-admin-password"
+                      className="text-sm font-semibold text-[#34465e]"
+                    >
+                      Password
+                    </label>
+                  </div>
 
-                  <label
-                    htmlFor="hospital-admin-password"
-                    className="
-                      block
-                      text-[12px]
-                      font-semibold
-                      text-slate-300
-                      mb-2
-                    "
-                  >
-                    Password
-                  </label>
+                  <div className="relative">
+                    <input
+                      id="hospital-admin-password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(event) => {
+                        setPassword(event.target.value);
+                        setError('');
+                      }}
+                      placeholder="Enter your password"
+                      autoComplete="current-password"
+                      required
+                      className="w-full rounded-xl border border-[#d8e4ef] bg-[#f1f6ff] px-4 py-3.5 pr-16 text-sm text-[#10213f] outline-none transition placeholder:text-[#91a2b8] focus:border-[#19c9d5] focus:bg-white focus:ring-4 focus:ring-cyan-100"
+                    />
 
-                  <input
-                    id="hospital-admin-password"
-                    type="password"
-                    value={password}
-                    onChange={(event) => {
-                      setPassword(event.target.value);
-                      setError('');
-                    }}
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
-                    className="
-                      w-full
-                      bg-white/[0.045]
-                      border
-                      border-white/10
-                      rounded-[12px]
-                      px-4
-                      py-3
-                      text-[14px]
-                      text-white
-                      placeholder:text-slate-600
-                      outline-none
-                      focus:border-[#16d9e3]
-                      focus:ring-2
-                      focus:ring-[#16d9e3]/10
-                      transition-all
-                    "
-                  />
-
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((previous) => !previous)}
+                      className="absolute inset-y-0 right-3 px-2 text-xs font-semibold text-[#078f9f] hover:text-[#10213f]"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
                 </div>
-
-                {/* Sign In */}
 
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="
-                    w-full
-                    mt-2
-                    bg-[#16d9e3]
-                    hover:bg-[#5deaf0]
-                    disabled:opacity-50
-                    disabled:cursor-not-allowed
-                    text-[#031326]
-                    rounded-[12px]
-                    py-3
-                    font-bold
-                    text-[14px]
-                    transition-all
-                    shadow-[0_8px_25px_rgba(22,217,227,0.14)]
-                  "
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#19c9d5] px-5 py-4 text-sm font-extrabold text-[#06243b] shadow-[0_8px_24px_rgba(25,201,213,0.18)] transition hover:bg-[#35d7e0] focus:outline-none focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isLoading
-                    ? 'Signing In...'
-                    : 'Sign In'}
+                  {isLoading ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#06243b]/30 border-t-[#06243b]" />
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      Sign In <span aria-hidden="true">→</span>
+                    </>
+                  )}
                 </button>
-
               </form>
 
+              {/* Account information */}
+              <div className="my-7 flex items-center gap-3">
+                <div className="h-px flex-1 bg-[#dce8f3]" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7890aa]">
+                  Administrator access
+                </span>
+                <div className="h-px flex-1 bg-[#dce8f3]" />
+              </div>
+
+              <div className="rounded-2xl border border-[#e0eff3] bg-[#f5fcfd] p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-lg text-[#079eaf] shadow-sm">
+                    ✓
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-bold text-[#123b56]">
+                      Authorised Hospital Administrator
+                    </h3>
+                    <p className="mt-1 text-xs leading-5 text-[#7890aa]">
+                      Use the administrator credentials provided by
+                      HospitalFlow after your hospital has been approved.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs text-[#7890aa]">
+                <span className="text-[#19c9d5]">♢</span>
+                Your account is protected by authentication.
+              </p>
             </div>
 
-          </div>
-
-          {/* =====================================
-              ADMIN INFORMATION
-          ===================================== */}
-
-          <div
-            className="
-              mt-5
-              rounded-[20px]
-              bg-[#071b31]/80
-              border
-              border-white/[0.07]
-              p-5
-              text-center
-            "
-          >
-
-            <div
-              className="
-                mx-auto
-                w-[42px]
-                h-[42px]
-                rounded-[13px]
-                bg-[#16d9e3]/10
-                border
-                border-[#16d9e3]/15
-                flex
-                items-center
-                justify-center
-                mb-3
-              "
+            <button
+              type="button"
+              onClick={() => navigate('/role-selection')}
+              className="mx-auto mt-6 block rounded-lg px-4 py-2 text-sm font-semibold text-[#7890aa] transition hover:bg-white hover:text-[#078f9f]"
             >
-              <span className="text-[#16d9e3] text-[18px]">
-                ✓
-              </span>
-            </div>
-
-            <p
-              className="
-                font-semibold
-                text-white
-                text-[13px]
-              "
-            >
-              Authorized Hospital Administrator
-            </p>
-
-            <p
-              className="
-                text-slate-500
-                text-[12px]
-                mt-1.5
-                leading-[1.6]
-              "
-            >
-              Use the administrator credentials provided
-              by HospitalFlow after hospital approval.
-            </p>
-
-          </div>
-
-          {/* Back */}
-
-          <button
-            type="button"
-            onClick={() =>
-              navigate('/role-selection')
-            }
-            className="
-              block
-              mx-auto
-              mt-5
-              text-[12px]
-              text-slate-500
-              hover:text-[#16d9e3]
-              transition-colors
-            "
-          >
-            ← Back to role selection
-          </button>
-
+              ← Back to role selection
+            </button>
+          </section>
         </div>
-
       </main>
+    </div>
+  );
+}
 
+function FeatureCard({
+  icon,
+  title,
+  description,
+}: {
+  icon: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#e2edf5] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#bceff3] hover:shadow-md">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e7fafc] text-xl text-[#079eaf]">
+        {icon}
+      </div>
+
+      <h3 className="mt-4 text-sm font-bold text-[#10213f]">{title}</h3>
+      <p className="mt-2 text-xs leading-5 text-[#7890aa]">{description}</p>
     </div>
   );
 }

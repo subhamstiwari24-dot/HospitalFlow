@@ -2,11 +2,13 @@ package com.hospitalflow.backend.controller;
 
 import com.hospitalflow.backend.entity.HospitalRegistration;
 import com.hospitalflow.backend.service.HospitalRegistrationService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/hospital-registrations")
@@ -19,102 +21,87 @@ public class HospitalRegistrationController {
     private final HospitalRegistrationService registrationService;
 
     public HospitalRegistrationController(
-            HospitalRegistrationService registrationService) {
-
+            HospitalRegistrationService registrationService
+    ) {
         this.registrationService = registrationService;
     }
 
-    /*
-     * Get all hospital registration applications.
-     */
+    // ==========================================
+    // GET ALL REGISTRATIONS
+    // SUPER_ADMIN ONLY
+    // ==========================================
     @GetMapping
-    public ResponseEntity<List<HospitalRegistration>>
-    getAllRegistrations() {
-
+    public ResponseEntity<List<HospitalRegistration>> getAllRegistrations() {
         return ResponseEntity.ok(
                 registrationService.getAllRegistrations()
         );
     }
 
-    /*
-     * Get registrations by status.
-     *
-     * Example:
-     * /api/hospital-registrations/status/PENDING
-     */
+    // ==========================================
+    // GET REGISTRATIONS BY STATUS
+    // SUPER_ADMIN ONLY
+    // ==========================================
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<HospitalRegistration>>
-    getByStatus(
-            @PathVariable String status) {
-
-        return ResponseEntity.ok(
-                registrationService.getRegistrationsByStatus(
-                        status.toUpperCase()
-                )
-        );
+    public ResponseEntity<?> getByStatus(
+            @PathVariable String status
+    ) {
+        try {
+            return ResponseEntity.ok(
+                    registrationService.getRegistrationsByStatus(
+                            status.trim().toUpperCase(Locale.ROOT)
+                    )
+            );
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
-    /*
-     * Get a single registration by ID.
-     */
+    // ==========================================
+    // GET REGISTRATION BY ID
+    // SUPER_ADMIN ONLY
+    // ==========================================
     @GetMapping("/{id}")
-    public ResponseEntity<HospitalRegistration>
-    getRegistrationById(
-            @PathVariable Long id) {
-
-        return registrationService
-                .getRegistrationById(id)
+    public ResponseEntity<HospitalRegistration> getRegistrationById(
+            @PathVariable Long id
+    ) {
+        return registrationService.getRegistrationById(id)
                 .map(ResponseEntity::ok)
-                .orElseGet(
-                        () -> ResponseEntity
-                                .notFound()
-                                .build()
-                );
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    /*
-     * Submit a new hospital registration.
-     */
+    // ==========================================
+    // SUBMIT NEW HOSPITAL REGISTRATION
+    // PUBLIC ENDPOINT
+    // ==========================================
     @PostMapping
     public ResponseEntity<?> createRegistration(
-            @RequestBody HospitalRegistration registration) {
-
+            @RequestBody HospitalRegistration registration
+    ) {
         try {
-
             HospitalRegistration created =
-                    registrationService.createRegistration(
-                            registration
-                    );
+                    registrationService.createRegistration(registration);
 
             return ResponseEntity
                     .status(HttpStatus.CREATED)
                     .body(created);
 
         } catch (IllegalArgumentException e) {
-
             return ResponseEntity
                     .badRequest()
                     .body(e.getMessage());
         }
     }
 
-    /*
-     * Approve a hospital registration.
-     *
-     * This will:
-     * 1. Create Hospital
-     * 2. Create HOSPITAL_ADMIN user
-     * 3. Link user to hospital
-     * 4. Mark registration as APPROVED
-     */
+    // ==========================================
+    // APPROVE HOSPITAL REGISTRATION
+    // SUPER_ADMIN ONLY
+    // ==========================================
     @PostMapping("/{id}/approve")
     public ResponseEntity<?> approveRegistration(
             @PathVariable Long id,
-            @RequestParam(required = false)
-            String reviewNotes) {
-
+            @RequestParam(required = false) String reviewNotes
+    ) {
         try {
-
             HospitalRegistration approved =
                     registrationService.approveRegistration(
                             id,
@@ -124,61 +111,56 @@ public class HospitalRegistrationController {
             return ResponseEntity.ok(approved);
 
         } catch (IllegalArgumentException e) {
-
             return ResponseEntity
                     .badRequest()
                     .body(e.getMessage());
         }
     }
 
-    /*
-     * Update registration status manually.
-     *
-     * Example:
-     * PATCH
-     * /api/hospital-registrations/1/status
-     * ?status=UNDER_REVIEW
-     * &reviewNotes=Documents%20are%20being%20verified
-     */
+    // ==========================================
+    // UPDATE REGISTRATION STATUS
+    // SUPER_ADMIN ONLY
+    //
+    // Allowed:
+    // UNDER_REVIEW
+    // REJECTED
+    //
+    // APPROVED must use the dedicated approve endpoint.
+    // ==========================================
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(
             @PathVariable Long id,
             @RequestParam String status,
-            @RequestParam(required = false)
-            String reviewNotes) {
+            @RequestParam(required = false) String reviewNotes
+    ) {
+        try {
+            return registrationService.updateStatus(
+                            id,
+                            status,
+                            reviewNotes
+                    )
+                    .<ResponseEntity<?>>map(ResponseEntity::ok)
+                    .orElseGet(() -> ResponseEntity.notFound().build());
 
-        String normalizedStatus =
-                status.toUpperCase();
-
-        return registrationService
-                .updateStatus(
-                        id,
-                        normalizedStatus,
-                        reviewNotes
-                )
-                .map(ResponseEntity::ok)
-                .orElseGet(
-                        () -> ResponseEntity
-                                .notFound()
-                                .build()
-                );
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(e.getMessage());
+        }
     }
 
-    /*
-     * Delete a registration application.
-     */
+    // ==========================================
+    // DELETE REGISTRATION
+    // SUPER_ADMIN ONLY
+    // ==========================================
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRegistration(
-            @PathVariable Long id) {
-
+            @PathVariable Long id
+    ) {
         if (!registrationService.deleteRegistration(id)) {
-            return ResponseEntity
-                    .notFound()
-                    .build();
+            return ResponseEntity.notFound().build();
         }
 
-        return ResponseEntity
-                .noContent()
-                .build();
+        return ResponseEntity.noContent().build();
     }
 }

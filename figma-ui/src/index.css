@@ -1952,3 +1952,110 @@ body,
       ) !important;
   }
 }
+
+/* HospitalFlow Login page layout correction */
+.staff-login-page {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+.staff-login-page .staff-login-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 40px;
+  width: 100%;
+  max-width: 1120px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+@media (min-width: 1024px) {
+  .staff-login-page .staff-login-layout {
+    grid-template-columns: minmax(0, 1fr) 440px;
+    column-gap: 64px;
+    row-gap: 40px;
+  }
+
+  .staff-login-page .staff-login-layout > section:first-child {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .staff-login-page .staff-login-layout > section:last-child {
+    width: 100%;
+    max-width: 440px;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .staff-login-page .staff-login-layout > section:first-child h1 {
+    max-width: 600px;
+    font-size: clamp(44px, 4vw, 56px);
+    line-height: 1.12;
+    overflow-wrap: normal;
+  }
+}
+
+@media (max-width: 1023px) {
+  .staff-login-page .staff-login-layout > section:first-child {
+    display: none;
+  }
+
+  .staff-login-page .staff-login-layout > section:last-child {
+    width: 100%;
+    max-width: 440px;
+    margin-right: auto;
+    margin-left: auto;
+  }
+}
+
+/* FINAL FIX: HospitalFlow Staff Login layout */
+.staff-login-page > main > .staff-login-layout {
+  display: grid !important;
+  width: 100% !important;
+  max-width: 1120px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 32px !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+@media (min-width: 1024px) {
+  .staff-login-page > main > .staff-login-layout {
+    grid-template-columns: minmax(0, 1fr) 440px !important;
+    column-gap: 56px !important;
+  }
+
+  .staff-login-page > main > .staff-login-layout > section:first-child {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .staff-login-page > main > .staff-login-layout > section:last-child {
+    display: block !important;
+    width: 100% !important;
+    max-width: 440px !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .staff-login-page > main > .staff-login-layout > section:first-child {
+    display: none !important;
+  }
+
+  .staff-login-page > main > .staff-login-layout > section:last-child {
+    width: 100% !important;
+    max-width: 440px !important;
+    margin: 0 auto !important;
+  }
+}
