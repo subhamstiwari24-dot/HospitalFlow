@@ -2059,3 +2059,252 @@ body,
     margin: 0 auto !important;
   }
 }
+
+/* ==========================================
+   HospitalFlow — Book OPD Light Theme
+   Navy + Cyan healthcare UI
+========================================== */
+
+.opd-light-page {
+  min-height: 100vh;
+  background: #f5f8fc !important;
+  color: #142033 !important;
+}
+
+/* Remove the old dark gradient and grid */
+.opd-light-page [class*="bg-[radial-gradient"],
+.opd-light-page [class*="bg-[linear-gradient"] {
+  background-image: none !important;
+}
+
+.opd-light-page [class*="bg-[#031326]"],
+.opd-light-page [class*="bg-[#020d1b]"],
+.opd-light-page [class*="bg-[#071b31]"],
+.opd-light-page [class*="bg-[#06182b]"] {
+  background-color: #ffffff !important;
+}
+
+/* Light neutral surfaces */
+.opd-light-page [class*="bg-white/"],
+.opd-light-page [class*="bg-white/["] {
+  background-color: #f8fafc !important;
+}
+
+/* Borders */
+.opd-light-page [class*="border-white/"],
+.opd-light-page [class*="border-white/["] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Primary text */
+.opd-light-page .text-white {
+  color: #142033 !important;
+}
+
+/* Secondary text */
+.opd-light-page .text-slate-300,
+.opd-light-page .text-slate-400 {
+  color: #526176 !important;
+}
+
+.opd-light-page .text-slate-500,
+.opd-light-page .text-slate-600 {
+  color: #718096 !important;
+}
+
+/* Preserve cyan branding */
+.opd-light-page .text-\[\#16d9e3\],
+.opd-light-page .text-\[\#8ef8ff\] {
+  color: #0d9ca8 !important;
+}
+
+/* Cards */
+.opd-light-page [class*="rounded-[22px]"],
+.opd-light-page [class*="rounded-[20px]"] {
+  box-shadow: 0 4px 18px rgba(20, 32, 51, 0.045);
+}
+
+/* Input and textarea */
+.opd-light-page textarea {
+  background: #ffffff !important;
+  color: #142033 !important;
+  border-color: #dce4ed !important;
+}
+
+.opd-light-page textarea::placeholder {
+  color: #8a97a8 !important;
+}
+
+/* Keep the cyan selected-slot and primary button backgrounds */
+.opd-light-page [class*="bg-[#16d9e3]"] {
+  background-color: #16d9e3 !important;
+}
+
+/* Smooth UI transitions */
+.opd-light-page button {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+@media (max-width: 640px) {
+  .opd-light-page {
+    overflow-x: hidden;
+  }
+
+  .opd-light-page textarea {
+    font-size: 14px;
+  }
+}
+
+/* HospitalFlow Book OPD — Light UI */
+.opd-light-page {
+  min-height: 100vh;
+  background: #f5f8fc !important;
+  color: #142033 !important;
+}
+
+.opd-light-page > .fixed.inset-0 {
+  background: #f5f8fc !important;
+}
+
+.opd-light-page > .fixed.inset-0 > div {
+  display: none !important;
+}
+
+/* Main cards */
+.opd-light-page [class*="bg-[#071b31]"],
+.opd-light-page [class*="bg-[#06182b]"],
+.opd-light-page [class*="bg-[#031326]"],
+.opd-light-page [class*="bg-[#020d1b]"] {
+  background-color: #ffffff !important;
+}
+
+/* Headings */
+.opd-light-page .text-white,
+.opd-light-page .text-slate-100,
+.opd-light-page .text-slate-200 {
+  color: #142033 !important;
+}
+
+.opd-light-page .text-slate-300,
+.opd-light-page .text-slate-400 {
+  color: #526176 !important;
+}
+
+.opd-light-page .text-slate-500,
+.opd-light-page .text-slate-600 {
+  color: #718096 !important;
+}
+
+/* Card borders */
+.opd-light-page [class*="border-white/"] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Form field */
+.opd-light-page textarea {
+  background: #ffffff !important;
+  color: #142033 !important;
+  border: 1px solid #dce4ed !important;
+}
+
+.opd-light-page textarea::placeholder {
+  color: #8a97a8 !important;
+}
+
+/* Date buttons and available slots */
+.opd-light-page button[class*="bg-[#031326]"],
+.opd-light-page button[class*="bg-[#020d1b]"] {
+  background-color: #f8fafc !important;
+  color: #142033 !important;
+  border-color: #dce4ed !important;
+}
+
+/* Selected date and selected slot */
+.opd-light-page button[class*="bg-[#16d9e3]"] {
+  background-color: #16d9e3 !important;
+  color: #082033 !important;
+  border-color: #0d9ca8 !important;
+}
+
+/* Accent text */
+.opd-light-page .text-\[\#8ef8ff\],
+.opd-light-page .text-\[\#16d9e3\] {
+  color: #0d9ca8 !important;
+}
+
+/* Payment option inner cards */
+.opd-light-page button[class*="rounded-[16px]"] > div {
+  color: #142033;
+}
+
+/* Payment labels */
+.opd-light-page button[class*="rounded-[16px]"] .text-white {
+  color: #142033 !important;
+}
+
+/* Queue and appointment cards */
+.opd-light-page [class*="rounded-[22px]"],
+.opd-light-page [class*="rounded-[20px]"] {
+  box-shadow: 0 5px 22px rgba(20, 32, 51, 0.055);
+}
+
+/* Better focus visibility */
+.opd-light-page textarea:focus {
+  outline: none;
+  border-color: #0d9ca8 !important;
+  box-shadow: 0 0 0 3px rgba(13, 156, 168, 0.12);
+}
+
+.opd-light-page button:focus-visible {
+  outline: 2px solid #0d9ca8;
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .opd-light-page {
+    overflow-x: hidden;
+  }
+
+  .opd-light-page textarea {
+    font-size: 14px;
+  }
+}
+
+/* HospitalFlow — Softer, eye-friendly background */
+
+body {
+  background: #f5f7fa;
+}
+
+/* Remove strong cyan background glows */
+.bg-cyan-400\/10,
+.bg-cyan-400\/\[0\.04\],
+.bg-\[\#16d9e3\]\/10,
+.bg-\[\#16d9e3\]\/\[0\.04\] {
+  background-color: transparent !important;
+}
+
+/* Remove cyan glow effects */
+.blur-\[80px\],
+.blur-\[55px\] {
+  opacity: 0 !important;
+}
+
+/* Softer page background */
+main,
+.min-h-screen {
+  background-color: #f5f7fa;
+}
+
+/* Keep accents subtle */
+.text-\[\#8ef8ff\] {
+  color: #0d8791 !important;
+}
+
+/* Softer card shadows */
+.shadow-\[0_0_0_3px_rgba\(13\,156\,168\,0\.10\)\] {
+  box-shadow: 0 2px 10px rgba(20, 32, 51, 0.05) !important;
+}

@@ -1,3 +1,4 @@
+
 import { useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
@@ -29,54 +30,29 @@ export default function PatientLayout({
   const navigate = useNavigate();
 
   return (
-    <div className="patient-shell min-h-screen bg-[#031326] text-white flex flex-col relative overflow-hidden">
+    <div className="patient-shell relative flex min-h-screen flex-col overflow-hidden bg-[#F3F6FB] text-[#17243A]">
 
-      {/* =====================================================
-          BACKGROUND GLOW
-      ===================================================== */}
+      {/* TOP NAVIGATION */}
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0B1F3A]">
+        <div className="mx-auto flex h-[60px] max-w-[1100px] items-center justify-between px-4 sm:h-[68px] sm:px-6">
 
-      <div className="pointer-events-none fixed -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-[#16d9e3]/10 blur-[140px]" />
-
-      <div className="pointer-events-none fixed -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-cyan-400/10 blur-[140px]" />
-
-      {/* Subtle grid */}
-      <div
-        className="pointer-events-none fixed inset-0 opacity-[0.025]"
-        style={{
-          backgroundImage:
-            'linear-gradient(#16d9e3 1px, transparent 1px), linear-gradient(90deg, #16d9e3 1px, transparent 1px)',
-          backgroundSize: '45px 45px',
-        }}
-      />
-
-      {/* =====================================================
-          TOP BAR
-      ===================================================== */}
-
-      <div className="relative z-20 bg-[#031326]/85 backdrop-blur-xl border-b border-white/10 sticky top-0">
-
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 h-[60px] sm:h-[68px] flex items-center justify-between">
-
-          {/* Logo */}
           <button
             type="button"
             onClick={() => navigate('/patient')}
-            className="cursor-pointer hover:opacity-80 transition-opacity"
+            className="transition-opacity hover:opacity-80"
+            aria-label="Go to patient home"
           >
             <img
               src="/assets/logo.png"
               alt="HospitalFlow"
-              className="h-7 sm:h-9 w-auto object-contain"
+              className="h-7 w-auto object-contain sm:h-9"
             />
           </button>
 
-          {/* Right side */}
           <div className="flex items-center gap-3 sm:gap-5">
-
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#16d9e3] shadow-[0_0_10px_#16d9e3]" />
-
-              <p className="text-[#8ea4bd] text-[12px] font-medium">
+            <div className="hidden items-center gap-2 sm:flex">
+              <span className="h-2 w-2 rounded-full bg-[#69C3C5]" />
+              <p className="text-[12px] font-medium text-slate-200">
                 Patient Portal
               </p>
             </div>
@@ -84,187 +60,105 @@ export default function PatientLayout({
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="text-[#8ef8ff] text-[12px] font-semibold hover:text-white transition-colors"
+              className="text-[12px] font-semibold text-[#A8DCDD] transition-colors hover:text-white"
             >
               Staff Login →
             </button>
-
           </div>
         </div>
 
-        {/* =====================================================
-            STEPPER
-        ===================================================== */}
-
+        {/* BOOKING STEPPER */}
         {step !== undefined && (
-          <div className="border-t border-white/5 bg-[#04172a]/80 overflow-x-auto">
-
-            <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-3 flex items-center min-w-[520px]">
-
-              {STEPS.map((s, i) => {
-
-                const done = i < step;
-                const active = i === step;
+          <div className="overflow-x-auto border-t border-white/10 bg-[#102744]">
+            <div className="mx-auto flex min-w-[520px] max-w-[1100px] items-center px-4 py-3 sm:px-6">
+              {STEPS.map((item, index) => {
+                const done = index < step;
+                const active = index === step;
 
                 return (
                   <div
-                    key={s.label}
-                    className="flex items-center flex-1 last:flex-none"
+                    key={item.label}
+                    className="flex flex-1 items-center last:flex-none"
                   >
-
-                    {/* Step */}
-                    <div className="flex items-center gap-2 shrink-0">
-
+                    <div className="flex shrink-0 items-center gap-2">
                       <div
-                        className={`
-                          w-[22px] h-[22px]
-                          sm:w-[24px] sm:h-[24px]
-                          rounded-full
-                          flex items-center justify-center
-                          text-[10px] sm:text-[11px]
-                          font-bold
-                          border
-                          transition-all duration-300
-                          ${
-                            done
-                              ? 'bg-[#16d9e3] border-[#16d9e3] text-[#031326] shadow-[0_0_12px_rgba(22,217,227,0.35)]'
-                              : active
-                              ? 'bg-[#16d9e3]/15 border-[#16d9e3] text-[#8ef8ff] shadow-[0_0_14px_rgba(22,217,227,0.25)]'
-                              : 'bg-[#071b31] border-white/10 text-slate-500'
-                          }
-                        `}
+                        className={`flex h-[22px] w-[22px] items-center justify-center rounded-full border text-[10px] font-bold transition-colors sm:h-6 sm:w-6 sm:text-[11px] ${
+                          done
+                            ? 'border-[#0F7375] bg-[#0F7375] text-white'
+                            : active
+                              ? 'border-[#70BFC1] bg-[#DCEFF0] text-[#0B4F53]'
+                              : 'border-slate-500/40 bg-[#18324F] text-slate-300'
+                        }`}
                       >
-                        {done ? '✓' : i + 1}
+                        {done ? '✓' : index + 1}
                       </div>
 
                       <p
-                        className={`
-                          text-[10px] sm:text-[12px]
-                          whitespace-nowrap
-                          transition-colors
-                          ${
-                            active
-                              ? 'text-white font-bold'
-                              : done
-                              ? 'text-[#16d9e3] font-semibold'
-                              : 'text-slate-500 font-medium'
-                          }
-                        `}
+                        className={`whitespace-nowrap text-[10px] transition-colors sm:text-[12px] ${
+                          active
+                            ? 'font-bold text-white'
+                            : done
+                              ? 'font-semibold text-[#A8DCDD]'
+                              : 'font-medium text-slate-300'
+                        }`}
                       >
-                        {s.label}
+                        {item.label}
                       </p>
-
                     </div>
 
-                    {/* Connector */}
-                    {i < STEPS.length - 1 && (
+                    {index < STEPS.length - 1 && (
                       <div
-                        className={`
-                          flex-1 h-[2px]
-                          mx-[7px] sm:mx-[12px]
-                          rounded-full
-                          transition-all duration-500
-                          ${
-                            done
-                              ? 'bg-[#16d9e3] shadow-[0_0_7px_rgba(22,217,227,0.25)]'
-                              : 'bg-white/10'
-                          }
-                        `}
+                        className={`mx-[7px] h-[2px] flex-1 rounded-full sm:mx-3 ${
+                          done ? 'bg-[#70BFC1]' : 'bg-slate-500/30'
+                        }`}
                       />
                     )}
-
                   </div>
                 );
               })}
-
             </div>
           </div>
         )}
-      </div>
+      </header>
 
-      {/* =====================================================
-          CONTENT
-      ===================================================== */}
-
-      <div
-        className={`
-          relative z-10
-          ${maxWidth}
-          mx-auto
-          w-full
-          px-4 sm:px-6
-          py-6 sm:py-8
-          flex-1
-        `}
-      >
-
-        {/* Back + Title */}
+      {/* PAGE CONTENT */}
+      <main className={`relative z-10 mx-auto w-full flex-1 px-4 py-6 sm:px-6 sm:py-8 ${maxWidth}`}>
         {(showBack || title) && (
-          <div className="flex items-center gap-3 mb-5 sm:mb-6">
-
+          <div className="mb-5 flex items-center gap-3 sm:mb-6">
             {showBack && (
               <button
                 type="button"
-                onClick={() =>
-                  backTo ? navigate(backTo) : navigate(-1)
-                }
-                className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  px-3
-                  py-2
-                  rounded-xl
-                  border
-                  border-white/10
-                  bg-[#071b31]/80
-                  text-[#8ef8ff]
-                  text-[13px]
-                  font-semibold
-                  hover:border-[#16d9e3]/40
-                  hover:bg-[#0a223c]
-                  transition-all
-                "
+                onClick={() => backTo ? navigate(backTo) : navigate(-1)}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#D8E2EE] bg-white px-3 py-2 text-[13px] font-semibold text-[#31516D] transition-colors hover:border-[#9ABBCB] hover:bg-[#F8FAFD]"
               >
                 ← Back
               </button>
             )}
 
             {title && (
-              <h2 className="font-bold text-white text-[20px]">
+              <h2 className="text-[20px] font-bold text-[#17243A]">
                 {title}
               </h2>
             )}
-
           </div>
         )}
 
-        {/* Page Content */}
         {children}
+      </main>
 
-      </div>
-
-      {/* =====================================================
-          FOOTER
-      ===================================================== */}
-
-      <footer className="relative z-10 border-t border-white/5 bg-[#020f20]/70">
-
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-
-          <p className="text-[11px] text-slate-600">
+      {/* FOOTER */}
+      <footer className="relative z-10 border-t border-[#E0E7F0] bg-white">
+        <div className="mx-auto flex max-w-[1100px] flex-col items-center justify-between gap-2 px-4 py-4 sm:flex-row sm:px-6">
+          <p className="text-[11px] text-slate-500">
             HospitalFlow • Smart OPD Coordination
           </p>
 
-          <div className="flex items-center gap-2 text-[11px] text-slate-600">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#16d9e3]" />
+          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#0F7375]" />
             Secure Patient Portal
           </div>
-
         </div>
-
       </footer>
-
     </div>
   );
 }

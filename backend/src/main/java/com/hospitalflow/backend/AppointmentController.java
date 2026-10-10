@@ -1,3 +1,4 @@
+
 package com.hospitalflow.backend;
 
 import com.hospitalflow.backend.dto.QueuePositionResponse;
@@ -42,16 +43,70 @@ public class AppointmentController {
         this.hospitalSettingsRepository = hospitalSettingsRepository;
     }
 
-
     // =====================================================
-    // GET ALL APPOINTMENTS
+    // GET APPOINTMENTS
+    // Optional filters: doctorId and appointmentDate
     // =====================================================
 
     @GetMapping
-    public List<Appointment> getAllAppointments() {
-        return appointmentService.getAllAppointments();
-    }
+    public ResponseEntity<List<Appointment>> getAppointments(
+            @RequestParam(required = false) Long doctorId,
+            @RequestParam(required = false) String appointmentDate
+    ) {
 
+        // Doctor's appointments for a selected date
+        if (doctorId != null
+                && appointmentDate != null
+                && !appointmentDate.isBlank()) {
+
+            return ResponseEntity.ok(
+                    appointmentRepository
+                            .findByDoctor_IdAndAppointmentDate(
+                                    doctorId,
+                                    appointmentDate
+                            )
+            );
+        }
+
+        // All doctors' appointments for a selected date
+        if (appointmentDate != null && !appointmentDate.isBlank()) {
+
+            List<Appointment> appointments =
+                    appointmentRepository.findAll()
+                            .stream()
+                            .filter(appointment ->
+                                    appointmentDate.equals(
+                                            appointment.getAppointmentDate()
+                                    )
+                            )
+                            .toList();
+
+            return ResponseEntity.ok(appointments);
+        }
+
+        // One doctor's appointments across all dates
+        if (doctorId != null) {
+
+            List<Appointment> appointments =
+                    appointmentRepository.findAll()
+                            .stream()
+                            .filter(appointment ->
+                                    appointment.getDoctor() != null
+                                            && doctorId.equals(
+                                            appointment.getDoctor().getId()
+                                    )
+                            )
+                            .toList();
+
+            return ResponseEntity.ok(appointments);
+        }
+
+        // Preserve the existing behaviour:
+        // return all appointments when no filters are provided
+        return ResponseEntity.ok(
+                appointmentService.getAllAppointments()
+        );
+    }
 
     // =====================================================
     // GET APPOINTMENT BY ID
@@ -61,12 +116,10 @@ public class AppointmentController {
     public ResponseEntity<Appointment> getAppointmentById(
             @PathVariable Long id
     ) {
-
         return appointmentService.getAppointmentById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-
 
     // =====================================================
     // GET PATIENT APPOINTMENTS
@@ -76,7 +129,6 @@ public class AppointmentController {
     public ResponseEntity<List<Appointment>> getAppointmentsByPatientPhone(
             @PathVariable String phone
     ) {
-
         return ResponseEntity.ok(
                 appointmentRepository
                         .findByPatientPhoneOrderByAppointmentDateDescAppointmentTimeDesc(
@@ -84,7 +136,6 @@ public class AppointmentController {
                         )
         );
     }
-
 
     // =====================================================
     // GET WAITING QUEUE FOR DOCTOR
@@ -95,7 +146,6 @@ public class AppointmentController {
             @RequestParam Long doctorId,
             @RequestParam String appointmentDate
     ) {
-
         return ResponseEntity.ok(
                 appointmentService.getWaitingQueue(
                         doctorId,
@@ -103,7 +153,6 @@ public class AppointmentController {
                 )
         );
     }
-
 
     // =====================================================
     // GET PATIENT QUEUE POSITION
@@ -113,27 +162,23 @@ public class AppointmentController {
     public ResponseEntity<QueuePositionResponse> getQueuePosition(
             @PathVariable Long id
     ) {
-
         return ResponseEntity.ok(
                 appointmentService.getQueuePosition(id)
         );
     }
 
-
     // =====================================================
-    // GET PATIENT ESTIMATED WAITING TIME
+    // GET ESTIMATED WAITING TIME
     // =====================================================
 
     @GetMapping("/{id}/waiting-time")
     public ResponseEntity<WaitingTimeResponse> getWaitingTime(
             @PathVariable Long id
     ) {
-
         return ResponseEntity.ok(
                 appointmentService.getWaitingTime(id)
         );
     }
-
 
     // =====================================================
     // CREATE APPOINTMENT
@@ -143,12 +188,8 @@ public class AppointmentController {
     public Appointment createAppointment(
             @RequestBody Appointment appointment
     ) {
-
-        return appointmentService.saveAppointment(
-                appointment
-        );
+        return appointmentService.saveAppointment(appointment);
     }
-
 
     // =====================================================
     // UPDATE APPOINTMENT
@@ -205,52 +246,29 @@ public class AppointmentController {
                             )
                     );
                 })
-                .orElse(
-                        ResponseEntity.notFound().build()
-                );
+                .orElse(ResponseEntity.notFound().build());
     }
-
 
     // =====================================================
     // UPDATE APPOINTMENT STATUS
+    // Example: PATCH /api/appointments/23/status?status=IN_PROGRESS
     // =====================================================
-
-    /*
-     * Used by:
-     * Doctor Queue
-     * Admin Queue
-     * Shared Queue
-     *
-     * Example:
-     * PATCH /api/appointments/23/status?status=IN_PROGRESS
-     */
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<Appointment> updateAppointmentStatus(
             @PathVariable Long id,
             @RequestParam String status
     ) {
-
         try {
-
             Appointment updatedAppointment =
-                    appointmentService.updateStatus(
-                            id,
-                            status
-                    );
+                    appointmentService.updateStatus(id, status);
 
-            return ResponseEntity.ok(
-                    updatedAppointment
-            );
+            return ResponseEntity.ok(updatedAppointment);
 
         } catch (RuntimeException e) {
-
-            return ResponseEntity
-                    .notFound()
-                    .build();
+            return ResponseEntity.notFound().build();
         }
     }
-
 
     // =====================================================
     // CANCEL APPOINTMENT + INITIATE REFUND
@@ -263,33 +281,22 @@ public class AppointmentController {
 
         try {
 
-            // =================================================
-            // 1. FIND APPOINTMENT
-            // =================================================
+            // Find appointment
+            Appointment appointment = appointmentService
+                    .getAppointmentById(id)
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Appointment not found with id: " + id
+                            )
+                    );
 
-            Appointment appointment =
-                    appointmentService
-                            .getAppointmentById(id)
-                            .orElseThrow(() ->
-                                    new RuntimeException(
-                                            "Appointment not found with id: "
-                                                    + id
-                                    )
-                            );
-
-
-            // =================================================
-            // CHECK HOSPITAL CANCELLATION SETTING
-            // =================================================
-
+            // Check hospital cancellation setting
             if (appointment.getHospital() != null) {
 
                 boolean cancellationEnabled =
                         hospitalSettingsRepository
                                 .findByHospital_Id(
-                                        appointment
-                                                .getHospital()
-                                                .getId()
+                                        appointment.getHospital().getId()
                                 )
                                 .map(settings ->
                                         Boolean.TRUE.equals(
@@ -299,218 +306,112 @@ public class AppointmentController {
                                 .orElse(true);
 
                 if (!cancellationEnabled) {
-
-                    return ResponseEntity
-                            .badRequest()
-                            .body(
-                                    Map.of(
-                                            "error",
-                                            "Appointment cancellation is currently disabled."
-                                    )
-                            );
+                    return ResponseEntity.badRequest().body(
+                            Map.of(
+                                    "error",
+                                    "Appointment cancellation is currently disabled."
+                            )
+                    );
                 }
             }
 
+            // Check current appointment status
+            String currentStatus = appointment.getStatus();
 
-            // =================================================
-            // 2. CHECK CURRENT STATUS
-            // =================================================
-
-            String currentStatus =
-                    appointment.getStatus();
-
-
-            if ("CANCELLED".equalsIgnoreCase(
-                    currentStatus
-            )) {
-
-                return ResponseEntity
-                        .badRequest()
-                        .body(
-                                Map.of(
-                                        "error",
-                                        "Appointment is already cancelled."
-                                )
-                        );
+            if ("CANCELLED".equalsIgnoreCase(currentStatus)) {
+                return ResponseEntity.badRequest().body(
+                        Map.of(
+                                "error",
+                                "Appointment is already cancelled."
+                        )
+                );
             }
 
-
-            if ("COMPLETED".equalsIgnoreCase(
-                    currentStatus
-            )) {
-
-                return ResponseEntity
-                        .badRequest()
-                        .body(
-                                Map.of(
-                                        "error",
-                                        "Completed appointment cannot be cancelled."
-                                )
-                        );
+            if ("COMPLETED".equalsIgnoreCase(currentStatus)) {
+                return ResponseEntity.badRequest().body(
+                        Map.of(
+                                "error",
+                                "Completed appointment cannot be cancelled."
+                        )
+                );
             }
 
-
-            if ("IN_PROGRESS".equalsIgnoreCase(
-                    currentStatus
-            )) {
-
-                return ResponseEntity
-                        .badRequest()
-                        .body(
-                                Map.of(
-                                        "error",
-                                        "Appointment is already in progress and cannot be cancelled."
-                                )
-                        );
+            if ("IN_PROGRESS".equalsIgnoreCase(currentStatus)) {
+                return ResponseEntity.badRequest().body(
+                        Map.of(
+                                "error",
+                                "Appointment is already in progress and cannot be cancelled."
+                        )
+                );
             }
 
-
-            // =================================================
-            // 3. SET APPOINTMENT AS CANCELLED
-            // =================================================
-
-            appointment.setStatus(
-                    "CANCELLED"
-            );
-
-            /*
-             * IMPORTANT:
-             *
-             * Do NOT use appointmentService.saveAppointment()
-             * here because that method performs booking/
-             * duplicate-slot validation.
-             *
-             * This is an existing appointment whose status
-             * is being changed, so save directly through
-             * AppointmentRepository.
-             */
+            // Mark appointment as cancelled
+            appointment.setStatus("CANCELLED");
 
             Appointment cancelledAppointment =
-                    appointmentRepository.save(
-                            appointment
-                    );
+                    appointmentRepository.save(appointment);
 
-
-            // =================================================
-            // 4. FIND PAYMENT
-            // =================================================
-
+            // Find payment, if any
             Payment payment = null;
 
             try {
-
-                payment =
-                        paymentService.getPaymentByAppointment(
-                                id
-                        );
-
+                payment = paymentService.getPaymentByAppointment(id);
             } catch (RuntimeException ignored) {
-
-                /*
-                 * Appointment may exist without payment.
-                 *
-                 * In that case appointment remains CANCELLED.
-                 */
+                // Appointment may not have a payment.
             }
 
-
-            // =================================================
-            // 5. IF PAYMENT EXISTS AND IS PAID
-            //    INITIATE REFUND
-            // =================================================
-
-            if (payment != null &&
-                    "PAID".equalsIgnoreCase(
+            // Initiate refund only if payment is paid
+            if (payment != null
+                    && "PAID".equalsIgnoreCase(
                             payment.getPaymentStatus()
                     )) {
 
                 Payment refundPayment =
-                        paymentService.initiateRefund(
-                                payment.getId()
-                        );
+                        paymentService.initiateRefund(payment.getId());
 
-                Map<String, Object> response =
-                        new HashMap<>();
+                Map<String, Object> response = new HashMap<>();
 
                 response.put(
                         "message",
                         "Appointment cancelled and refund initiated."
                 );
+                response.put("appointment", cancelledAppointment);
+                response.put("payment", refundPayment);
 
-                response.put(
-                        "appointment",
-                        cancelledAppointment
-                );
-
-                response.put(
-                        "payment",
-                        refundPayment
-                );
-
-                return ResponseEntity.ok(
-                        response
-                );
+                return ResponseEntity.ok(response);
             }
 
-
-            // =================================================
-            // 6. NO PAID PAYMENT
-            // =================================================
-
-            Map<String, Object> response =
-                    new HashMap<>();
+            // No paid payment found
+            Map<String, Object> response = new HashMap<>();
 
             response.put(
                     "message",
                     "Appointment cancelled. No paid payment was found, so no refund was initiated."
             );
+            response.put("appointment", cancelledAppointment);
+            response.put("payment", payment);
 
-            response.put(
-                    "appointment",
-                    cancelledAppointment
-            );
-
-            response.put(
-                    "payment",
-                    payment
-            );
-
-            return ResponseEntity.ok(
-                    response
-            );
-
+            return ResponseEntity.ok(response);
 
         } catch (IllegalStateException e) {
 
             e.printStackTrace();
 
-            /*
-             * Appointment has already been marked CANCELLED.
-             *
-             * If refund fails, PaymentService keeps
-             * REFUND_FAILED so the refund can be retried.
-             */
-
-            return ResponseEntity
-                    .badRequest()
-                    .body(
-                            Map.of(
-                                    "error",
-                                    e.getMessage() != null
-                                            ? e.getMessage()
-                                            : "Unable to process cancellation/refund."
-                            )
-                    );
-
+            return ResponseEntity.badRequest().body(
+                    Map.of(
+                            "error",
+                            e.getMessage() != null
+                                    ? e.getMessage()
+                                    : "Unable to process cancellation/refund."
+                    )
+            );
 
         } catch (RuntimeException e) {
 
             e.printStackTrace();
 
             return ResponseEntity
-                    .status(
-                            HttpStatus.INTERNAL_SERVER_ERROR
-                    )
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(
                             Map.of(
                                     "error",
@@ -522,7 +423,6 @@ public class AppointmentController {
         }
     }
 
-
     // =====================================================
     // DELETE APPOINTMENT
     // =====================================================
@@ -532,21 +432,12 @@ public class AppointmentController {
             @PathVariable Long id
     ) {
 
-        if (
-                appointmentService
-                        .getAppointmentById(id)
-                        .isEmpty()
-        ) {
-
-            return ResponseEntity
-                    .notFound()
-                    .build();
+        if (appointmentService.getAppointmentById(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
 
         appointmentService.deleteAppointment(id);
 
-        return ResponseEntity
-                .noContent()
-                .build();
+        return ResponseEntity.noContent().build();
     }
 }

@@ -1,79 +1,243 @@
-import { useNavigate, useLocation } from 'react-router-dom';
 
-const imgLayoutDashboard = '/assets/13e03.svg';
-const imgUsers2 = '/assets/014f4.svg';
-const imgCalendar = '/assets/4daf2.svg';
-const imgCircleX = '/assets/dc072.svg';
-const imgSettings = '/assets/b99e6.svg';
-
-const navItems = [
-  { label: 'Dashboard', icon: imgLayoutDashboard, path: '/doctor/dashboard' },
-  { label: 'Queue', icon: imgUsers2, path: '/doctor/queue' },
-  { label: 'Appointments', icon: imgCalendar, path: '/doctor/appointments' },
-  { label: 'Patients', icon: imgCircleX, path: '/doctor/patients' },
-  { label: 'Settings', icon: imgSettings, path: '/doctor/settings' },
-];
+import { NavLink } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Users,
+  CalendarDays,
+  ClipboardList,
+  Settings,
+  Clock3,
+  Activity,
+  HeartPulse,
+  X,
+  Stethoscope,
+} from 'lucide-react';
 
 interface DoctorSidebarProps {
+  mobileOpen?: boolean;
   onClose?: () => void;
 }
 
-export default function DoctorSidebar({ onClose }: DoctorSidebarProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
+const navigationItems = [
+  {
+    label: 'Dashboard',
+    path: '/doctor/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    label: 'Queue',
+    path: '/doctor/queue',
+    icon: Users,
+  },
+  {
+    label: 'Appointments',
+    path: '/doctor/appointments',
+    icon: CalendarDays,
+  },
+  {
+    label: 'Patients',
+    path: '/doctor/patients',
+    icon: ClipboardList,
+  },
+  {
+    label: 'Settings',
+    path: '/doctor/settings',
+    icon: Settings,
+  },
+];
+
+export default function DoctorSidebar({
+  mobileOpen = false,
+  onClose,
+}: DoctorSidebarProps) {
+  const closeSidebar = () => {
+    onClose?.();
+  };
 
   return (
-    <div className="bg-[#13243a] flex flex-col gap-[18px] h-full items-start pb-[20px] pt-[16px] px-[16px] shrink-0 w-[248px]">
-      {/* Brand */}
-      <div className="flex items-center justify-between w-full px-[10px] py-[6px]">
-        <img
-          src="/assets/logo.png"
-          alt="HospitalFlow"
-          className="h-[36px] w-auto object-contain object-top"
+    <>
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          onClick={closeSidebar}
+          className="fixed inset-0 z-40 bg-[#071b31]/40 backdrop-blur-[2px] lg:hidden"
         />
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="lg:hidden text-[#afc0d3] hover:text-white p-1 transition-colors"
-            aria-label="Close menu"
-          >
-            <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </div>
+      )}
 
-      {/* Nav items */}
-      <div className="flex flex-col gap-[6px] items-start w-full">
-        {navItems.map((item) => {
-          const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
-          return (
-            <button
-              key={item.path}
-              onClick={() => { navigate(item.path); onClose?.(); }}
-              aria-current={active ? 'page' : undefined}
-              className={`flex gap-[10px] items-center px-[12px] py-[11px] rounded-[8px] w-full text-left transition-[background-color,transform] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#6aa9e8] focus-visible:outline-offset-2 active:translate-y-px ${
-                active ? 'bg-[#155ead]' : 'bg-transparent hover:bg-[#1b3049]'
-              }`}
-            >
-              <div className="relative shrink-0 size-[16px]">
-                <img alt="" className="absolute block inset-0 size-full" src={item.icon} />
-              </div>
-              <p className={`font-${active ? 'bold' : 'medium'} text-[13px] leading-none whitespace-nowrap ${active ? 'text-white' : 'text-[#d0dce8]'}`}>
-                {item.label}
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50
+          flex h-screen w-[240px] shrink-0 flex-col
+          overflow-y-auto border-r border-[#dce7f0]
+          bg-[#f3f7fb] text-[#071b31]
+          transition-transform duration-300
+          lg:sticky lg:top-0 lg:z-30 lg:translate-x-0
+          ${
+            mobileOpen
+              ? 'translate-x-0'
+              : '-translate-x-full lg:translate-x-0'
+          }
+        `}
+      >
+        {/* Brand */}
+        <div className="flex min-h-[88px] items-center justify-between gap-3 border-b border-[#dce7f0] px-5 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#071b31] text-cyan-300 shadow-sm">
+              <HeartPulse size={23} strokeWidth={2.2} />
+            </div>
+
+            <div className="min-w-0">
+              <h1 className="truncate text-[17px] font-extrabold tracking-tight text-[#071b31]">
+                HospitalFlow
+              </h1>
+              <p className="mt-1 text-[9px] font-bold uppercase tracking-[1.5px] text-[#087e9b]">
+                Doctor Workspace
               </p>
-            </button>
-          );
-        })}
-      </div>
+            </div>
+          </div>
 
-      {/* Shift summary */}
-      <div className="mt-auto bg-[#1b3049] flex flex-col gap-[8px] items-start p-[14px] rounded-[12px] w-full">
-        <p className="font-bold text-[#afc0d3] text-[10px] uppercase leading-none">Today's shift</p>
-        <p className="font-normal text-[15px] text-white leading-none">08:00 – 16:00</p>
-        <p className="font-normal text-[#afc0d3] text-[11px] leading-none">Outpatient · Room 204</p>
-      </div>
-    </div>
+          <button
+            type="button"
+            onClick={closeSidebar}
+            aria-label="Close sidebar"
+            className="rounded-lg p-2 text-slate-500 transition hover:bg-white hover:text-[#071b31] lg:hidden"
+          >
+            <X size={19} />
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <div className="px-4 pb-3 pt-6">
+          <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[1.6px] text-slate-400">
+            Workspace
+          </p>
+
+          <nav className="space-y-2">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.path === '/doctor/dashboard'}
+                  onClick={closeSidebar}
+                  className={({ isActive }) =>
+                    `
+                    group relative flex min-h-[52px] items-center gap-3
+                    overflow-hidden rounded-xl border px-3 py-3
+                    transition-all duration-200
+                    ${
+                      isActive
+                        ? 'border-cyan-100 bg-[#dff8fc] text-[#071b31] shadow-sm'
+                        : 'border-transparent bg-white text-slate-600 hover:border-[#dce7f0] hover:bg-white hover:text-[#071b31] hover:shadow-sm'
+                    }
+                    `
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-[#22c7df]" />
+                      )}
+
+                      <span
+                        className={`
+                          flex h-9 w-9 shrink-0 items-center justify-center
+                          rounded-lg transition-colors
+                          ${
+                            isActive
+                              ? 'bg-[#22c7df] text-[#071b31]'
+                              : 'bg-[#f0f8fb] text-[#087e9b] group-hover:bg-[#dff8fc]'
+                          }
+                        `}
+                      >
+                        <Icon size={18} strokeWidth={2} />
+                      </span>
+
+                      <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">
+                        {item.label}
+                      </span>
+
+                      {isActive && (
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-[#087e9b]" />
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* OPD workspace information */}
+        <div className="mx-4 mt-3 rounded-2xl border border-[#ccebf2] bg-white p-4 shadow-[0_3px_12px_rgba(10,35,60,0.03)]">
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#071b31] text-cyan-300">
+              <Activity size={17} />
+            </div>
+
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#071b31]">
+                OPD Workspace
+              </p>
+              <p className="mt-0.5 text-[10px] font-medium text-[#087e9b]">
+                Doctor Portal
+              </p>
+            </div>
+          </div>
+
+          <p className="text-[11px] leading-5 text-slate-500">
+            Manage your patient queue, appointments and consultation workflow.
+          </p>
+        </div>
+
+        {/* Shift information */}
+        <div className="mx-4 mb-4 mt-6 rounded-2xl border border-[#dce7f0] bg-white p-4">
+          <div className="mb-4 flex items-center gap-2">
+            <Clock3 size={15} className="text-[#087e9b]" />
+
+            <p className="text-[10px] font-bold uppercase tracking-[1.2px] text-slate-500">
+              Shift Information
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5">
+              <Stethoscope size={15} className="shrink-0 text-[#087e9b]" />
+              <span className="text-[11px] text-slate-600">
+                Outpatient · Room 204
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <Clock3 size={15} className="shrink-0 text-[#087e9b]" />
+              <span className="text-[11px] text-slate-600">
+                08:00 AM – 04:00 PM
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-2 rounded-lg bg-[#e8f9f5] px-3 py-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="text-[10px] font-semibold text-emerald-800">
+              OPD Workspace
+            </span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-auto border-t border-[#dce7f0] bg-[#edf3f8] px-5 py-4">
+          <p className="text-[10px] font-semibold text-slate-500">
+            HospitalFlow
+          </p>
+          <p className="mt-1 text-[10px] text-slate-400">
+            Doctor Operations Portal
+          </p>
+        </div>
+      </aside>
+    </>
   );
 }

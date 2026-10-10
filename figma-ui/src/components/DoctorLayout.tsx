@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+
 import DoctorSidebar from './DoctorSidebar';
 import TopBar from './TopBar';
 
@@ -8,52 +9,99 @@ interface DoctorLayoutProps {
   title: string;
 }
 
-export default function DoctorLayout({ children, title }: DoctorLayoutProps) {
+export default function DoctorLayout({
+  children,
+  title,
+}: DoctorLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="app-shell flex h-screen bg-[#f4f7fb] overflow-hidden">
+    <div className="app-shell flex h-screen overflow-hidden bg-[#f3f7fc] text-[#142033]">
 
       {/* Mobile backdrop */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 z-20 lg:hidden"
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          className="fixed inset-0 z-40 bg-[#020b18]/65 backdrop-blur-[2px] lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar: fixed overlay on mobile, static in flow on desktop */}
+      {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 transition-transform duration-200 lg:static lg:inset-y-auto lg:left-auto lg:z-auto lg:translate-x-0 lg:transition-none ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`
+          fixed inset-y-0 left-0 z-50
+          transition-transform duration-300 ease-in-out
+          lg:static lg:z-auto lg:translate-x-0
+          lg:transition-none
+          ${
+            sidebarOpen
+              ? 'translate-x-0'
+              : '-translate-x-full'
+          }
+        `}
       >
-        <DoctorSidebar onClose={() => setSidebarOpen(false)} />
+        <DoctorSidebar
+          onClose={() => setSidebarOpen(false)}
+        />
       </div>
 
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        {/* Mobile top bar with hamburger */}
-        <div className="flex items-center lg:hidden bg-[#13243a] h-[56px] px-4 gap-3 shrink-0">
+      {/* Main application area */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+
+        {/* Mobile header */}
+        <header className="flex h-[62px] shrink-0 items-center gap-3 border-b border-white/10 bg-[#06182b] px-4 shadow-sm lg:hidden">
+
           <button
+            type="button"
             onClick={() => setSidebarOpen(true)}
-            className="text-[#afc0d3] hover:text-white p-1 -ml-1 transition-colors"
-            aria-label="Open menu"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-[#16d9e3] transition-colors hover:bg-white/[0.12]"
+            aria-label="Open navigation menu"
           >
-            <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
             </svg>
           </button>
-          <img src="/assets/logo.png" alt="HospitalFlow" className="h-8 w-auto object-contain object-top" />
-          <span className="ml-auto font-bold text-white text-[13px] truncate max-w-[160px]">{title}</span>
-        </div>
+
+          <img
+            src="/assets/logo.png"
+            alt="HospitalFlow"
+            className="h-8 w-auto object-contain"
+          />
+
+          <div className="ml-auto min-w-0 text-right">
+            <p className="truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-[#16d9e3]">
+              HospitalFlow
+            </p>
+            <p className="truncate text-[12px] font-bold text-white">
+              {title}
+            </p>
+          </div>
+        </header>
 
         {/* Desktop top bar */}
-        <div className="hidden lg:block">
+        <div className="hidden shrink-0 lg:block">
           <TopBar title={title} />
         </div>
 
-        <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-[30px] lg:py-[28px]">
-          {children}
+        {/* Page content */}
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7 xl:px-9">
+
+          <div className="mx-auto w-full max-w-[1600px]">
+            {children}
+          </div>
+
         </main>
       </div>
     </div>
